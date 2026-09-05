@@ -27,10 +27,18 @@ const getConfig = (outdir) => ({
   target: "es2020",
   assetNames: "[dir]/[name]",
   chunkNames: "[dir]/[name]-[hash]",
+  // notecanvas: the sibling packages are inlined rather than left external.
+  // Shipped as separate builds they keep a runtime cycle -- common imports
+  // isBounds from element, element imports common -- which is harmless inside
+  // one esbuild pass but which the consuming app's bundler ordered the other
+  // way round, running excalidraw's module body while common's MIME_TYPES was
+  // still undefined. A single self-contained bundle has no such edge to order.
   alias: {
     "@excalidraw/utils": path.resolve(__dirname, "../packages/utils/src"),
+    "@excalidraw/common": path.resolve(__dirname, "../packages/common/src"),
+    "@excalidraw/element": path.resolve(__dirname, "../packages/element/src"),
+    "@excalidraw/math": path.resolve(__dirname, "../packages/math/src"),
   },
-  external: ["@excalidraw/common", "@excalidraw/element", "@excalidraw/math"],
   loader: {
     ".woff2": "file",
   },

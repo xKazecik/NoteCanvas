@@ -332,3 +332,9 @@ export {
   PlusIcon,
   searchIcon,
 } from "./components/icons";
+
+// The sibling packages are bundled into this one, so anything the app needs
+// from them has to come through here. Importing @excalidraw/common or
+// @excalidraw/element in the app would pull a second, separate copy.
+export { randomId } from "@excalidraw/common";
+export { newEmbeddableElement, newImageElement } from "@excalidraw/element";

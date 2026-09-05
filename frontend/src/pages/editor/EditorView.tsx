@@ -16,11 +16,11 @@ import {
   LanguageSelector,
 } from "../../components/LanguageSelector";
 import { GridStepSelector } from "../../components/GridStepSelector";
+import { PresentationMode } from "../../components/canvas/Presentation";
 import {
-  PresentationMode,
-  PresentationPanel,
-} from "../../components/canvas/Presentation";
-import { StickersPanel } from "../../components/canvas/Stickers";
+  CanvasSidebar,
+  CanvasSidebarTrigger,
+} from "../../components/canvas/CanvasSidebar";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { UserIdentity } from "../../utils/identity";
 import { UIOptions } from "./shared";
@@ -287,6 +287,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
           }}
           UIOptions={UIOptions}
           viewModeEnabled={!canEdit}
+          renderTopRightUI={canEdit ? () => <CanvasSidebarTrigger /> : undefined}
         >
           <MainMenu>
             <MainMenu.DefaultItems.ToggleTheme />
@@ -307,12 +308,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
           {canvasApi && (
             <>
               <PresentationMode excalidrawAPI={canvasApi} />
-              {canEdit && (
-                <>
-                  <PresentationPanel excalidrawAPI={canvasApi} />
-                  <StickersPanel excalidrawAPI={canvasApi} />
-                </>
-              )}
+              {canEdit && <CanvasSidebar excalidrawAPI={canvasApi} />}
             </>
           )}
         </Excalidraw>

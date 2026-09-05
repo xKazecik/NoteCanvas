@@ -1,8 +1,14 @@
 import clsx from "clsx";
 import { useCallback, useEffect, useState, useRef } from "react";
 
-import { randomId, viewportCoordsToSceneCoords } from "@excalidraw/common";
-import { newEmbeddableElement, newImageElement } from "@excalidraw/element";
+// Via the package root, not @excalidraw/common and @excalidraw/element: those
+// are bundled into the engine, and importing them here would load a second copy.
+import {
+  randomId,
+  viewportCoordsToSceneCoords,
+  newEmbeddableElement,
+  newImageElement,
+} from "@excalidraw/excalidraw";
 
 import { t, type TranslationKeys } from "@excalidraw/excalidraw";
 import { searchIcon } from "@excalidraw/excalidraw";
