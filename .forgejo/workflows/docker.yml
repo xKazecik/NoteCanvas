@@ -40,7 +40,7 @@ env:
   VERSION_MAJOR: '1'
   # MINOR = commit count - this. Set to the commit count at the fork point so
   # the first notecanvas build is 1.0.
-  COMMIT_OFFSET: '__FORK_POINT__'
+  COMMIT_OFFSET: '7'
 
 jobs:
   build:
