@@ -1,14 +1,41 @@
-<img src="readme-assets/logoExcaliDash.png" alt="ExcaliDash Logo" width="80" height="88">
+<img src="readme-assets/logoExcaliDash.png" alt="notecanvas Logo" width="80" height="88">
 
-# ExcaliDash
+# notecanvas
 
-![License](https://img.shields.io/github/license/zimengxiong/ExcaliDash)
-![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
-[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://hub.docker.com)
+A self-hosted dashboard and organizer for Excalidraw with live collaboration,
+built on [ExcaliDash](https://github.com/ZimengXiong/ExcaliDash) and drawing on
+a canvas forked from [AstraDraw](https://github.com/AstraDraw/astradraw).
 
-A self-hosted dashboard and organizer for [Excalidraw](https://github.com/excalidraw/excalidraw) with live collaboration features.
+ExcaliDash brings the dashboard: collections, search, scoped internal and
+external sharing, permissions, live collaboration and OIDC. AstraDraw brings the
+canvas: lasso select, presentation mode, and a stickers panel with GIPHY and
+emoji. notecanvas is ExcaliDash hosting AstraDraw's canvas.
 
 ![](readme-assets/demo.gif)
+
+## How the two fit together
+
+ExcaliDash renders the `@excalidraw/excalidraw` npm package. AstraDraw keeps its
+own fork of that same package in its monorepo, so notecanvas vendors that fork
+under `frontend/excalidraw-engine/` and builds it from source instead of pulling
+the published package. Everything AstraDraw changed at canvas level -- lasso
+included -- arrives with it.
+
+The UI for presenting and for stickers lives in AstraDraw's *app shell* rather
+than in the package, so it is ported separately into
+`frontend/src/components/canvas/` and mounted inside `<Excalidraw>`, where the
+editor's React context is available. `docs/FORK.md` covers what had to change to
+build AstraDraw's yarn-monorepo packages under ExcaliDash's npm frontend.
+
+## Beyond upstream
+
+- **Stackable collections.** Collections nest, so they work like folders. Drag
+  one onto another to nest it, or onto the Collections header to lift it back
+  to the top level.
+- **Presentation mode** with frames as slides, a slide panel, and layout
+  presets.
+- **Stickers panel** with emoji, and GIPHY GIFs and stickers when a key is set.
+- **Lasso select**, plus the rest of AstraDraw's canvas work.
 
 ## Table of Contents
 
