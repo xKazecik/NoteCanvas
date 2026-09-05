@@ -1,0 +1,334 @@
+// StickersPanel CSS Module
+// Migrated from global SCSS to CSS Module
+
+@use "../../../../styles/mixins" as *;
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+// Search input (using TextField component, matching Search tab pattern)
+.searchWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--default-border-color, #e5e5e5);
+
+  // Override TextField styles to match Search tab
+  :global(.ExcTextField) {
+    flex: 1 0 auto;
+  }
+
+  :global(.ExcTextField__input) {
+    background-color: #f5f5f9;
+    border-radius: var(--border-radius-md);
+    border: 0;
+
+    input::placeholder {
+      font-size: 0.9rem;
+    }
+  }
+}
+
+// Content type tabs
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--default-border-color, #e5e5e5);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.tab {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary-color, #6b6b6b);
+  transition: background-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--button-hover-bg, rgba(0, 0, 0, 0.05));
+    color: var(--text-primary-color, #1b1b1f);
+  }
+}
+
+.tabActive {
+  background: var(--color-primary-light, rgba(101, 84, 192, 0.1));
+  color: var(--color-primary, #6554c0);
+}
+
+// Section header (Trending / Search query)
+.sectionHeader {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary-color, #1b1b1f);
+}
+
+// Grid container (scrollable)
+.gridContainer {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  padding: 0 12px 12px;
+
+  * {
+    pointer-events: auto;
+  }
+}
+
+// Masonry-style grid
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+// Static emoji grid uses more columns
+.gridStatic {
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+
+// Emoji category tabs (horizontal scrollable)
+.emojiCategories {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--default-border-color, #e5e5e5);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.emojiCategory {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--button-hover-bg, rgba(0, 0, 0, 0.05));
+  }
+}
+
+.emojiCategoryActive {
+  background: var(--color-primary-light, rgba(101, 84, 192, 0.1));
+}
+
+// Individual GIF/sticker item
+.item {
+  position: relative;
+  padding: 0;
+  border: none;
+  background: var(--button-hover-bg, rgba(0, 0, 0, 0.03));
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: grab;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  aspect-ratio: auto;
+
+  &:hover:not(:disabled) {
+    transform: scale(1.02);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  &:active:not(:disabled) {
+    cursor: grabbing;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    user-select: none;
+    // Allow hover events on image, but prevent native drag
+    -webkit-user-drag: none;
+  }
+}
+
+.itemInserting {
+  opacity: 0.7;
+}
+
+// Static emoji items
+.itemStatic {
+  aspect-ratio: 1;
+  background: transparent;
+  padding: 4px;
+
+  &:hover:not(:disabled) {
+    background: var(--button-hover-bg, rgba(0, 0, 0, 0.05));
+    transform: scale(1.1);
+    box-shadow: none;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+}
+
+.itemLoading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+// Loading state
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  color: var(--text-secondary-color, #6b6b6b);
+  font-size: 13px;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--default-border-color, #e5e5e5);
+  border-top-color: var(--color-primary, #6554c0);
+  border-radius: 50%;
+  animation: stickersSpin 0.8s linear infinite;
+}
+
+.spinnerSmall {
+  width: 16px;
+  height: 16px;
+}
+
+@keyframes stickersSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Error state
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px;
+  text-align: center;
+  color: var(--text-secondary-color, #6b6b6b);
+  font-size: 13px;
+}
+
+.errorIcon {
+  font-size: 32px;
+}
+
+// Empty state
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+  color: var(--text-secondary-color, #6b6b6b);
+  font-size: 13px;
+}
+
+// Footer with GIPHY attribution
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-top: 1px solid var(--default-border-color, #e5e5e5);
+  background: var(--island-bg-color, #fff);
+}
+
+.poweredBy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary-color, #6b6b6b);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  svg {
+    color: var(--text-primary-color, #1b1b1f);
+  }
+}
+
+.poweredBySmall {
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+// Dark theme adjustments
+@include dark-mode {
+  .searchWrapper {
+    border-bottom-color: var(--default-border-color, #3a3a3a);
+
+    :global(.ExcTextField__input) {
+      background-color: #31303b;
+    }
+  }
+
+  .item {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .itemLoading {
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  .tabActive {
+    background: rgba(101, 84, 192, 0.2);
+  }
+}

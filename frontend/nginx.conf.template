@@ -91,6 +91,16 @@ http {
             try_files /index.html =404;
         }
 
+        # Runtime config, rewritten by the entrypoint on every container start.
+        # It has no content hash, so the asset rule below would pin it for a year
+        # and a changed key would never reach the browser. An exact-match
+        # location beats that regex regardless of order.
+        location = /env.js {
+            add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+            expires -1;
+            try_files /env.js =404;
+        }
+
         # Cache static assets
         location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
             expires 1y;

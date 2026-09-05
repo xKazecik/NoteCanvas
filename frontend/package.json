@@ -21,6 +21,7 @@
     "axios": "^1.16.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "jotai": "^2.11.0",
     "jszip": "^3.10.1",
     "lodash": "^4.18.1",
     "lucide-react": "^0.554.0",
@@ -41,6 +42,8 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^5.1.0",
     "autoprefixer": "^10.4.18",
+    "esbuild": "0.19.10",
+    "esbuild-sass-plugin": "2.16.0",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
@@ -49,13 +52,12 @@
     "jsdom": "^27.2.0",
     "postcss": "^8.5.10",
     "rimraf": "^5.0.0",
+    "sass": "^1.104.0",
     "tailwindcss": "^3.4.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.3",
     "vite": "^7.3.2",
-    "vitest": "^4.1.8",
-    "esbuild": "0.19.10",
-    "esbuild-sass-plugin": "2.16.0"
+    "vitest": "^4.1.8"
   },
   "overrides": {
     "@excalidraw/mermaid-to-excalidraw": {

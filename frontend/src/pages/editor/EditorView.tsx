@@ -16,6 +16,12 @@ import {
   LanguageSelector,
 } from "../../components/LanguageSelector";
 import { GridStepSelector } from "../../components/GridStepSelector";
+import {
+  PresentationMode,
+  PresentationPanel,
+} from "../../components/canvas/Presentation";
+import { StickersPanel } from "../../components/canvas/Stickers";
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { UserIdentity } from "../../utils/identity";
 import { UIOptions } from "./shared";
 
@@ -124,7 +130,11 @@ export const EditorView: React.FC<EditorViewProps> = ({
   onShareOpen,
   onHistoryOpen,
   onToggleAutoHide,
-}) => (
+}) => {
+  const [canvasApi, setCanvasApi] =
+    React.useState<ExcalidrawImperativeAPI | null>(null);
+
+  return (
   <div className="h-screen flex flex-col bg-white dark:bg-neutral-950 overflow-hidden">
     <header
       className={clsx(
@@ -269,7 +279,12 @@ export const EditorView: React.FC<EditorViewProps> = ({
           onChange={onCanvasChange}
           onPointerUpdate={onPointerUpdate}
           onLibraryChange={onLibraryChange}
-          excalidrawAPI={onSetExcalidrawAPI}
+          excalidrawAPI={(api) => {
+            onSetExcalidrawAPI(api);
+            // The editor keeps the API in a ref, which never re-renders; the
+            // panels below only mount once an instance actually exists.
+            setCanvasApi(api);
+          }}
           UIOptions={UIOptions}
           viewModeEnabled={!canEdit}
         >
@@ -287,6 +302,19 @@ export const EditorView: React.FC<EditorViewProps> = ({
               <LanguageSelector langCode={langCode} onChange={onSetLangCode} />
             </MainMenu.ItemCustom>
           </MainMenu>
+          {/* Ported from AstraDraw. These sit inside <Excalidraw> because they
+              read the editor's React context, the same way MainMenu does. */}
+          {canvasApi && (
+            <>
+              <PresentationMode excalidrawAPI={canvasApi} />
+              {canEdit && (
+                <>
+                  <PresentationPanel excalidrawAPI={canvasApi} />
+                  <StickersPanel excalidrawAPI={canvasApi} />
+                </>
+              )}
+            </>
+          )}
         </Excalidraw>
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-gray-500 dark:text-gray-400">
@@ -298,4 +326,5 @@ export const EditorView: React.FC<EditorViewProps> = ({
       <Toaster position="bottom-center" />
     </div>
   </div>
-);
+  );
+};

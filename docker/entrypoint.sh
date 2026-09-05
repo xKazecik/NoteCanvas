@@ -16,6 +16,21 @@ echo "Configuring nginx with BACKEND_URL: ${BACKEND_URL}"
 ESCAPED_BACKEND_URL=$(printf '%s\n' "$BACKEND_URL" | sed 's/[\/&]/\&/g')
 sed "s/__BACKEND_URL__/${ESCAPED_BACKEND_URL}/g" /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
 
+# Runtime frontend config. The bundle is built once and reads these from
+# window.__ENV__, so a key can be changed by restarting the container instead of
+# rebuilding the image. A key never contains a quote, a backslash or a newline,
+# and letting one through would break out of the JavaScript string below.
+giphy_key=$(printf %s "${GIPHY_API_KEY:-}" | tr -d '\"\\\n')
+
+printf 'window.__ENV__ = { "VITE_APP_GIPHY_API_KEY": "%s" };\n' \
+    "$giphy_key" > /usr/share/nginx/html/env.js
+
+if [ -n "$giphy_key" ]; then
+    echo "GIPHY integration enabled"
+else
+    echo "GIPHY_API_KEY not set; the GIFs tab in the stickers panel stays hidden"
+fi
+
 echo "Validating nginx configuration..."
 if ! nginx -t -c /etc/nginx/nginx.conf; then
     echo "ERROR: nginx configuration validation failed" >&2

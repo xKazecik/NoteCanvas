@@ -315,3 +315,20 @@ export { setCustomTextMetricsProvider } from "@excalidraw/element";
 
 // AstraDraw: Export tunnels for workspace integration
 export { useTunnels } from "./context/tunnels";
+
+// notecanvas: the presentation and stickers UI ported out of AstraDraw's app
+// shell reaches for these. AstraDraw's own app aliases @excalidraw/excalidraw to
+// this source tree and so can deep-import them; notecanvas consumes the built
+// package instead, and deep-importing the source alongside it would load a
+// second copy of the editor with its own React context and jotai store.
+export { Dialog } from "./components/Dialog";
+export { TextField } from "./components/TextField";
+export { t } from "./i18n";
+export type { TranslationKeys } from "./i18n";
+export {
+  MoonIcon,
+  SunIcon,
+  fullscreenIcon,
+  PlusIcon,
+  searchIcon,
+} from "./components/icons";
