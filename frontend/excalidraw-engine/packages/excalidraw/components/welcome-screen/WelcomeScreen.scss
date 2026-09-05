@@ -1,0 +1,645 @@
+.excalidraw {
+  .excalifont {
+    font-family: "Excalifont", "Xiaolai";
+  }
+
+  // WelcomeSreen common
+  // ---------------------------------------------------------------------------
+
+  .welcome-screen-decor {
+    pointer-events: none;
+
+    color: var(--color-gray-40);
+
+    a {
+      --color: var(--color-primary);
+      color: var(--color);
+      text-decoration: none;
+      margin-bottom: -6px;
+    }
+  }
+
+  &.theme--dark {
+    .welcome-screen-decor {
+      color: var(--color-gray-60);
+    }
+    // Brighter toolbar hint in dark mode for visibility against galaxy background
+    .welcome-screen-decor-hint--toolbar .welcome-screen-decor-hint__label {
+      color: var(--color-gray-40);
+    }
+  }
+
+  // WelcomeScreen.Hints
+  // ---------------------------------------------------------------------------
+
+  // Override cartoon font for hints - use clean UI font
+  .welcome-screen-decor-hint,
+  .welcome-screen-decor-hint__label {
+    font-family: var(--ui-font) !important;
+    font-style: normal !important;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+  }
+
+  .welcome-screen-decor-hint {
+    @media (max-height: 599px) {
+      display: none !important;
+    }
+
+    @media (max-width: 1024px), (max-width: 800px) {
+      .welcome-screen-decor {
+        &--help,
+        &--menu {
+          display: none;
+        }
+      }
+    }
+
+    &--help {
+      display: flex;
+      position: absolute;
+      right: 0;
+      bottom: 100%;
+
+      :root[dir="rtl"] & {
+        left: 0;
+        right: auto;
+      }
+
+      svg {
+        margin-top: 0.5rem;
+        width: 85px;
+        height: 71px;
+
+        transform: scaleX(-1) rotate(80deg);
+
+        :root[dir="rtl"] & {
+          transform: rotate(80deg);
+        }
+      }
+    }
+
+    &--toolbar {
+      position: absolute;
+      top: 100%;
+      // Position to the right side of the toolbar, not centered
+      right: -120px;
+      left: auto;
+      transform: none;
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: baseline;
+
+      .welcome-screen-decor-hint__label {
+        width: 140px;
+        position: relative;
+        top: -0.5rem;
+        // Brighter text for better visibility against dark background
+        color: var(--color-gray-50);
+      }
+
+      svg {
+        width: 38px;
+        height: 78px;
+        // Rotate -20 degrees and move up 20px
+        transform: rotate(-40deg) translateY(-55px) translateX(-55px);
+
+        :root[dir="rtl"] & {
+          transform: scaleX(-1) rotate(-30deg) translateY(-20px)
+            translateX(-20px);
+        }
+      }
+    }
+
+    &--menu {
+      position: absolute;
+      width: 320px;
+      font-size: 1rem;
+
+      top: 100%;
+      margin-top: 0.25rem;
+      margin-inline-start: 0.6rem;
+
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5rem;
+
+      svg {
+        width: 41px;
+        height: 94px;
+
+        :root[dir="rtl"] & {
+          transform: scaleX(-1);
+        }
+      }
+
+      @media (max-width: 860px) {
+        .welcome-screen-decor-hint__label {
+          max-width: 160px;
+        }
+      }
+    }
+  }
+
+  // WelcomeSreen.Center
+  // ---------------------------------------------------------------------------
+
+  .welcome-screen-center {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    pointer-events: none;
+    left: 1rem;
+    top: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+  }
+
+  // ============================================================================
+  // GALAXY BACKGROUND - "Space for journeys through galaxies of ideas"
+  // ============================================================================
+  //
+  // AstraDraw's animated welcome screen background creates an immersive
+  // "space journey" experience that matches our slogan.
+  //
+  // FEATURES:
+  // - Animated nebula clouds (purple/blue gradient, slow floating)
+  // - Twinkling star field (multiple sizes, subtle colored stars)
+  // - Seamless infinite drift using background-position animation
+  // - Dark mode only (light mode has clean white background)
+  // - Disabled on mobile for performance
+  //
+  // IMPLEMENTATION:
+  // - Uses CSS pseudo-elements (::before for nebula, ::after for stars)
+  // - Nebula: 200% size with transform animation (prevents edge visibility)
+  // - Stars: Repeating background-image with background-position animation
+  // - Both layers have different animation speeds for parallax depth effect
+  //
+  // TOGGLE: Set $enable-galaxy-background to false to disable entirely
+  // ============================================================================
+  $enable-galaxy-background: true;
+
+  @if $enable-galaxy-background {
+    // =========================================================================
+    // DARK MODE ONLY - Deep Space Galaxy
+    // Light mode uses clean white canvas (no animated background)
+    // =========================================================================
+
+    // Layer 1: Deep space nebula clouds (slowest, background)
+    // Made 200% size so it can drift without showing edges
+    &.theme--dark .welcome-screen-center::before {
+      content: "";
+      position: fixed;
+      // Extend beyond viewport to allow drift without showing edges
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      z-index: -2;
+      background:
+        // Main purple nebula - top left
+        radial-gradient(
+          ellipse 100% 100% at 5% 15%,
+          rgba(103, 76, 220, 0.35) 0%,
+          rgba(80, 50, 180, 0.15) 30%,
+          transparent 60%
+        ),
+        // Blue nebula - top right
+        radial-gradient(
+            ellipse 90% 90% at 95% 5%,
+            rgba(30, 140, 229, 0.3) 0%,
+            rgba(20, 100, 200, 0.1) 35%,
+            transparent 60%
+          ),
+        // Deep purple - bottom left
+        radial-gradient(
+            ellipse 80% 80% at 10% 95%,
+            rgba(140, 76, 220, 0.25) 0%,
+            rgba(100, 50, 180, 0.1) 30%,
+            transparent 55%
+          ),
+        // Cyan glow - bottom right
+        radial-gradient(
+            ellipse 85% 85% at 90% 90%,
+            rgba(30, 180, 229, 0.2) 0%,
+            rgba(20, 140, 200, 0.08) 35%,
+            transparent 55%
+          ),
+        // Center subtle glow
+        radial-gradient(
+            ellipse 50% 50% at 50% 50%,
+            rgba(80, 60, 180, 0.08) 0%,
+            transparent 50%
+          );
+      animation: nebula-float 60s ease-in-out infinite alternate;
+    }
+
+    // Layer 2: Star field (middle layer)
+    // Uses background-position animation for smooth continuous drift
+    &.theme--dark .welcome-screen-center::after {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: -1;
+      // Star field pattern - multiple sizes
+      background-image:
+        // Bright stars
+        radial-gradient(
+          2px 2px at 20px 30px,
+          rgba(255, 255, 255, 0.8),
+          transparent
+        ),
+        radial-gradient(
+          2px 2px at 100px 80px,
+          rgba(255, 255, 255, 0.7),
+          transparent
+        ),
+        radial-gradient(
+          2px 2px at 200px 150px,
+          rgba(255, 255, 255, 0.75),
+          transparent
+        ),
+        radial-gradient(
+          2px 2px at 350px 60px,
+          rgba(255, 255, 255, 0.65),
+          transparent
+        ),
+        radial-gradient(
+          2px 2px at 450px 200px,
+          rgba(255, 255, 255, 0.7),
+          transparent
+        ),
+        radial-gradient(
+          2px 2px at 80px 250px,
+          rgba(255, 255, 255, 0.6),
+          transparent
+        ),
+        radial-gradient(
+          2px 2px at 280px 320px,
+          rgba(255, 255, 255, 0.75),
+          transparent
+        ),
+        // Medium stars
+        radial-gradient(
+            1.5px 1.5px at 150px 120px,
+            rgba(255, 255, 255, 0.5),
+            transparent
+          ),
+        radial-gradient(
+          1.5px 1.5px at 300px 90px,
+          rgba(255, 255, 255, 0.45),
+          transparent
+        ),
+        radial-gradient(
+          1.5px 1.5px at 50px 180px,
+          rgba(255, 255, 255, 0.5),
+          transparent
+        ),
+        radial-gradient(
+          1.5px 1.5px at 400px 280px,
+          rgba(255, 255, 255, 0.55),
+          transparent
+        ),
+        radial-gradient(
+          1.5px 1.5px at 180px 350px,
+          rgba(255, 255, 255, 0.45),
+          transparent
+        ),
+        radial-gradient(
+          1.5px 1.5px at 320px 180px,
+          rgba(255, 255, 255, 0.5),
+          transparent
+        ),
+        // Small distant stars
+        radial-gradient(
+            1px 1px at 70px 50px,
+            rgba(255, 255, 255, 0.35),
+            transparent
+          ),
+        radial-gradient(
+          1px 1px at 130px 200px,
+          rgba(255, 255, 255, 0.3),
+          transparent
+        ),
+        radial-gradient(
+          1px 1px at 250px 70px,
+          rgba(255, 255, 255, 0.35),
+          transparent
+        ),
+        radial-gradient(
+          1px 1px at 380px 150px,
+          rgba(255, 255, 255, 0.3),
+          transparent
+        ),
+        radial-gradient(
+          1px 1px at 420px 50px,
+          rgba(255, 255, 255, 0.35),
+          transparent
+        ),
+        radial-gradient(
+          1px 1px at 30px 300px,
+          rgba(255, 255, 255, 0.3),
+          transparent
+        ),
+        radial-gradient(
+          1px 1px at 480px 320px,
+          rgba(255, 255, 255, 0.35),
+          transparent
+        ),
+        radial-gradient(
+          1px 1px at 220px 250px,
+          rgba(255, 255, 255, 0.3),
+          transparent
+        ),
+        // Colored stars (subtle)
+        radial-gradient(
+            1.5px 1.5px at 160px 40px,
+            rgba(180, 200, 255, 0.5),
+            transparent
+          ),
+        radial-gradient(
+          1.5px 1.5px at 380px 220px,
+          rgba(255, 220, 180, 0.4),
+          transparent
+        ),
+        radial-gradient(
+          1.5px 1.5px at 60px 350px,
+          rgba(200, 180, 255, 0.45),
+          transparent
+        );
+      // Background repeats seamlessly - this is key to avoiding black lines!
+      background-size: 500px 400px;
+      background-repeat: repeat;
+      // Continuous drift animation using background-position (seamless loop)
+      animation: stars-drift 120s linear infinite,
+        stars-twinkle 8s ease-in-out infinite alternate;
+    }
+
+    // Nebula floating animation - smooth drift within the oversized area
+    @keyframes nebula-float {
+      0% {
+        transform: translate(0%, 0%) scale(1);
+        opacity: 1;
+      }
+      25% {
+        transform: translate(8%, 5%) scale(1.02);
+        opacity: 0.9;
+      }
+      50% {
+        transform: translate(3%, 12%) scale(1);
+        opacity: 0.95;
+      }
+      75% {
+        transform: translate(-5%, 8%) scale(1.01);
+        opacity: 0.85;
+      }
+      100% {
+        transform: translate(-10%, -5%) scale(1);
+        opacity: 1;
+      }
+    }
+
+    // Stars drift - continuous movement via background-position
+    // Since background repeats, this creates seamless infinite scrolling
+    @keyframes stars-drift {
+      0% {
+        background-position: 0 0;
+      }
+      100% {
+        background-position: 500px 400px;
+      }
+    }
+
+    // Stars twinkle - opacity variation
+    @keyframes stars-twinkle {
+      0% {
+        opacity: 0.6;
+      }
+      25% {
+        opacity: 0.8;
+      }
+      50% {
+        opacity: 0.5;
+      }
+      75% {
+        opacity: 0.75;
+      }
+      100% {
+        opacity: 0.65;
+      }
+    }
+  }
+
+  // Disable on mobile for performance
+  @media (max-width: 768px) {
+    .welcome-screen-center::before,
+    .welcome-screen-center::after {
+      display: none;
+    }
+  }
+
+  .welcome-screen-center__logo {
+    display: flex;
+    align-items: center;
+    column-gap: 0.75rem;
+    font-size: 2.25rem;
+    // Logo glow is added via ::before pseudo-element in dark mode (see below)
+    position: relative;
+  }
+
+  // =========================================================================
+  // LOGO GLOW EFFECT - Radial light emanating from logo
+  // Creates focus and "celestial body emitting light" effect
+  // Dark mode only - complements the galaxy background
+  // =========================================================================
+  &.theme--dark .welcome-screen-center__logo::before {
+    content: "";
+    position: absolute;
+    // Center the glow on the logo
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    // Size: large enough to create ambient glow, not too large to overwhelm
+    width: 400px;
+    height: 400px;
+    // Radial gradient: purple/blue brand colors fading to transparent
+    // Very subtle opacity to create "feeling" rather than obvious effect
+    background: radial-gradient(
+      circle,
+      rgba(103, 76, 220, 0.25) 0%,
+      // Purple center (brand color)
+      rgba(80, 100, 220, 0.15) 20%,
+      // Purple-blue blend
+      rgba(30, 140, 229, 0.08) 40%,
+      // Blue (brand color)
+      transparent 70% // Fade to transparent
+    );
+    // Behind the logo content
+    z-index: -1;
+    // Soft edges
+    filter: blur(20px);
+    // Subtle pulse animation for "living" effect
+    animation: logo-glow-pulse 8s ease-in-out infinite alternate;
+    // Don't block interactions
+    pointer-events: none;
+  }
+
+  // Subtle pulse animation - logo glow breathes gently
+  @keyframes logo-glow-pulse {
+    0% {
+      opacity: 0.8;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    100% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.1);
+    }
+  }
+
+  // Disable logo glow on mobile (matches galaxy background behavior)
+  @media (max-width: 768px) {
+    &.theme--dark .welcome-screen-center__logo::before {
+      display: none;
+    }
+  }
+
+  .welcome-screen-center__heading {
+    font-size: 1.35rem;
+    text-align: center;
+    color: var(--color-gray-60);
+    // Override excalifont for AstraDraw slogan - use Alexandria to match logo
+    font-family: "Alexandria", sans-serif !important;
+    font-weight: 100;
+    letter-spacing: 0.02em;
+    font-style: normal;
+  }
+
+  &.theme--dark .welcome-screen-center__heading {
+    color: var(--color-gray-40);
+  }
+
+  .welcome-screen-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .welcome-screen-menu-item {
+    box-sizing: border-box;
+
+    pointer-events: var(--ui-pointerEvents);
+
+    color: var(--color-gray-50);
+    font-size: 0.875rem;
+    // Use clean UI font instead of cartoon font
+    font-family: var(--ui-font);
+    font-style: normal;
+
+    width: 100%;
+    min-width: 300px;
+    max-width: 400px;
+    display: grid;
+    align-items: center;
+    justify-content: space-between;
+
+    background: none;
+    border: 1px solid transparent;
+
+    padding: 0.75rem;
+
+    border-radius: var(--border-radius-md);
+
+    grid-template-columns: calc(var(--default-icon-size) + 0.5rem) 1fr 3rem;
+
+    &__text {
+      display: flex;
+      align-items: center;
+      margin-right: auto;
+      text-align: left;
+      column-gap: 0.5rem;
+    }
+
+    &__icon {
+      width: var(--default-icon-size);
+      height: var(--default-icon-size);
+    }
+
+    &__shortcut {
+      margin-left: auto;
+      color: var(--color-gray-40);
+      font-size: 0.75rem;
+    }
+  }
+
+  .welcome-screen-menu-item:hover {
+    text-decoration: none;
+    background: var(--button-hover-bg);
+
+    .welcome-screen-menu-item__shortcut,
+    .welcome-screen-menu-item__icon,
+    .welcome-screen-menu-item__text {
+      color: var(--color-gray-100);
+    }
+  }
+
+  .welcome-screen-menu-item:active {
+    background: var(--button-hover-bg);
+    border-color: var(--color-brand-active);
+
+    .welcome-screen-menu-item__shortcut,
+    .welcome-screen-menu-item__icon,
+    .welcome-screen-menu-item__text {
+      color: var(--color-gray-100);
+    }
+  }
+
+  &.theme--dark {
+    .welcome-screen-menu-item {
+      color: var(--color-gray-60);
+
+      &__shortcut {
+        color: var(--color-gray-60);
+      }
+    }
+
+    .welcome-screen-menu-item:hover {
+      background-color: var(--color-surface-low);
+
+      .welcome-screen-menu-item__icon,
+      .welcome-screen-menu-item__shortcut,
+      .welcome-screen-menu-item__text {
+        color: var(--color-gray-10);
+      }
+    }
+
+    .welcome-screen-menu-item:active {
+      .welcome-screen-menu-item__icon,
+      .welcome-screen-menu-item__shortcut,
+      .welcome-screen-menu-item__text {
+        color: var(--color-gray-10);
+      }
+    }
+  }
+
+  &.excalidraw--mobile {
+    .welcome-screen-center {
+      margin-bottom: 2rem;
+    }
+  }
+
+  @media (max-height: 500px), (max-width: 320px) {
+    .welcome-screen-center {
+      display: none;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+}

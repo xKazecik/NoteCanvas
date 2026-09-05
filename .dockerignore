@@ -1,0 +1,25 @@
+node_modules
+npm-debug.log
+dist
+.git
+.gitignore
+*.md
+.env
+.DS_Store
+*.log
+# The root context also builds the combined image (Dockerfile), which needs
+# backend/ -- so exclude the backend's build artifacts rather than the tree.
+backend/node_modules
+backend/dist
+backend/coverage
+backend/src/generated
+backend/prisma/**/*.db
+backend/prisma/**/*.db-journal
+backend/prisma/**/*.db-wal
+backend/prisma/**/*.db-shm
+backend/prisma/**/*.backup
+frontend/node_modules
+frontend/dist
+frontend/coverage
+frontend/test-results
+frontend/playwright-report

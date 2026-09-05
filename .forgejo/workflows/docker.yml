@@ -1,0 +1,104 @@
+# Builds the combined container image (root Dockerfile: nginx + frontend +
+# backend in one) and publishes it to this instance's package registry, where it
+# shows up under the repository's "Packages" tab.
+#
+# VERSIONING — two numbers, MAJOR.MINOR, and MINOR climbs by itself.
+#   push to main   -> VERSION_MAJOR . (commit count - COMMIT_OFFSET)
+#                     Commit 188 is the 0.6 state, so the offset is 182 and the
+#                     next commit builds 0.7, the one after 0.8, and so on.
+#                     Every push therefore publishes a version of its own.
+#   push of a tag  -> the tag itself with the leading "v" stripped (v0.9 ->
+#                     0.9), for when you want to name a build yourself.
+#
+#   To start a new major (say 1.0): set VERSION_MAJOR to 1 and COMMIT_OFFSET
+#   to the current `git rev-list --count HEAD`, which restarts MINOR at 0.
+#
+# REQUIREMENTS
+#   - a runner whose labels include "docker",
+#   - repository secrets (Settings -> Actions -> Secrets):
+#       REGISTRY_USER   your Forgejo username
+#       REGISTRY_TOKEN  an access token with the "write:package" scope
+#     The automatic per-run token cannot push packages, so a real token is
+#     required here.
+#
+#
+#
+#           git rev-list --count HEAD
+
+
+name: Build container image
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+env:
+  REGISTRY: git.kazecik.com
+  IMAGE: git.kazecik.com/xkazecik/excalidash
+  VERSION_MAJOR: '0'
+  # MINOR = commit count - this. 188 commits == 0.6, so 188 - 182 = 6.
+  COMMIT_OFFSET: '182'
+
+jobs:
+  build:
+    runs-on: docker
+    # node runs the JS actions (checkout); the docker CLI talks to the
+    # daemon the runner exposes as DOCKER_HOST.
+    container:
+      image: docker.io/library/node:20-alpine
+    steps:
+      - name: Install git and the docker CLI
+        run: apk add --no-cache git docker-cli
+
+      - uses: actions/checkout@v4
+        with:
+          # The minor number IS the commit count, so the shallow clone that
+          # checkout does by default (depth 1) would make every build "x.1".
+          fetch-depth: 0
+
+      - name: Decide the version
+        id: version
+        run: |
+          set -eu
+          # The repo is checked out by a different uid than the one running
+          # this step; without this git refuses to read it.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            # A tag is an explicit release: it wins over the computed number.
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$VERSION_MAJOR.$(( $(git rev-list --count HEAD) - COMMIT_OFFSET ))"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$(echo "$GITHUB_SHA" | cut -c1-7)" >> "$GITHUB_OUTPUT"
+          echo "Building version $VERSION"
+
+      - name: Log in to the registry
+        run: |
+          echo "${{ secrets.REGISTRY_TOKEN }}" \
+            | docker login "$REGISTRY" -u "${{ secrets.REGISTRY_USER }}" --password-stdin
+
+      - name: Build
+        run: |
+          set -eu
+          docker build \
+            -t "$IMAGE:${{ steps.version.outputs.version }}" \
+            -t "$IMAGE:sha-${{ steps.version.outputs.short_sha }}" \
+            -t "$IMAGE:latest" \
+            --build-arg "VITE_APP_VERSION=${{ steps.version.outputs.version }}" \
+            --build-arg "VITE_APP_BUILD_LABEL=forgejo build ${{ steps.version.outputs.short_sha }}" \
+            --label "org.opencontainers.image.version=${{ steps.version.outputs.version }}" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            .
+
+      - name: Push
+        run: |
+          set -eu
+          docker push "$IMAGE:${{ steps.version.outputs.version }}"
+          docker push "$IMAGE:sha-${{ steps.version.outputs.short_sha }}"
+          docker push "$IMAGE:latest"
+          echo "Published $IMAGE:${{ steps.version.outputs.version }}"

@@ -1,0 +1,4 @@
+# Shell scripts are copied into Linux images and run there. With
+# core.autocrlf=true on Windows they would be checked out with CRLF, and a CR in
+# the shebang makes the kernel report "not found" at container start.
+*.sh text eol=lf
