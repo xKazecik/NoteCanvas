@@ -13,13 +13,27 @@ export const getCollections = async () => {
   return response.data;
 };
 
-export const createCollection = async (name: string) => {
-  const response = await api.post<Collection>("/collections", { name });
+export const createCollection = async (
+  name: string,
+  parentId?: string | null,
+) => {
+  const response = await api.post<Collection>("/collections", {
+    name,
+    parentId: parentId ?? null,
+  });
   return response.data;
 };
 
 export const updateCollection = async (id: string, name: string) => {
   const response = await api.put<{ success: true }>(`/collections/${id}`, { name });
+  return response.data;
+};
+
+/** Re-parents a collection; null puts it back at the top level. */
+export const moveCollection = async (id: string, parentId: string | null) => {
+  const response = await api.put<{ success: true }>(`/collections/${id}`, {
+    parentId,
+  });
   return response.data;
 };
 

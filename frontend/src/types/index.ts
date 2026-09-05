@@ -18,6 +18,8 @@ export interface Collection {
   id: string;
   name: string;
   createdAt: number;
+  /** Collections nest; null or absent means the collection sits at the root. */
+  parentId?: string | null;
   sharedRole?: "view" | "edit" | null;
   isOwner?: boolean;
   isShared?: boolean;

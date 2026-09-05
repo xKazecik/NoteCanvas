@@ -13,8 +13,15 @@ FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
-# Copy package files first for better caching
+# Copy package files first for better caching. The Excalidraw engine is
+# vendored as npm workspaces, so npm ci needs every workspace manifest present
+# before it will install; the sources themselves come with the COPY below.
 COPY frontend/package*.json ./
+COPY frontend/excalidraw-engine/packages/common/package.json ./excalidraw-engine/packages/common/
+COPY frontend/excalidraw-engine/packages/element/package.json ./excalidraw-engine/packages/element/
+COPY frontend/excalidraw-engine/packages/excalidraw/package.json ./excalidraw-engine/packages/excalidraw/
+COPY frontend/excalidraw-engine/packages/math/package.json ./excalidraw-engine/packages/math/
+COPY frontend/excalidraw-engine/packages/utils/package.json ./excalidraw-engine/packages/utils/
 
 RUN npm ci && npm cache clean --force
 

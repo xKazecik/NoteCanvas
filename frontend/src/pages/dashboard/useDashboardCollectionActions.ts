@@ -15,12 +15,27 @@ export const useDashboardCollectionActions = ({
   setCollections,
   refreshData,
 }: UseDashboardCollectionActionsParams) => {
-  const handleCreateCollection = async (name: string) => {
+  const handleCreateCollection = async (
+    name: string,
+    parentId?: string | null,
+  ) => {
     try {
-      await api.createCollection(name);
+      await api.createCollection(name, parentId ?? null);
       setCollections(await api.getCollections());
     } catch (err) {
       console.error("Failed to create collection:", err);
+      refreshData();
+    }
+  };
+
+  const handleMoveCollection = async (id: string, parentId: string | null) => {
+    setCollections((current) =>
+      current.map((entry) => (entry.id === id ? { ...entry, parentId } : entry)),
+    );
+    try {
+      await api.moveCollection(id, parentId);
+    } catch (err) {
+      console.error("Failed to move collection:", err);
       refreshData();
     }
   };
@@ -57,5 +72,6 @@ export const useDashboardCollectionActions = ({
     handleCreateCollection,
     handleEditCollection,
     handleDeleteCollection,
+    handleMoveCollection,
   };
 };

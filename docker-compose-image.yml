@@ -1,4 +1,4 @@
-# ExcaliDash -- single prebuilt image, everything the app needs to run.
+# notecanvas -- single prebuilt image, everything the app needs to run.
 #
 #   cp .env.example .env      # edit it, at minimum set JWT_SECRET and CSRF_SECRET
 #   docker compose -f docker-compose-image.yml up -d
@@ -7,14 +7,14 @@
 # /socket.io) and the Node backend (loopback :8000) in one container.
 
 services:
-  excalidash:
-    image: git.kazecik.com/xkazecik/excalidash:${EXCALIDASH_TAG:-latest}
-    container_name: excalidash
+  notecanvas:
+    image: git.kazecik.com/xkazecik/notecanvas:${NOTECANVAS_TAG:-latest}
+    container_name: notecanvas
     # Run an init process (PID 1) that reaps zombies and forwards SIGTERM/SIGINT
     # so nginx and node both shut down gracefully.
     init: true
     ports:
-      - "${EXCALIDASH_PORT:-3000}:80"
+      - "${NOTECANVAS_PORT:-3000}:80"
     env_file:
       - .env
     environment:
@@ -28,11 +28,11 @@ services:
       - DATABASE_URL=${DATABASE_URL:-file:/app/prisma/dev.db}
     volumes:
       # SQLite database, migrations and the auto-generated JWT/CSRF secrets.
-      - excalidash-data:/app/prisma
+      - notecanvas-data:/app/prisma
       # Uploaded images, when S3 storage is not configured.
-      - excalidash-uploads:/app/uploads
+      - notecanvas-uploads:/app/uploads
       # Scheduled backups; pairs with BACKUP_DIR=/app/backups in .env.
-      - excalidash-backups:/app/backups
+      - notecanvas-backups:/app/backups
     restart: unless-stopped
     healthcheck:
       # Hits nginx, which only answers once the static bundle is being served.
@@ -52,6 +52,6 @@ services:
       start_period: 60s
 
 volumes:
-  excalidash-data:
-  excalidash-uploads:
-  excalidash-backups:
+  notecanvas-data:
+  notecanvas-uploads:
+  notecanvas-backups:

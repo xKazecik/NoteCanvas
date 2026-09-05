@@ -165,6 +165,7 @@ export const Dashboard: React.FC = () => {
       onCreateCollection={collectionActions.handleCreateCollection}
       onEditCollection={collectionActions.handleEditCollection}
       onDeleteCollection={collectionActions.handleDeleteCollection}
+      onMoveCollection={collectionActions.handleMoveCollection}
       onDrop={actions.isSharedView ? undefined : actions.handleDrop}
     >
       {" "}

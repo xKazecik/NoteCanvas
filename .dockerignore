@@ -20,6 +20,10 @@ backend/prisma/**/*.db-shm
 backend/prisma/**/*.backup
 frontend/node_modules
 frontend/dist
+# The vendored engine installs and builds inside the image; a host-built copy
+# would ship Windows-native binaries into a Linux image.
+frontend/excalidraw-engine/packages/*/node_modules
+frontend/excalidraw-engine/packages/*/dist
 frontend/coverage
 frontend/test-results
 frontend/playwright-report

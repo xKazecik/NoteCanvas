@@ -18,6 +18,64 @@ export const registerCollectionRoutes = (
     logAuditEvent,
   } = deps;
 
+  // A collection may nest under another collection the same user owns, which is
+  // what makes collections behave like folders. Three things are never allowed:
+  // trash taking part in the tree at all, a collection parenting itself, and a
+  // move under one of its own descendants -- the last would cut the subtree out
+  // of the tree entirely by making it a cycle.
+  // `error` set means the parent was rejected; this project does not compile
+  // with strictNullChecks, so a discriminated union would not narrow here.
+  type ParentResolution = { parentId: string | null; error?: string };
+
+  const resolveParentId = async (
+    rawParentId: unknown,
+    userId: string,
+    movingCollectionId?: string,
+  ): Promise<ParentResolution> => {
+    if (rawParentId == null || rawParentId === "") {
+      return { parentId: null };
+    }
+    if (typeof rawParentId !== "string") {
+      return { parentId: null, error: "parentId must be a string or null" };
+    }
+    if (isTrashCollectionId(rawParentId, userId)) {
+      return { parentId: null, error: "Trash cannot contain collections" };
+    }
+    if (movingCollectionId && rawParentId === movingCollectionId) {
+      return { parentId: null, error: "A collection cannot be its own parent" };
+    }
+
+    const parent = await prisma.collection.findFirst({
+      where: { id: rawParentId, userId },
+      select: { id: true, parentId: true },
+    });
+    if (!parent) {
+      return { parentId: null, error: "Parent collection not found" };
+    }
+
+    if (movingCollectionId) {
+      // Walk up from the intended parent; meeting the collection being moved
+      // means the new parent sits inside its own subtree.
+      let cursor = parent.parentId;
+      while (cursor) {
+        if (cursor === movingCollectionId) {
+          return {
+            parentId: null,
+            error: "A collection cannot be moved into its own subtree",
+          };
+        }
+        const next: { parentId: string | null } | null =
+          await prisma.collection.findFirst({
+            where: { id: cursor, userId },
+            select: { parentId: true },
+          });
+        cursor = next?.parentId ?? null;
+      }
+    }
+
+    return { parentId: rawParentId };
+  };
+
   // GET /collections — returns owned collections + collections shared with user
   app.get(
     "/collections",
@@ -103,9 +161,24 @@ export const registerCollectionRoutes = (
         });
       }
 
+      const parentResolution = await resolveParentId(
+        req.body.parentId,
+        req.user.id,
+      );
+      if (parentResolution.error) {
+        return res.status(400).json({
+          error: "Validation error",
+          message: parentResolution.error,
+        });
+      }
+
       const sanitizedName = sanitizeText(parsed.data, 100);
       const newCollection = await prisma.collection.create({
-        data: { name: sanitizedName, userId: req.user.id },
+        data: {
+          name: sanitizedName,
+          userId: req.user.id,
+          parentId: parentResolution.parentId,
+        },
       });
       return res.json({ ...newCollection, sharedRole: null, isOwner: true });
     }),
@@ -122,7 +195,7 @@ export const registerCollectionRoutes = (
       if (isTrashCollectionId(id, req.user.id)) {
         return res.status(400).json({
           error: "Validation error",
-          message: "Trash collection cannot be renamed",
+          message: "Trash collection cannot be renamed or moved",
         });
       }
       const existing = await prisma.collection.findFirst({
@@ -131,18 +204,48 @@ export const registerCollectionRoutes = (
       if (!existing)
         return res.status(404).json({ error: "Collection not found" });
 
-      const parsed = collectionNameSchema.safeParse(req.body.name);
-      if (!parsed.success) {
+      // Renaming and moving are independent: send a name to rename, a parentId
+      // to move, either one alone, or both together.
+      const isRename = Object.prototype.hasOwnProperty.call(req.body, "name");
+      const isMove = Object.prototype.hasOwnProperty.call(req.body, "parentId");
+      if (!isRename && !isMove) {
         return res.status(400).json({
           error: "Validation error",
-          message: "Collection name must be between 1 and 100 characters",
+          message: "Provide a name to rename or a parentId to move",
         });
       }
 
-      const sanitizedName = sanitizeText(parsed.data, 100);
+      const data: { name?: string; parentId?: string | null } = {};
+
+      if (isRename) {
+        const parsed = collectionNameSchema.safeParse(req.body.name);
+        if (!parsed.success) {
+          return res.status(400).json({
+            error: "Validation error",
+            message: "Collection name must be between 1 and 100 characters",
+          });
+        }
+        data.name = sanitizeText(parsed.data, 100);
+      }
+
+      if (isMove) {
+        const parentResolution = await resolveParentId(
+          req.body.parentId,
+          req.user.id,
+          id,
+        );
+        if (parentResolution.error) {
+          return res.status(400).json({
+            error: "Validation error",
+            message: parentResolution.error,
+          });
+        }
+        data.parentId = parentResolution.parentId;
+      }
+
       await prisma.collection.updateMany({
         where: { id, userId: req.user.id },
-        data: { name: sanitizedName },
+        data,
       });
       const updated = await prisma.collection.findFirst({
         where: { id, userId: req.user.id },
@@ -177,6 +280,12 @@ export const registerCollectionRoutes = (
         prisma.drawing.updateMany({
           where: { collectionId: id, userId: req.user.id },
           data: { collectionId: null },
+        }),
+        // Nested collections outlive their parent: they move up to where the
+        // deleted one sat, so deleting a folder never takes its subtree with it.
+        prisma.collection.updateMany({
+          where: { parentId: id, userId: req.user.id },
+          data: { parentId: collection.parentId },
         }),
         prisma.collectionShare.deleteMany({ where: { collectionId: id } }),
         prisma.collection.deleteMany({ where: { id, userId: req.user.id } }),

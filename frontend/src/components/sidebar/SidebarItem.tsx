@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import clsx from "clsx";
 
 interface SidebarItemProps {
@@ -16,6 +17,13 @@ interface SidebarItemProps {
   onEditSubmit?: (e: React.FormEvent) => void;
   onEditBlur?: () => void;
   onDrop?: (e: React.DragEvent, collectionId: string | null) => void;
+  /** How deep this collection sits in the tree; drives the indent. */
+  depth?: number;
+  hasChildren?: boolean;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
+  isDraggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
 }
 
 export const SidebarItem: React.FC<SidebarItemProps> = ({
@@ -33,11 +41,20 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   onEditSubmit,
   onEditBlur,
   onDrop,
+  depth = 0,
+  hasChildren = false,
+  isExpanded = false,
+  onToggleExpand,
+  isDraggable = false,
+  onDragStart,
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
 
   return (
-    <div className="relative group/item pl-3 pr-2">
+    <div
+      className="relative group/item pl-3 pr-2"
+      style={depth > 0 ? { paddingLeft: `${12 + depth * 14}px` } : undefined}
+    >
       {isEditing ? (
         <form onSubmit={onEditSubmit} className="py-1">
           <input
@@ -62,6 +79,8 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
           }}
           onDoubleClick={onDoubleClick}
           onContextMenu={onContextMenu}
+          draggable={isDraggable}
+          onDragStart={onDragStart}
           onDragOver={(e) => {
             e.preventDefault();
             setIsDragOver(true);
@@ -79,6 +98,28 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
               : "text-slate-600 dark:text-neutral-400 border-transparent hover:bg-slate-50 dark:hover:bg-neutral-800 hover:border-black dark:hover:border-neutral-700 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[2px_2px_0px_0px_rgba(255,255,255,0.2)] hover:-translate-y-0.5",
           )}
         >
+          {/* Reserve the twist arrow's width even on leaves, so labels down a
+              branch stay aligned with their siblings that do have children. */}
+          {hasChildren ? (
+            <span
+              role="button"
+              tabIndex={-1}
+              aria-label={isExpanded ? "Collapse" : "Expand"}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleExpand?.();
+              }}
+              className="flex-shrink-0 -ml-1 text-slate-400 dark:text-neutral-500 hover:text-slate-900 dark:hover:text-neutral-200"
+            >
+              {isExpanded ? (
+                <ChevronDown size={14} />
+              ) : (
+                <ChevronRight size={14} />
+              )}
+            </span>
+          ) : (
+            depth > 0 && <span className="w-[14px] flex-shrink-0 -ml-1" />
+          )}
           <span
             className={clsx(
               "transition-colors duration-200",

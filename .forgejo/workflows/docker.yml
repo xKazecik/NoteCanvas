@@ -4,9 +4,9 @@
 #
 # VERSIONING — two numbers, MAJOR.MINOR, and MINOR climbs by itself.
 #   push to main   -> VERSION_MAJOR . (commit count - COMMIT_OFFSET)
-#                     Commit 188 is the 0.6 state, so the offset is 182 and the
-#                     next commit builds 0.7, the one after 0.8, and so on.
-#                     Every push therefore publishes a version of its own.
+#                     The offset is the commit count at the notecanvas fork
+#                     point, so that commit is 1.0, the next builds 1.1, the one
+#                     after 1.2, and so on. Every push publishes its own version.
 #   push of a tag  -> the tag itself with the leading "v" stripped (v0.9 ->
 #                     0.9), for when you want to name a build yourself.
 #
@@ -36,10 +36,11 @@ on:
 
 env:
   REGISTRY: git.kazecik.com
-  IMAGE: git.kazecik.com/xkazecik/excalidash
-  VERSION_MAJOR: '0'
-  # MINOR = commit count - this. 188 commits == 0.6, so 188 - 182 = 6.
-  COMMIT_OFFSET: '182'
+  IMAGE: git.kazecik.com/xkazecik/notecanvas
+  VERSION_MAJOR: '1'
+  # MINOR = commit count - this. Set to the commit count at the fork point so
+  # the first notecanvas build is 1.0.
+  COMMIT_OFFSET: '__FORK_POINT__'
 
 jobs:
   build:
