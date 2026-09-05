@@ -39,7 +39,22 @@ Kept as small as possible, so a future re-vendor from AstraDraw is mostly a copy
   19 types, ExcaliDash uses React 18, and this was the only incompatibility in
   the whole engine. The package's peer range already allows React 18.
 - **Extra exports at the end of `packages/excalidraw/index.tsx`** — `Dialog`,
-  `TextField`, `t`, `TranslationKeys` and a few icons. See below.
+  `TextField`, `t`, `TranslationKeys`, a few icons, and `randomId`,
+  `newEmbeddableElement`, `newImageElement` from the sibling packages. See below.
+- **`buildPackage.cjs` inlines the sibling packages** rather than leaving
+  `@excalidraw/{common,element,math}` external. As separate builds they keep a
+  runtime cycle between them — `common` imports `isBounds` from `element`, and
+  `element` imports `common` — which is harmless inside one esbuild pass but
+  which the consuming app's bundler is free to order the other way round. Vite
+  did exactly that, running excalidraw's module body while `common`'s
+  `MIME_TYPES` was still undefined, and the app failed to boot with
+  `Cannot read properties of undefined (reading 'svg')`. One self-contained
+  bundle has no such edge to order.
+
+  The consequence: **the app must not import `@excalidraw/common` or
+  `@excalidraw/element` directly.** Those resolve to their own builds and would
+  load a second copy alongside the one inside the engine. Re-export what you
+  need from `index.tsx` instead.
 
 ## Why the ported UI imports from the package root
 
@@ -57,6 +72,13 @@ an export there rather than reaching into the source tree.
 The panels mount as children of `<Excalidraw>` in
 `frontend/src/pages/editor/EditorView.tsx`, which is where AstraDraw mounts them
 too and where the editor's context is available.
+
+`PresentationPanel` and `StickersPanel` are written to fill a sidebar —
+`height: 100%`, no width of their own — because AstraDraw renders them inside
+its workspace sidebar. `frontend/src/components/canvas/CanvasSidebar.tsx` puts
+them in one of Excalidraw's own sidebars as two tabs, which supplies the width,
+docking and theming. Dropped straight into the editor they render at zero width
+and are invisible.
 
 ## Things that bite
 
@@ -95,5 +117,5 @@ too and where the editor's context is available.
 2. Copy `scripts/{buildBase,buildPackage,buildUtils}.js` and `scripts/woff2/`,
    renaming the `.js` files to `.cjs` and fixing the `require` of
    `woff2-esbuild-plugins`.
-3. Re-apply the four engine changes listed above.
+3. Re-apply the engine changes listed under "Changes to the vendored engine".
 4. `npm install && npm run build` in `frontend/`.
