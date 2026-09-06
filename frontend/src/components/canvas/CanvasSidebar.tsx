@@ -4,6 +4,8 @@ import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { PresentationPanel } from "./Presentation";
 import { StickersPanel } from "./Stickers";
 
+import "./CanvasSidebar.css";
+
 export const CANVAS_SIDEBAR_NAME = "notecanvas";
 export const SLIDES_TAB = "slides";
 export const STICKERS_TAB = "stickers";
@@ -21,7 +23,7 @@ export const CanvasSidebar = ({
 }: {
   excalidrawAPI: ExcalidrawImperativeAPI;
 }) => (
-  <Sidebar name={CANVAS_SIDEBAR_NAME} docked>
+  <Sidebar name={CANVAS_SIDEBAR_NAME} className="notecanvas-canvas-sidebar" docked>
     <Sidebar.Tabs>
       <Sidebar.Header>
         <Sidebar.TabTriggers>

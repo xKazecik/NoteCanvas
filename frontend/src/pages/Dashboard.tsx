@@ -18,6 +18,7 @@ import { useDashboardCollectionActions } from "./dashboard/useDashboardCollectio
 import { useDashboardDrawingActions } from "./dashboard/useDashboardDrawingActions";
 import { useDashboardSelection } from "./dashboard/useDashboardSelection";
 import { useDashboardSort } from "./dashboard/useDashboardSort";
+import { getDirectChildCollections } from "../components/sidebar/collectionTree";
 import { displayFontFamily } from "../utils/displayFont";
 const PAGE_SIZE = 24;
 export const Dashboard: React.FC = () => {
@@ -145,6 +146,42 @@ export const Dashboard: React.FC = () => {
     setCollections,
     refreshData,
   });
+  // Collection cards turn the panel into folder navigation. They only make
+  // sense where nesting does: All Drawings shows the top level, and opening a
+  // collection shows its direct children. Unorganized, Shared and Trash are
+  // flat views with no place in the tree.
+  const collectionParentId = React.useMemo(() => {
+    if (selectedCollectionId === undefined) return null;
+    if (
+      selectedCollectionId === null ||
+      selectedCollectionId === "shared" ||
+      selectedCollectionId === "trash"
+    ) {
+      return undefined;
+    }
+    return selectedCollectionId;
+  }, [selectedCollectionId]);
+
+  const subcollections = React.useMemo(() => {
+    if (collectionParentId === undefined) return [];
+    return getDirectChildCollections(
+      collections.filter((c) => c.id !== "trash"),
+      collectionParentId,
+    );
+  }, [collections, collectionParentId]);
+
+  const [isCreatingCollection, setIsCreatingCollection] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState("");
+
+  const handleCreateCollectionSubmit = () => {
+    const name = newCollectionName.trim();
+    if (name) {
+      collectionActions.handleCreateCollection(name, collectionParentId ?? null);
+    }
+    setNewCollectionName("");
+    setIsCreatingCollection(false);
+  };
+
   const viewTitle = React.useMemo(() => {
     if (selectedCollectionId === undefined) return "All Drawings";
     if (selectedCollectionId === null) return "Unorganized";
@@ -220,6 +257,11 @@ export const Dashboard: React.FC = () => {
         onBulkMove={actions.handleBulkMove}
         onImportDrawings={actions.handleImportDrawings}
         onCreateDrawing={actions.handleCreateDrawing}
+        onCreateSubcollection={() => {
+          setNewCollectionName("");
+          setIsCreatingCollection(true);
+        }}
+        canCreateSubcollection={collectionParentId !== undefined}
         onViewerActionError={actions.handleViewerActionError}
       />{" "}
       <div
@@ -248,6 +290,20 @@ export const Dashboard: React.FC = () => {
         <DrawingsGrid
           drawings={sortedDrawings}
           collections={collections}
+          subcollections={subcollections}
+          onOpenCollection={setSelectedCollectionId}
+          onRecolorCollection={collectionActions.handleRecolorCollection}
+          onCollectionDrop={(event, collectionId) =>
+            actions.handleDrop(event, collectionId)
+          }
+          isCreatingCollection={isCreatingCollection}
+          newCollectionName={newCollectionName}
+          onNewCollectionNameChange={setNewCollectionName}
+          onCreateCollectionSubmit={handleCreateCollectionSubmit}
+          onCreateCollectionCancel={() => {
+            setNewCollectionName("");
+            setIsCreatingCollection(false);
+          }}
           selectedIds={selectedIds}
           search={search}
           isLoading={isLoading}

@@ -27,6 +27,36 @@ export const registerCollectionRoutes = (
   // with strictNullChecks, so a discriminated union would not narrow here.
   type ParentResolution = { parentId: string | null; error?: string };
 
+  // Colours are picked from a fixed set rather than free-form, so a stored value
+  // can always be mapped to styling the client knows how to render.
+  const COLLECTION_COLORS = [
+    "slate",
+    "red",
+    "orange",
+    "amber",
+    "green",
+    "teal",
+    "blue",
+    "violet",
+    "pink",
+  ];
+
+  const resolveColor = (
+    rawColor: unknown,
+  ): { color: string | null; error?: string } => {
+    if (rawColor == null || rawColor === "") return { color: null };
+    if (typeof rawColor !== "string") {
+      return { color: null, error: "color must be a string or null" };
+    }
+    if (!COLLECTION_COLORS.includes(rawColor)) {
+      return {
+        color: null,
+        error: `color must be one of: ${COLLECTION_COLORS.join(", ")}`,
+      };
+    }
+    return { color: rawColor };
+  };
+
   const resolveParentId = async (
     rawParentId: unknown,
     userId: string,
@@ -88,6 +118,9 @@ export const registerCollectionRoutes = (
       const rawCollections = await prisma.collection.findMany({
         where: { userId: req.user.id },
         orderBy: { createdAt: "desc" },
+        // The drawings panel shows how much is inside each collection, and the
+        // list it renders is paginated, so the count has to come from here.
+        include: { _count: { select: { drawings: true, children: true } } },
       });
       const hasInternalTrash = rawCollections.some(
         (c) => c.id === trashCollectionId,
@@ -105,12 +138,26 @@ export const registerCollectionRoutes = (
         shareCountMap.map((s) => s.collectionId),
       );
 
+      // Flatten Prisma's _count into one number the client can render, so the
+      // response shape does not leak the query's structure.
+      const withItemCount = <
+        T extends { _count?: { drawings: number; children: number } },
+      >(
+        collection: T,
+      ) => {
+        const { _count, ...rest } = collection;
+        return {
+          ...rest,
+          itemCount: (_count?.drawings ?? 0) + (_count?.children ?? 0),
+        };
+      };
+
       const ownedCollections = rawCollections
         .filter((c) => !(hasInternalTrash && c.id === "trash"))
         .map((c) =>
           c.id === trashCollectionId
             ? {
-                ...c,
+                ...withItemCount(c),
                 id: "trash",
                 name: "Trash",
                 sharedRole: null,
@@ -118,7 +165,7 @@ export const registerCollectionRoutes = (
                 isShared: false,
               }
             : {
-                ...c,
+                ...withItemCount(c),
                 sharedRole: null,
                 isOwner: true,
                 isShared: sharedCollectionIds.has(c.id),
@@ -132,12 +179,13 @@ export const registerCollectionRoutes = (
           collection: {
             include: {
               user: { select: { id: true, name: true, email: true } },
+              _count: { select: { drawings: true, children: true } },
             },
           },
         },
       });
       const sharedCollections = sharedEntries.map((s) => ({
-        ...s.collection,
+        ...withItemCount(s.collection),
         sharedRole: s.role,
         isOwner: false,
       }));
@@ -172,12 +220,21 @@ export const registerCollectionRoutes = (
         });
       }
 
+      const colorResolution = resolveColor(req.body.color);
+      if (colorResolution.error) {
+        return res.status(400).json({
+          error: "Validation error",
+          message: colorResolution.error,
+        });
+      }
+
       const sanitizedName = sanitizeText(parsed.data, 100);
       const newCollection = await prisma.collection.create({
         data: {
           name: sanitizedName,
           userId: req.user.id,
           parentId: parentResolution.parentId,
+          color: colorResolution.color,
         },
       });
       return res.json({ ...newCollection, sharedRole: null, isOwner: true });
@@ -204,18 +261,34 @@ export const registerCollectionRoutes = (
       if (!existing)
         return res.status(404).json({ error: "Collection not found" });
 
-      // Renaming and moving are independent: send a name to rename, a parentId
-      // to move, either one alone, or both together.
+      // Rename, move and recolour are independent: send a name, a parentId, a
+      // color, or any combination of them.
       const isRename = Object.prototype.hasOwnProperty.call(req.body, "name");
       const isMove = Object.prototype.hasOwnProperty.call(req.body, "parentId");
-      if (!isRename && !isMove) {
+      const isRecolor = Object.prototype.hasOwnProperty.call(req.body, "color");
+      if (!isRename && !isMove && !isRecolor) {
         return res.status(400).json({
           error: "Validation error",
-          message: "Provide a name to rename or a parentId to move",
+          message: "Provide a name, a parentId or a color",
         });
       }
 
-      const data: { name?: string; parentId?: string | null } = {};
+      const data: {
+        name?: string;
+        parentId?: string | null;
+        color?: string | null;
+      } = {};
+
+      if (isRecolor) {
+        const colorResolution = resolveColor(req.body.color);
+        if (colorResolution.error) {
+          return res.status(400).json({
+            error: "Validation error",
+            message: colorResolution.error,
+          });
+        }
+        data.color = colorResolution.color;
+      }
 
       if (isRename) {
         const parsed = collectionNameSchema.safeParse(req.body.name);

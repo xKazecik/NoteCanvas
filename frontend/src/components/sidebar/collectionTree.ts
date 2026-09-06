@@ -62,6 +62,24 @@ export const buildCollectionTree = (
 };
 
 /**
+ * The collections that sit directly under `parentId` (null for the top level),
+ * applying the same "parent not visible counts as a root" rule as
+ * buildCollectionTree, so the drawings panel and the sidebar agree on where a
+ * shared collection belongs.
+ */
+export const getDirectChildCollections = (
+  collections: Collection[],
+  parentId: string | null,
+): Collection[] => {
+  const ids = new Set(collections.map((collection) => collection.id));
+  return collections.filter((collection) => {
+    const own = collection.parentId ?? null;
+    const effective = own && ids.has(own) ? own : null;
+    return effective === parentId;
+  });
+};
+
+/**
  * Every collection below `id`. Moving a collection into one of these would
  * detach the subtree, so the UI leaves them out of the move targets.
  */

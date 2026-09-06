@@ -516,3 +516,12 @@
     color: var(--text-secondary-color, #9a9a9a);
   }
 }
+
+// notecanvas: deleting a frame is the one destructive action in the overlay,
+// so it reads red on hover rather than looking like rename.
+.overlayActionDanger {
+  &:hover {
+    background: var(--color-danger, #db4747);
+    color: #fff;
+  }
+}

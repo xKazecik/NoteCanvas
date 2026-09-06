@@ -2,6 +2,7 @@ import React from "react";
 import clsx from "clsx";
 import { AlertTriangle, Folder, Inbox, Loader2, Trash2 } from "lucide-react";
 import { DrawingCard } from "../../components/DrawingCard";
+import { CollectionCard } from "../../components/collection-card/CollectionCard";
 import type { Collection, DrawingSummary } from "../../types";
 
 type DragPreviewProps = {
@@ -99,6 +100,17 @@ export const FileDropOverlay: React.FC<FileDropOverlayProps> = ({
 type DrawingsGridProps = {
   drawings: DrawingSummary[];
   collections: Collection[];
+  /** Collections directly inside the view, shown as cards above the drawings. */
+  subcollections: Collection[];
+  onOpenCollection: (id: string) => void;
+  onRecolorCollection: (id: string, color: string | null) => void;
+  onCollectionDrop?: (event: React.DragEvent, collectionId: string) => void;
+  /** Shows a card with a name field, the way the sidebar creates collections. */
+  isCreatingCollection: boolean;
+  newCollectionName: string;
+  onNewCollectionNameChange: (name: string) => void;
+  onCreateCollectionSubmit: () => void;
+  onCreateCollectionCancel: () => void;
   selectedIds: Set<string>;
   search: string;
   isLoading: boolean;
@@ -123,6 +135,15 @@ type DrawingsGridProps = {
 export const DrawingsGrid: React.FC<DrawingsGridProps> = ({
   drawings,
   collections,
+  subcollections,
+  onOpenCollection,
+  onRecolorCollection,
+  onCollectionDrop,
+  isCreatingCollection,
+  newCollectionName,
+  onNewCollectionNameChange,
+  onCreateCollectionSubmit,
+  onCreateCollectionCancel,
   selectedIds,
   search,
   isLoading,
@@ -159,7 +180,48 @@ export const DrawingsGrid: React.FC<DrawingsGridProps> = ({
       )}
       style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}
     >
-      {drawings.length === 0 ? (
+      {isCreatingCollection && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            onCreateCollectionSubmit();
+          }}
+          className="h-[118px] rounded-xl border-2 border-dashed border-indigo-400 dark:border-indigo-600 bg-indigo-50/40 dark:bg-indigo-900/10 p-4 flex flex-col justify-center gap-2"
+        >
+          <label
+            htmlFor="new-collection-name"
+            className="text-[11px] font-bold uppercase tracking-wider text-indigo-500 dark:text-indigo-400"
+          >
+            New collection
+          </label>
+          <input
+            id="new-collection-name"
+            autoFocus
+            type="text"
+            value={newCollectionName}
+            placeholder="Name..."
+            onChange={(event) => onNewCollectionNameChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") onCreateCollectionCancel();
+            }}
+            onBlur={() => {
+              if (!newCollectionName) onCreateCollectionCancel();
+            }}
+            className="w-full px-3 py-2 text-sm bg-white dark:bg-neutral-800 border-2 border-black dark:border-neutral-700 rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,0.2)] outline-none font-bold text-slate-900 dark:text-white"
+          />
+        </form>
+      )}
+      {subcollections.map((collection) => (
+        <CollectionCard
+          key={collection.id}
+          collection={collection}
+          childCount={collection.itemCount ?? 0}
+          onOpen={onOpenCollection}
+          onRecolor={onRecolorCollection}
+          onDrop={onCollectionDrop}
+        />
+      ))}
+      {drawings.length === 0 && subcollections.length === 0 && !isCreatingCollection ? (
         <div className="col-span-full flex flex-col items-center justify-center py-16 sm:py-32 text-slate-400 dark:text-neutral-500 border-2 border-dashed border-slate-200 dark:border-neutral-700 rounded-3xl bg-slate-50/50 dark:bg-neutral-800/50">
           <div className="w-20 h-20 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center mb-6">
             {isTrashView ? (

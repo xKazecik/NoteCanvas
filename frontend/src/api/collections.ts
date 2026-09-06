@@ -37,6 +37,14 @@ export const moveCollection = async (id: string, parentId: string | null) => {
   return response.data;
 };
 
+/** Sets a collection's colour; null restores the default card styling. */
+export const recolorCollection = async (id: string, color: string | null) => {
+  const response = await api.put<{ success: true }>(`/collections/${id}`, {
+    color,
+  });
+  return response.data;
+};
+
 export const deleteCollection = async (id: string) => {
   const response = await api.delete<{ success: true }>(`/collections/${id}`);
   return response.data;

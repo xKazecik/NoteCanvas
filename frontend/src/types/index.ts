@@ -20,6 +20,10 @@ export interface Collection {
   createdAt: number;
   /** Collections nest; null or absent means the collection sits at the root. */
   parentId?: string | null;
+  /** One of COLLECTION_COLORS, or null/absent for the default card styling. */
+  color?: string | null;
+  /** Drawings plus subcollections directly inside, as counted by the API. */
+  itemCount?: number;
   sharedRole?: "view" | "edit" | null;
   isOwner?: boolean;
   isShared?: boolean;

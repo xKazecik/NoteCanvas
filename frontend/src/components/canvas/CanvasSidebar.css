@@ -1,0 +1,40 @@
+/*
+ * Excalidraw sizes its sidebar tab triggers for the icon-only tabs in its own
+ * default sidebar, so word labels ran into each other. Ours carry words, so the
+ * triggers share the header width evenly and keep a floor wide enough for the
+ * longest label.
+ */
+.notecanvas-canvas-sidebar .sidebar-triggers {
+  display: flex;
+  gap: 0.25rem;
+  width: 100%;
+}
+
+.notecanvas-canvas-sidebar .sidebar-tab-trigger {
+  flex: 1 1 0;
+  min-width: 5.5rem;
+  padding-inline: 0.75rem;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+/* The header holds only the tabs, so let it take the full sidebar width. */
+.notecanvas-canvas-sidebar .sidebar__header {
+  gap: 0.5rem;
+}
+
+/*
+ * The pen toolbar is pinned to the right edge of the editor, which is where the
+ * sidebar opens. Its own rule shifts it by --right-sidebar-width, but it
+ * transitions `right` and settled on a stale offset, leaving the pens sitting
+ * on top of the panel. Pin it here instead, and drop the transition so the
+ * position is whatever the current sidebar width says it is.
+ */
+.notecanvas-pen-toolbar {
+  transition: none;
+}
+
+.notecanvas-pen-toolbar--sidebar-open {
+  right: var(--right-sidebar-width, 360px) !important;
+  border-radius: 8px;
+}

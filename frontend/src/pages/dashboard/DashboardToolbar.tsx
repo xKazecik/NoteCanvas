@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Copy,
   Folder,
+  FolderPlus,
   Inbox,
   Search,
   Square,
@@ -52,6 +53,10 @@ type DashboardToolbarProps = {
   onBulkMove: (collectionId: string | null) => void;
   onImportDrawings: (files: FileList | null) => void;
   onCreateDrawing: () => void;
+  /** Creates a collection inside the one being viewed, or at the top level. */
+  onCreateSubcollection: () => void;
+  /** False in trash, shared and unorganized, where nesting has no meaning. */
+  canCreateSubcollection: boolean;
   onViewerActionError: (message: string) => void;
 };
 
@@ -83,6 +88,8 @@ export const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
   onBulkMove,
   onImportDrawings,
   onCreateDrawing,
+  onCreateSubcollection,
+  canCreateSubcollection,
   onViewerActionError,
 }) => {
   const canModifySelection =
@@ -317,6 +324,20 @@ export const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
         >
           <Upload size={18} strokeWidth={2.5} /> Import
         </button>
+        {canCreateSubcollection && (
+          <button
+            onClick={onCreateSubcollection}
+            title={
+              currentCollection
+                ? `New collection inside ${currentCollection.name}`
+                : "New collection"
+            }
+            className="h-[42px] w-full sm:w-auto flex items-center justify-center gap-2 px-6 rounded-xl border-2 border-black dark:border-neutral-700 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,0.2)] transition-all font-bold text-sm whitespace-nowrap bg-white dark:bg-neutral-800 text-slate-900 dark:text-white hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)] hover:-translate-y-1 active:translate-y-0 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:active:shadow-[2px_2px_0px_0px_rgba(255,255,255,0.2)]"
+          >
+            <FolderPlus size={18} strokeWidth={2.5} />
+            {currentCollection ? "Subcollection" : "Collection"}
+          </button>
+        )}
         <NewDrawingControl
           disabled={isTrashView || isSharedView}
           onCreate={onCreateDrawing}

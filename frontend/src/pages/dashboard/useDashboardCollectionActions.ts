@@ -68,10 +68,26 @@ export const useDashboardCollectionActions = ({
     }
   };
 
+  const handleRecolorCollection = async (
+    id: string,
+    color: string | null,
+  ) => {
+    setCollections((current) =>
+      current.map((entry) => (entry.id === id ? { ...entry, color } : entry)),
+    );
+    try {
+      await api.recolorCollection(id, color);
+    } catch (err) {
+      console.error("Failed to recolour collection:", err);
+      refreshData();
+    }
+  };
+
   return {
     handleCreateCollection,
     handleEditCollection,
     handleDeleteCollection,
     handleMoveCollection,
+    handleRecolorCollection,
   };
 };

@@ -17,6 +17,7 @@ import {
 } from "../../components/LanguageSelector";
 import { GridStepSelector } from "../../components/GridStepSelector";
 import { PresentationMode } from "../../components/canvas/Presentation";
+import { PenToolbar } from "../../components/canvas/pens";
 import {
   CanvasSidebar,
   CanvasSidebarTrigger,
@@ -308,7 +309,12 @@ export const EditorView: React.FC<EditorViewProps> = ({
           {canvasApi && (
             <>
               <PresentationMode excalidrawAPI={canvasApi} />
-              {canEdit && <CanvasSidebar excalidrawAPI={canvasApi} />}
+              {canEdit && (
+                <>
+                  <PenToolbar excalidrawAPI={canvasApi} />
+                  <CanvasSidebar excalidrawAPI={canvasApi} />
+                </>
+              )}
             </>
           )}
         </Excalidraw>

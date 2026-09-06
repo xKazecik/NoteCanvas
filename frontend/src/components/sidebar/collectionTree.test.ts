@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import type { Collection } from "../../types";
-import { buildCollectionTree, collectionDescendantIds } from "./collectionTree";
+import {
+  buildCollectionTree,
+  collectionDescendantIds,
+  getDirectChildCollections,
+} from "./collectionTree";
 
 const collection = (
   id: string,
@@ -76,6 +80,31 @@ describe("buildCollectionTree", () => {
     const tree = buildCollectionTree([collection("solo", null)]);
 
     expect(shape(tree)).toEqual([{ id: "solo", depth: 0, children: [] }]);
+  });
+});
+
+describe("getDirectChildCollections", () => {
+  const collections = [
+    collection("root"),
+    collection("child", "root"),
+    collection("grandchild", "child"),
+    collection("shared", "not-visible"),
+  ];
+
+  it("returns roots for a null parent, including one whose parent is missing", () => {
+    expect(
+      getDirectChildCollections(collections, null).map((c) => c.id),
+    ).toEqual(["root", "shared"]);
+  });
+
+  it("returns only direct children, not the whole subtree", () => {
+    expect(
+      getDirectChildCollections(collections, "root").map((c) => c.id),
+    ).toEqual(["child"]);
+  });
+
+  it("returns nothing for a leaf", () => {
+    expect(getDirectChildCollections(collections, "grandchild")).toEqual([]);
   });
 });
 

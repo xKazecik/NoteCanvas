@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { useCallback, useEffect, useState, useRef } from "react";
 
-import { PlusIcon } from "@excalidraw/excalidraw";
+import { CaptureUpdateAction, PlusIcon } from "@excalidraw/excalidraw";
 import { t } from "@excalidraw/excalidraw";
 import { exportToCanvas } from "@excalidraw/excalidraw";
 
@@ -53,6 +53,7 @@ interface SlideThumbProps {
   isDragOver: boolean;
   onClick: () => void;
   onRename: (newName: string) => void;
+  onDelete: () => void;
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
@@ -70,6 +71,7 @@ const SlideThumb: React.FC<SlideThumbProps> = ({
   isDragOver,
   onClick,
   onRename,
+  onDelete,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -248,6 +250,28 @@ const SlideThumb: React.FC<SlideThumbProps> = ({
               >
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+            </button>
+            <button
+              className={clsx(styles.overlayAction, styles.overlayActionDanger)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              title="Delete frame"
+              aria-label="Delete frame"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M3 6h18" />
+                <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
               </svg>
             </button>
             <div
@@ -496,6 +520,30 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
     [excalidrawAPI],
   );
 
+  /**
+   * Removes the frame but keeps what was inside it, which is what Excalidraw
+   * itself does when you delete a frame: the children are released onto the
+   * canvas rather than deleted with it. Undoable with Ctrl+Z.
+   */
+  const handleDeleteFrame = useCallback(
+    (frameId: string) => {
+      if (!excalidrawAPI) return;
+
+      const elements = excalidrawAPI.getSceneElements();
+      const remaining = elements
+        .filter((element) => element.id !== frameId)
+        .map((element) =>
+          element.frameId === frameId ? { ...element, frameId: null } : element,
+        );
+
+      excalidrawAPI.updateScene({
+        elements: remaining,
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+    },
+    [excalidrawAPI],
+  );
+
   // Drag and drop handlers
   const handleDragStart = useCallback(
     (index: number) => (e: React.DragEvent) => {
@@ -737,6 +785,7 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
                 isDragOver={dragOverIndex === index}
                 onClick={() => handleSlideClick(index)}
                 onRename={(newName) => handleRenameFrame(frame.id, newName)}
+                onDelete={() => handleDeleteFrame(frame.id)}
                 onDragStart={handleDragStart(index)}
                 onDragEnd={handleDragEnd()}
                 onDragOver={handleDragOver(index)}
