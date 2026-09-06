@@ -357,6 +357,7 @@ const ExcalidrawEditor: React.FC = () => {
         onShareOpen={() => setIsShareOpen(true)}
         onHistoryOpen={() => setIsHistoryOpen(true)}
         onToggleAutoHide={handleToggleAutoHide}
+        socketRef={socketRef}
       />
       <EditorDialogs
         drawingId={id}

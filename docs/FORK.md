@@ -11,7 +11,9 @@ either upstream knows which changes are ours and why they exist.
 | --- | --- |
 | `backend/`, most of `frontend/src/` | ExcaliDash |
 | `frontend/excalidraw-engine/` | AstraDraw `packages/{common,element,math,excalidraw,utils}`, verbatim except for the changes below |
-| `frontend/src/components/canvas/` | AstraDraw `excalidraw-app/components/{Presentation,Stickers}`, imports rewritten |
+| `frontend/src/components/canvas/{Presentation,Stickers}/` | AstraDraw `excalidraw-app/components/…`, imports rewritten |
+| `frontend/src/components/canvas/pens/` | AstraDraw `excalidraw-app/pens/`, imports rewritten |
+| `frontend/src/components/canvas/comments/` | notecanvas' own; AstraDraw's is welded to its workspaces, React Query and notifications |
 | `frontend/src/styles/_mixins.scss` | AstraDraw `excalidraw-app/styles/_mixins.scss`, verbatim |
 
 ## Why the engine is vendored rather than installed
@@ -104,6 +106,31 @@ and are invisible.
   collection's own parent, so a subtree is never lost with its folder. Moving a
   collection into its own subtree is rejected — it would cut the subtree out of
   the tree by making a cycle.
+- **Collection colours.** `Collection.color` holds one of a fixed set of names,
+  validated server-side, mapped to styling in
+  `frontend/src/components/collection-card/collectionColors.ts`. Free-form
+  colours were deliberately not allowed: the card has to stay legible in both
+  themes.
+- **Canvas comments.** Threads pinned to a point on a drawing, with replies,
+  resolve and @mentions. Written here rather than ported: AstraDraw's version
+  is ~4,300 lines welded to its workspaces, React Query and notification system,
+  none of which exist here.
+
+  There is no separate permission model -- whoever may view the drawing may read
+  its threads, whoever may edit it may post, and `getDrawingAccess` decides
+  both, so drawing shares, collection shares and link shares all apply. Every
+  route requires a signed-in caller, so an anonymous link-share visitor cannot
+  read or write comments even when the link grants edit access to the canvas.
+  With authentication switched off the backend acts as the bootstrap user and
+  comments still work.
+
+  A mention only records ids that actually resolve to someone with access, so a
+  hand-crafted request cannot record a mention of a person who cannot see the
+  thread. Responses carry `mentionedUsers` alongside the ids because a name can
+  contain spaces and the client cannot recover it from the text.
+
+  Changes broadcast on the drawing's collaboration room, `drawing_<id>` -- the
+  name has to match `backend/src/server/socket.ts`.
 - **Runtime frontend config.** `docker/entrypoint.sh` writes
   `/usr/share/nginx/html/env.js` on every container start, and nginx serves it
   with `no-store`. Currently carries `GIPHY_API_KEY`. Bear in mind anything put

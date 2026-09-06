@@ -29,6 +29,42 @@ export interface Collection {
   isShared?: boolean;
 }
 
+/** The subset of a user the comment endpoints return. */
+export interface UserSummary {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface Comment {
+  id: string;
+  threadId: string;
+  content: string;
+  /** Ids of mentioned users; the server drops any who cannot see the drawing. */
+  mentions: string[];
+  /** The same users with their names, so an @mention can be highlighted. */
+  mentionedUsers?: UserSummary[];
+  createdBy: UserSummary;
+  editedAt?: string | null;
+  createdAt: string;
+}
+
+/** A comment thread pinned to a point in the drawing's scene coordinates. */
+export interface CommentThread {
+  id: string;
+  drawingId: string;
+  x: number;
+  y: number;
+  resolved: boolean;
+  resolvedAt?: string | null;
+  resolvedBy?: UserSummary | null;
+  createdBy: UserSummary;
+  comments: Comment[];
+  commentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type CollectionShareRole = "view" | "edit";
 
 export interface CollectionShareUser {

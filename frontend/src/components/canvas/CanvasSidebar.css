@@ -12,8 +12,10 @@
 
 .notecanvas-canvas-sidebar .sidebar-tab-trigger {
   flex: 1 1 0;
-  min-width: 5.5rem;
-  padding-inline: 0.75rem;
+  /* Three tabs plus the sidebar's close button have to fit the header, so the
+     floor is only wide enough for the longest label rather than generous. */
+  min-width: 4.25rem;
+  padding-inline: 0.5rem;
   white-space: nowrap;
   font-weight: 600;
 }

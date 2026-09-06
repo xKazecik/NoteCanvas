@@ -32,9 +32,15 @@ build AstraDraw's yarn-monorepo packages under ExcaliDash's npm frontend.
 - **Stackable collections.** Collections nest, so they work like folders. Drag
   one onto another to nest it, or onto the Collections header to lift it back
   to the top level.
-- **Presentation mode** with frames as slides, a slide panel, and layout
-  presets.
+- **Collections in the drawings panel.** Cards for the collections inside the
+  view, each tintable with a colour so it is easy to pick out, and a button to
+  create one inside the collection you are looking at.
+- **Presentation mode** with frames as slides, a slide panel, layout presets,
+  and a delete button on a slide that removes the frame but keeps its contents.
 - **Stickers panel** with emoji, and GIPHY GIFs and stickers when a key is set.
+- **Custom pens** — highlighter, fountain and marker presets.
+- **Canvas comments** pinned to a point on the drawing, with replies, resolve
+  and @mentions, live across a collaboration session.
 - **Lasso select**, plus the rest of AstraDraw's canvas work.
 
 ## Table of Contents

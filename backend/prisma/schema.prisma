@@ -10,14 +10,14 @@ datasource db {
 }
 
 model User {
-  id                  String              @id @default(uuid())
-  username            String?             @unique
-  email               String              @unique
+  id                  String               @id @default(uuid())
+  username            String?              @unique
+  email               String               @unique
   passwordHash        String
   name                String
-  role                String              @default("USER")
-  mustResetPassword   Boolean             @default(false)
-  isActive            Boolean             @default(true)
+  role                String               @default("USER")
+  mustResetPassword   Boolean              @default(false)
+  isActive            Boolean              @default(true)
   preferences         String?
   authIdentities      AuthIdentity[]
   drawings            Drawing[]
@@ -28,26 +28,29 @@ model User {
   refreshTokens       RefreshToken[]
   apiKeys             ApiKey[]
   auditLogs           AuditLog[]
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  commentThreads      CommentThread[]      @relation("CommentThreadAuthor")
+  resolvedThreads     CommentThread[]      @relation("CommentThreadResolver")
+  comments            Comment[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 }
 
 model SystemConfig {
-  id                         String   @id @default("default")
-  authEnabled                Boolean  @default(false)
-  authOnboardingCompleted    Boolean  @default(false)
-  registrationEnabled        Boolean  @default(false)
-  oidcJitProvisioningEnabled Boolean?
-  authLoginRateLimitEnabled  Boolean  @default(true)
-  authLoginRateLimitWindowMs Int      @default(900000)
-  authLoginRateLimitMax      Int      @default(20)
-  bootstrapSetupCodeHash     String?
-  bootstrapSetupCodeIssuedAt DateTime?
-  bootstrapSetupCodeExpiresAt DateTime?
-  bootstrapSetupCodeFailedAttempts Int @default(0)
+  id                               String    @id @default("default")
+  authEnabled                      Boolean   @default(false)
+  authOnboardingCompleted          Boolean   @default(false)
+  registrationEnabled              Boolean   @default(false)
+  oidcJitProvisioningEnabled       Boolean?
+  authLoginRateLimitEnabled        Boolean   @default(true)
+  authLoginRateLimitWindowMs       Int       @default(900000)
+  authLoginRateLimitMax            Int       @default(20)
+  bootstrapSetupCodeHash           String?
+  bootstrapSetupCodeIssuedAt       DateTime?
+  bootstrapSetupCodeExpiresAt      DateTime?
+  bootstrapSetupCodeFailedAttempts Int       @default(0)
   // Admin kill-switch for the per-user ChatGPT (subscription) provider. Null =
-  createdAt                  DateTime @default(now())
-  updatedAt                  DateTime @updatedAt
+  createdAt                        DateTime  @default(now())
+  updatedAt                        DateTime  @updatedAt
 }
 
 // Short-lived pending OAuth authorizations (PKCE verifier + CSRF state), tied
@@ -75,25 +78,64 @@ model Collection {
 }
 
 model Drawing {
-  id           String      @id @default(uuid())
-  name         String
-  elements     String
-  appState     String
-  files        String      @default("{}")
-  preview      String?
-  version      Int         @default(1)
-  userId       String
-  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  collectionId String?
-  collection   Collection? @relation(fields: [collectionId], references: [id])
-  permissions  DrawingPermission[]
-  linkShares   DrawingLinkShare[]
-  snapshots    DrawingSnapshot[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id             String              @id @default(uuid())
+  name           String
+  elements       String
+  appState       String
+  files          String              @default("{}")
+  preview        String?
+  version        Int                 @default(1)
+  userId         String
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collectionId   String?
+  collection     Collection?         @relation(fields: [collectionId], references: [id])
+  permissions    DrawingPermission[]
+  linkShares     DrawingLinkShare[]
+  snapshots      DrawingSnapshot[]
+  commentThreads CommentThread[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 
   @@index([userId, updatedAt])
   @@index([userId, collectionId, updatedAt])
+}
+
+// A comment thread pinned to a point on a drawing's canvas. Deleting the
+// drawing takes its threads with it; the author leaving takes theirs too, but a
+// resolver leaving only clears who resolved it.
+model CommentThread {
+  id           String    @id @default(uuid())
+  drawingId    String
+  drawing      Drawing   @relation(fields: [drawingId], references: [id], onDelete: Cascade)
+  // Scene coordinates, so the marker stays put as the canvas is panned/zoomed.
+  x            Float
+  y            Float
+  resolved     Boolean   @default(false)
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?     @relation("CommentThreadResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  createdById  String
+  createdBy    User      @relation("CommentThreadAuthor", fields: [createdById], references: [id], onDelete: Cascade)
+  comments     Comment[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([drawingId, resolved])
+}
+
+model Comment {
+  id          String        @id @default(uuid())
+  threadId    String
+  thread      CommentThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  content     String
+  // JSON array of mentioned user ids; sqlite has no array type.
+  mentions    String        @default("[]")
+  createdById String
+  createdBy   User          @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  editedAt    DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@index([threadId, createdAt])
 }
 
 model DrawingSnapshot {
@@ -101,8 +143,8 @@ model DrawingSnapshot {
   drawingId String
   drawing   Drawing  @relation(fields: [drawingId], references: [id], onDelete: Cascade)
   version   Int
-  elements  String   // JSON string (state before update)
-  appState  String   // JSON string
+  elements  String // JSON string (state before update)
+  appState  String // JSON string
   files     String   @default("{}")
   createdAt DateTime @default(now())
 
@@ -250,12 +292,12 @@ model AuthIdentity {
 /// idempotent — no version/merge concerns for blobs.
 model DrawingFile {
   drawingId String
-  fileId    String   // Excalidraw fileId (same id used in Drawing.files)
+  fileId    String // Excalidraw fileId (same id used in Drawing.files)
   mimeType  String
   sizeBytes Int      @default(0)
-  storage   String   // "db" | "s3"
-  s3Key     String?  // set when storage = "s3"; full object key
-  data      Bytes?   // set when storage = "db"; raw image bytes
+  storage   String // "db" | "s3"
+  s3Key     String? // set when storage = "s3"; full object key
+  data      Bytes? // set when storage = "db"; raw image bytes
   createdAt DateTime @default(now())
 
   @@id([drawingId, fileId])

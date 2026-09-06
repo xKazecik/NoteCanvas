@@ -1,5 +1,6 @@
 import express from "express";
 import { registerCollectionRoutes } from "./collections";
+import { registerCommentRoutes } from "./comments";
 import { registerDrawingRoutes } from "./drawings";
 import { registerLibraryRoutes } from "./library";
 import { DashboardRouteDeps } from "./types";
@@ -10,6 +11,7 @@ export const registerDashboardRoutes = (
 ) => {
   registerDrawingRoutes(app, deps);
   registerCollectionRoutes(app, deps);
+  registerCommentRoutes(app, deps);
   registerLibraryRoutes(app, deps);
 };
 

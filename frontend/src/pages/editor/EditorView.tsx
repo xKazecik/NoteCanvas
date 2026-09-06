@@ -16,8 +16,14 @@ import {
   LanguageSelector,
 } from "../../components/LanguageSelector";
 import { GridStepSelector } from "../../components/GridStepSelector";
+import type { Socket } from "socket.io-client";
 import { PresentationMode } from "../../components/canvas/Presentation";
 import { PenToolbar } from "../../components/canvas/pens";
+import {
+  CommentLayer,
+  useCommentThreads,
+} from "../../components/canvas/comments";
+import { useAuth } from "../../context/AuthContext";
 import {
   CanvasSidebar,
   CanvasSidebarTrigger,
@@ -67,6 +73,8 @@ type EditorViewProps = {
   onShareOpen: () => void;
   onHistoryOpen: () => void;
   onToggleAutoHide: () => void;
+  /** The collaboration socket, so comment threads update live. */
+  socketRef?: React.MutableRefObject<Socket | null>;
 };
 
 const UserAvatar = ({
@@ -131,9 +139,28 @@ export const EditorView: React.FC<EditorViewProps> = ({
   onShareOpen,
   onHistoryOpen,
   onToggleAutoHide,
+  socketRef,
 }) => {
   const [canvasApi, setCanvasApi] =
     React.useState<ExcalidrawImperativeAPI | null>(null);
+  const { user, authEnabled } = useAuth();
+  // With authentication switched off the backend acts as the bootstrap user, so
+  // comments work there even though the client has no user object. What is not
+  // supported is an anonymous visitor on an instance that does have auth: the
+  // comment endpoints all require a signed-in caller.
+  const canUseComments = authEnabled === false || Boolean(user);
+
+  // Comments hang off the drawing, so the state lives here and is shared by the
+  // markers on the canvas and the sidebar tab that lists them.
+  const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(
+    null,
+  );
+  const [isPlacingComment, setIsPlacingComment] = React.useState(false);
+  const comments = useCommentThreads({
+    drawingId: id,
+    socketRef,
+    enabled: Boolean(id) && canUseComments,
+  });
 
   return (
   <div className="h-screen flex flex-col bg-white dark:bg-neutral-950 overflow-hidden">
@@ -312,7 +339,24 @@ export const EditorView: React.FC<EditorViewProps> = ({
               {canEdit && (
                 <>
                   <PenToolbar excalidrawAPI={canvasApi} />
-                  <CanvasSidebar excalidrawAPI={canvasApi} />
+                  <CanvasSidebar
+                    excalidrawAPI={canvasApi}
+                    comments={
+                      canUseComments
+                        ? {
+                            threads: comments.threads,
+                            isLoading: comments.isLoading,
+                            error: comments.error,
+                            selectedThreadId,
+                            onSelectThread: setSelectedThreadId,
+                            onStartPlacing: () => {
+                              setSelectedThreadId(null);
+                              setIsPlacingComment(true);
+                            },
+                          }
+                        : undefined
+                    }
+                  />
                 </>
               )}
             </>
@@ -324,6 +368,24 @@ export const EditorView: React.FC<EditorViewProps> = ({
             {isSceneLoading ? "Loading drawing..." : "Preparing canvas..."}
           </span>
         </div>
+      )}
+      {canvasApi && id && canUseComments && (
+        <CommentLayer
+          drawingId={id}
+          excalidrawAPI={canvasApi}
+          threads={comments.threads}
+          canPost={canEdit}
+          currentUserId={user?.id}
+          isDrawingOwner={accessLevel === "owner"}
+          isPlacing={isPlacingComment}
+          onPlacingChange={setIsPlacingComment}
+          selectedThreadId={selectedThreadId}
+          onSelectThread={setSelectedThreadId}
+          onCreateThread={comments.createThread}
+          onReply={comments.reply}
+          onToggleResolved={comments.setResolved}
+          onDelete={comments.remove}
+        />
       )}
       <Toaster position="bottom-center" />
     </div>
