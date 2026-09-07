@@ -124,6 +124,16 @@ body.excalidraw-cursor-resize * {
     position: absolute;
   }
 
+  // The static scene canvas also carries a bare `static` class, which collides
+  // with the `.static { position: static }` utility Tailwind emits for the host
+  // app. Same specificity, so Tailwind wins on source order, the canvas stops
+  // being positioned and its z-index no longer applies - dropping it below every
+  // positioned canvas, including the highlighter's new-element canvas that
+  // paints an opaque background. Re-assert it at a higher specificity.
+  &__canvas.static {
+    position: absolute;
+  }
+
   &__embeddable {
     width: 100%;
     height: 100%;
