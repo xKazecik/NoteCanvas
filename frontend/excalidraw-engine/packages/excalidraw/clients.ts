@@ -32,6 +32,14 @@ export const getClientColor = (
   socketId: SocketId,
   collaborator: Collaborator | undefined,
 ) => {
+  // Prefer the colour the host app assigned. Only the collaboration server can
+  // guarantee two people in the same room get different colours; the hashed
+  // fallback below has 37 buckets, so it collides well before that.
+  const assigned = collaborator?.color?.background;
+  if (typeof assigned === "string" && assigned.trim().length > 0) {
+    return assigned;
+  }
+
   // to get more even distribution in case `id` is not uniformly distributed to
   // begin with, we hash it
   const hash = Math.abs(hashToInteger(collaborator?.id || socketId));
@@ -42,6 +50,26 @@ export const getClientColor = (
   const lightness = 83;
 
   return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+};
+
+/**
+ * Readable text colour for a label drawn on top of `background`.
+ *
+ * Host-assigned collaborator colours are fully saturated mid-tones, unlike the
+ * pale hashed fallback, so the name badge cannot assume dark text will read.
+ */
+export const getContrastingTextColor = (background: string): string => {
+  const hex = background.trim();
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    return COLOR_CHARCOAL_BLACK;
+  }
+  const channels = [1, 3, 5].map((offset) => {
+    const value = parseInt(hex.slice(offset, offset + 2), 16) / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  const luminance =
+    0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+  return luminance > 0.45 ? COLOR_CHARCOAL_BLACK : COLOR_WHITE;
 };
 
 /**
@@ -217,7 +245,7 @@ export const renderRemoteCursors = ({
       } else {
         roundRect(context, boxX, boxY, boxWidth, boxHeight, 8, COLOR_WHITE);
       }
-      context.fillStyle = COLOR_CHARCOAL_BLACK;
+      context.fillStyle = getContrastingTextColor(background);
 
       context.fillText(
         username,

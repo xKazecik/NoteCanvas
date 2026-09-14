@@ -16,6 +16,7 @@ import {
   type RevalidatableSocket,
   type SocketState,
 } from "./socketAccess";
+import { pickPresenceColor } from "./presenceColors";
 
 type RegisterSocketHandlersDeps = {
   io: Server;
@@ -61,15 +62,6 @@ export const registerSocketHandlers = ({
       return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
     }
     return trimmed.slice(0, 2).toUpperCase();
-  };
-
-  const toPresenceColor = (value: unknown): string => {
-    if (typeof value !== "string") return "#4f46e5";
-    const trimmed = value.trim();
-    if (/^#[0-9a-fA-F]{3,8}$/.test(trimmed)) {
-      return trimmed;
-    }
-    return "#4f46e5";
   };
 
   const getSocketAuthUserId = async (token?: string): Promise<string | null> => {
@@ -219,15 +211,6 @@ export const registerSocketHandlers = ({
             trustedUserId = `anon:${socket.id}`.slice(0, 200);
           }
 
-          const newUser: PresenceUser = {
-            id: trustedUserId,
-            name: trustedName,
-            initials: toPresenceInitials(trustedName),
-            color: toPresenceColor(user?.color),
-            socketId: socket.id,
-            isActive: true,
-          };
-
           // Presence is keyed per-SOCKET, not per-user id: two tabs of the
           // same account are two independent participants. Filtering by id
           // here would orphan the first tab's socket inside the room — its
@@ -236,6 +219,24 @@ export const registerSocketHandlers = ({
           const filteredUsers = currentUsers.filter(
             (u) => u.socketId !== socket.id,
           );
+
+          // A second tab of the same account keeps the colour the first was
+          // given — they share a name, so two colours would read as two
+          // different people. Everyone else gets one no one in the room holds.
+          const sameAccount = filteredUsers.find((u) => u.id === trustedUserId);
+          const color =
+            sameAccount?.color ??
+            pickPresenceColor(filteredUsers.map((u) => u.color));
+
+          const newUser: PresenceUser = {
+            id: trustedUserId,
+            name: trustedName,
+            initials: toPresenceInitials(trustedName),
+            color,
+            socketId: socket.id,
+            isActive: true,
+          };
+
           filteredUsers.push(newUser);
           roomUsers.set(roomId, filteredUsers);
 

@@ -354,6 +354,10 @@ export const useEditorCollaboration = ({
 
   return {
     peers,
+    // The server, not the client, decides the presence colour, so the header
+    // avatar has to follow it too — otherwise you appear to yourself in one
+    // colour and to everyone else in another.
+    socketMe,
     socketMeRef,
     socketRef,
     isSyncing,

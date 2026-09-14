@@ -6,14 +6,16 @@ export const useEditorAutoHide = (drawingId: string | undefined) => {
     [drawingId],
   );
 
+  // The toolbar stays put until someone asks for it to get out of the way, so
+  // auto-hide is opt-in: an editor with no stored preference shows its header.
   const getStoredAutoHideEnabled = useCallback((): boolean => {
-    if (!storageKey) return true;
+    if (!storageKey) return false;
     try {
       const raw = window.localStorage.getItem(storageKey);
-      if (raw === null) return true;
+      if (raw === null) return false;
       return raw === "1" || raw === "true";
     } catch {
-      return true;
+      return false;
     }
   }, [storageKey]);
 

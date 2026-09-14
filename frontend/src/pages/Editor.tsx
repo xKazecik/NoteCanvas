@@ -19,6 +19,7 @@ import { useEditorCanvasHandlers } from "./editor/useEditorCanvasHandlers";
 import { useEditorCommands } from "./editor/useEditorCommands";
 import { useEditorElementTracking } from "./editor/useEditorElementTracking";
 import { useEditorBroadcast } from "./editor/useEditorBroadcast";
+import { useEditorLiveStroke } from "./editor/useEditorLiveStroke";
 import { useEditorFileUploads } from "./editor/useEditorFileUploads";
 import { useEditorSceneApi } from "./editor/useEditorSceneApi";
 import { useEditorGridStep } from "./editor/useEditorGridStep";
@@ -115,21 +116,42 @@ const ExcalidrawEditor: React.FC = () => {
       replace: true,
     });
   }, [id, location.hash, location.pathname, location.search, navigate]);
-  const { peers, socketMeRef, socketRef, isSyncing, onPointerUpdate } =
-    useEditorCollaboration({
-      drawingId: id,
-      me,
-      isReady,
-      excalidrawAPI,
-      editorContainerRef,
-      lastSyncedFilesRef,
-      lastSyncedElementOrderSigRef,
-      latestElementsRef,
-      latestFilesRef,
-      computeElementOrderSig,
-      recordElementVersion,
-      onAccessDenied: handleSocketAccessDenied,
-    });
+  const {
+    peers,
+    socketMe,
+    socketMeRef,
+    socketRef,
+    isSyncing,
+    onPointerUpdate,
+  } = useEditorCollaboration({
+    drawingId: id,
+    me,
+    isReady,
+    excalidrawAPI,
+    editorContainerRef,
+    lastSyncedFilesRef,
+    lastSyncedElementOrderSigRef,
+    latestElementsRef,
+    latestFilesRef,
+    computeElementOrderSig,
+    recordElementVersion,
+    onAccessDenied: handleSocketAccessDenied,
+  });
+  const emitLiveStroke = useEditorLiveStroke({
+    drawingId: id,
+    canEdit,
+    excalidrawAPI,
+    socketRef,
+    socketMeRef,
+  });
+  // Cursor position and in-progress stroke ride the same pointer-move signal.
+  const handlePointerUpdate = useCallback(
+    (payload: any) => {
+      onPointerUpdate(payload);
+      emitLiveStroke();
+    },
+    [onPointerUpdate, emitLiveStroke],
+  );
   const { scanNow: scanFileUploads } = useEditorFileUploads({
     drawingId: id,
     isReady,
@@ -335,7 +357,7 @@ const ExcalidrawEditor: React.FC = () => {
         isSceneLoading={isSceneLoading}
         langCode={langCode}
         loadError={loadError}
-        me={me}
+        me={socketMe}
         newName={newName}
         peers={peers}
         theme={theme}
@@ -346,7 +368,7 @@ const ExcalidrawEditor: React.FC = () => {
         onLibraryChange={handleLibraryChange}
         onNavigateHome={() => navigate("/")}
         onNewNameChange={setNewName}
-        onPointerUpdate={onPointerUpdate}
+        onPointerUpdate={handlePointerUpdate}
         onRenameBlur={() => setIsRenaming(false)}
         onRenameStart={handleRenameStart}
         onRenameSubmit={handleRenameSubmit}
