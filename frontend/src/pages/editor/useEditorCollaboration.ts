@@ -6,6 +6,7 @@ import type { UserIdentity } from "../../utils/identity";
 import { filesNeedRehydration, rehydrateFilesFromUrls } from "../../utils/rehydrateFiles";
 import { buildRemoteSceneUpdate } from "./shared";
 import { attachCanvasZoomForwarding } from "./canvasZoomForwarding";
+import { getSocketUrl } from "./socketUrl";
 
 interface Peer extends UserIdentity {
   isActive: boolean;
@@ -25,13 +26,6 @@ type UseEditorCollaborationInput = {
   recordElementVersion: (element: any) => void;
   onAccessDenied: () => void;
 };
-
-const getSocketUrl = () =>
-  import.meta.env.VITE_API_URL === "/api"
-    ? window.location.origin
-    : import.meta.env.VITE_API_URL ||
-      import.meta.env.VITE_DEV_BACKEND_URL ||
-      "http://localhost:8000";
 
 export const useEditorCollaboration = ({
   drawingId,
@@ -75,6 +69,12 @@ export const useEditorCollaboration = ({
     const socket = io(getSocketUrl(), {
       path: "/socket.io",
       transports: ["websocket", "polling"],
+      // Without this the listed transports are not alternatives: engine.io
+      // aborts the connection if the FIRST one fails instead of trying the
+      // next. Any reverse proxy that does not pass the WebSocket upgrade
+      // through — a common default — would otherwise kill collaboration
+      // outright rather than falling back to long-polling.
+      tryAllTransports: true,
       withCredentials: true,
     });
     socketRef.current = socket;
@@ -89,6 +89,21 @@ export const useEditorCollaboration = ({
         (window as any).__EXCALIDASH_SOCKET_STATUS__ = { connected: false };
       });
     }
+    // A socket that never connects used to fail silently: presence stayed empty
+    // and edits stopped syncing with nothing on screen to say why. Warn once per
+    // editor session so a broken realtime link is visible rather than guessed at.
+    let hasReportedConnectFailure = false;
+    socket.on("connect_error", (err: unknown) => {
+      console.warn("[Editor] Collaboration socket failed to connect:", err);
+      if (hasReportedConnectFailure) return;
+      hasReportedConnectFailure = true;
+      toast.error(
+        "Live collaboration is offline — your changes are still being saved.",
+      );
+    });
+    socket.on("connect", () => {
+      hasReportedConnectFailure = false;
+    });
     socket.emit("join-room", { drawingId, user: me }, (payload: any) => {
       const serverUser = payload?.user;
       if (!serverUser || typeof serverUser.id !== "string") return;
@@ -302,6 +317,7 @@ export const useEditorCollaboration = ({
       window.removeEventListener("blur", onBlur);
       document.removeEventListener("mouseenter", onMouseEnter);
       document.removeEventListener("mouseleave", onMouseLeave);
+      socket.off("connect_error");
       socket.off("presence-update");
       socket.off("error");
       socket.off("cursor-move");
