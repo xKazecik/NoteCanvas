@@ -57,6 +57,7 @@ export const Admin: React.FC = () => {
     email: string;
     tempPassword: string;
   } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const accessControl = useAccessControlSettings(isAdmin, setError, setSuccess);
   const loginRateLimit = useLoginRateLimitSettings({
     authEnabled,
@@ -202,6 +203,22 @@ export const Admin: React.FC = () => {
       setError(message);
     }
   };
+  const deleteUser = async (target: AdminUser) => {
+    setError("");
+    setSuccess("");
+    try {
+      await api.api.delete(`/auth/users/${target.id}`);
+      setUsers((prev) => prev.filter((user) => user.id !== target.id));
+      setSuccess(`Removed ${target.email}`);
+    } catch (err: unknown) {
+      let message = "Failed to remove user";
+      if (api.isAxiosError(err)) {
+        message =
+          err.response?.data?.message || err.response?.data?.error || message;
+      }
+      setError(message);
+    }
+  };
   const startImpersonation = async (target: AdminUser) => {
     setError("");
     setSuccess("");
@@ -335,16 +352,20 @@ export const Admin: React.FC = () => {
         }
         onImpersonate={setImpersonateTarget}
         onResetPassword={generateTempPassword}
+        onDeleteUser={setDeleteTarget}
       />{" "}
       <UserActionModals
         impersonateTarget={impersonateTarget}
         resetPasswordResult={resetPasswordResult}
+        deleteTarget={deleteTarget}
         onConfirmImpersonation={startImpersonation}
         onCancelImpersonation={() => setImpersonateTarget(null)}
         onCopyPassword={(result) =>
           navigator.clipboard?.writeText(result.tempPassword)
         }
         onClosePassword={() => setResetPasswordResult(null)}
+        onConfirmDelete={deleteUser}
+        onCancelDelete={() => setDeleteTarget(null)}
       />{" "}
       <Toaster position="bottom-center" />{" "}
     </Layout>

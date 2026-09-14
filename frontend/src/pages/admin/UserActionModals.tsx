@@ -10,19 +10,25 @@ type PasswordResult = {
 type UserActionModalsProps = {
   impersonateTarget: AdminUser | null;
   resetPasswordResult: PasswordResult | null;
+  deleteTarget: AdminUser | null;
   onConfirmImpersonation: (user: AdminUser) => void | Promise<void>;
   onCancelImpersonation: () => void;
   onCopyPassword: (result: PasswordResult) => void | Promise<void>;
   onClosePassword: () => void;
+  onConfirmDelete: (user: AdminUser) => void | Promise<void>;
+  onCancelDelete: () => void;
 };
 
 export const UserActionModals: React.FC<UserActionModalsProps> = ({
   impersonateTarget,
   resetPasswordResult,
+  deleteTarget,
   onConfirmImpersonation,
   onCancelImpersonation,
   onCopyPassword,
   onClosePassword,
+  onConfirmDelete,
+  onCancelDelete,
 }) => (
   <>
     <ConfirmModal
@@ -74,6 +80,24 @@ export const UserActionModals: React.FC<UserActionModalsProps> = ({
         onClosePassword();
       }}
       onCancel={onClosePassword}
+    />
+
+    <ConfirmModal
+      isOpen={Boolean(deleteTarget)}
+      title="Remove this account?"
+      message={
+        deleteTarget
+          ? `${deleteTarget.email} and everything they own -- drawings, collections and shares -- will be deleted permanently. This cannot be undone.`
+          : ''
+      }
+      confirmText="Remove Account"
+      onConfirm={() => {
+        if (deleteTarget) {
+          void onConfirmDelete(deleteTarget);
+        }
+        onCancelDelete();
+      }}
+      onCancel={onCancelDelete}
     />
   </>
 );

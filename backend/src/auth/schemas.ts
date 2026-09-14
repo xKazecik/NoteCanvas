@@ -128,6 +128,12 @@ export const mustResetPasswordSchema = z.object({
   newPassword: passwordSchema,
 });
 
+// Accounts without a usable local password (OIDC-provisioned) have nothing to
+// verify, so the password is optional here and checked only when one exists.
+export const deleteAccountSchema = z.object({
+  currentPassword: z.string().max(100).optional(),
+});
+
 export const apiKeyCreateSchema = z.object({
   name: z.string().trim().min(1).max(100),
   scopes: z.array(z.string()).optional(),

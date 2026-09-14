@@ -25,6 +25,10 @@ import {
   collectionDescendantIds,
   type CollectionTreeNode,
 } from "./sidebar/collectionTree";
+import {
+  getCollectionColorStyle,
+  hasCollectionColor,
+} from "./collection-card/collectionColors";
 
 interface SidebarProps {
   collections: Collection[];
@@ -157,6 +161,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const renderCollectionNode = (node: CollectionTreeNode): React.ReactNode => {
     const { collection, children, depth } = node;
     const isExpanded = !collapsedIds.has(collection.id);
+    // A tagged collection carries its colour into the list; an untagged one is
+    // left alone so it keeps the row's own hover and active tints.
+    const colorStyle = hasCollectionColor(collection.color)
+      ? getCollectionColorStyle(collection.color)
+      : null;
+    const FolderIcon =
+      selectedCollectionId === collection.id ? FolderOpen : Folder;
     // Only owners can restructure their own tree; a collection shared with you
     // stays where its owner put it.
     const canReorganize = collection.isOwner !== false;
@@ -166,11 +177,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <SidebarItem
           id={collection.id}
           icon={
-            selectedCollectionId === collection.id ? (
-              <FolderOpen size={18} />
-            ) : (
-              <Folder size={18} />
-            )
+            <FolderIcon
+              size={18}
+              className={colorStyle?.icon}
+              style={colorStyle?.iconStyle}
+            />
           }
           label={collection.name}
           isActive={selectedCollectionId === collection.id}
@@ -260,12 +271,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <Logo className="w-10 h-10" />
             <span className="mt-1">notecanvas</span>
-            <span
-              className="text-xs font-bold text-red-500 mt-2"
-              style={{ fontFamily: "sans-serif" }}
-            >
-              BETA
-            </span>
           </h1>
         </div>
         <nav
@@ -294,7 +299,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       : "text-slate-400 dark:text-neutral-500",
                   )}
                 />
-                <span className="min-w-0 flex-1 text-left">All Drawings</span>
+                <span className="min-w-0 flex-1 text-left">Main page</span>
               </button>
             </div>
             <SidebarItem

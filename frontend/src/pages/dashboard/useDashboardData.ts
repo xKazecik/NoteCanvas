@@ -23,6 +23,13 @@ export const useDashboardData = ({
   pageSize,
   onRefreshSuccess,
 }: UseDashboardDataOptions) => {
+  // The main page is the root of the folder tree, so it lists what sits at the
+  // root: drawings in no collection, alongside the root collection cards the
+  // dashboard renders itself. `undefined` would ask the API for every drawing,
+  // nested ones included.
+  const listedCollectionId =
+    selectedCollectionId === undefined ? null : selectedCollectionId;
+
   const [drawings, setDrawings] = useState<DrawingSummary[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -45,7 +52,7 @@ export const useDashboardData = ({
             sortField,
             sortDirection,
           })
-        : api.getDrawings(debouncedSearch, selectedCollectionId, {
+        : api.getDrawings(debouncedSearch, listedCollectionId, {
             limit: pageSize,
             offset: 0,
             sortField,
@@ -83,6 +90,7 @@ export const useDashboardData = ({
   }, [
     debouncedSearch,
     selectedCollectionId,
+    listedCollectionId,
     pageSize,
     sortField,
     sortDirection,
@@ -102,7 +110,7 @@ export const useDashboardData = ({
             sortField,
             sortDirection,
           })
-        : api.getDrawings(debouncedSearch, selectedCollectionId, {
+        : api.getDrawings(debouncedSearch, listedCollectionId, {
             limit: pageSize,
             offset: nextOffsetRef.current,
             sortField,
@@ -124,6 +132,7 @@ export const useDashboardData = ({
     isLoading,
     debouncedSearch,
     selectedCollectionId,
+    listedCollectionId,
     pageSize,
     sortField,
     sortDirection,

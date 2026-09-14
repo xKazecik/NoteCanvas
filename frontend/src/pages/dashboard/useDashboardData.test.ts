@@ -73,7 +73,7 @@ describe("useDashboardData", () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(getDrawingsMock).toHaveBeenCalledWith("", undefined, {
+    expect(getDrawingsMock).toHaveBeenCalledWith("", null, {
       limit: 24,
       offset: 0,
       sortField: "updatedAt",
@@ -120,7 +120,7 @@ describe("useDashboardData", () => {
       await result.current.fetchMore();
     });
 
-    expect(getDrawingsMock).toHaveBeenNthCalledWith(2, "", undefined, {
+    expect(getDrawingsMock).toHaveBeenNthCalledWith(2, "", null, {
       limit: 24,
       offset: 2,
       sortField: "updatedAt",

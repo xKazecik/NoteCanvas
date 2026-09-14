@@ -1,5 +1,10 @@
+import type { CSSProperties } from "react";
+
 /**
- * The colours a collection can be tagged with.
+ * The preset colours a collection can be tagged with.
+ *
+ * A collection may instead store a `#rrggbb` hex, which has no preset classes
+ * and is rendered through inline styles -- see getCollectionColorStyle.
  *
  * The names here must stay in step with COLLECTION_COLORS in
  * backend/src/routes/dashboard/collections.ts, which rejects anything else.
@@ -28,6 +33,14 @@ type ColorStyle = {
   swatch: string;
   /** Folder icon. */
   icon: string;
+  /**
+   * Inline equivalents, set only for custom hex colours. Tailwind cannot ship
+   * a class per arbitrary colour, so those are painted through style props;
+   * consumers spread these alongside the class names above.
+   */
+  cardStyle?: CSSProperties;
+  swatchStyle?: CSSProperties;
+  iconStyle?: CSSProperties;
 };
 
 const DEFAULT_STYLE: ColorStyle = {
@@ -88,10 +101,43 @@ const isCollectionColor = (value: unknown): value is CollectionColor =>
   typeof value === "string" &&
   (COLLECTION_COLORS as readonly string[]).includes(value);
 
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+/** True for a free-form `#rrggbb` colour rather than one of the presets. */
+export const isHexColor = (value: unknown): value is string =>
+  typeof value === "string" && HEX_COLOR.test(value);
+
+/** `#rrggbb` plus an alpha, as an `rgba()` string. */
+const withAlpha = (hex: string, alpha: number): string => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+// A translucent wash of the chosen colour, so one set of values reads correctly
+// over both the light and the dark card background.
+const hexStyle = (hex: string): ColorStyle => ({
+  card: "",
+  swatch: "",
+  icon: "",
+  cardStyle: { backgroundColor: withAlpha(hex, 0.14), borderColor: hex },
+  swatchStyle: { backgroundColor: hex },
+  iconStyle: { color: hex },
+});
+
+/** True when a stored value maps to real styling rather than the default. */
+export const hasCollectionColor = (color: string | null | undefined): boolean =>
+  isCollectionColor(color) || isHexColor(color);
+
 /** Styling for a stored colour, falling back to the default for null/unknown. */
 export const getCollectionColorStyle = (
   color: string | null | undefined,
-): ColorStyle => (isCollectionColor(color) ? STYLES[color] : DEFAULT_STYLE);
+): ColorStyle => {
+  if (isCollectionColor(color)) return STYLES[color];
+  if (isHexColor(color)) return hexStyle(color);
+  return DEFAULT_STYLE;
+};
 
 export const getSwatchClass = (color: CollectionColor): string =>
   STYLES[color].swatch;

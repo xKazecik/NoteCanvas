@@ -8,6 +8,7 @@ import { User, Save, X } from 'lucide-react';
 import { USER_KEY } from '../utils/impersonation';
 import { displayFontFamily } from "../utils/displayFont";
 import { ApiKeysCard } from "./profile/ApiKeysCard";
+import { DeleteAccountCard } from "./profile/DeleteAccountCard";
 import { PasswordCard } from "./profile/PasswordCard";
 
 export const Profile: React.FC = () => {
@@ -316,6 +317,13 @@ export const Profile: React.FC = () => {
                     logout={logout}
                     onError={setError}
                     onSuccess={setSuccess}
+                />
+
+                <DeleteAccountCard
+                    email={authUser?.email || ''}
+                    disabled={mustResetPassword}
+                    logout={logout}
+                    onError={setError}
                 />
             </div>
         </Layout>

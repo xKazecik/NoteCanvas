@@ -1,6 +1,7 @@
 import express, { Request, Response } from "express";
 import { PrismaClient } from "../generated/client";
 import { registerAccountApiKeyRoutes } from "./accountApiKeyRoutes";
+import { registerAccountDeleteRoutes } from "./accountDeleteRoutes";
 import { registerAccountPasswordChangeRoutes } from "./accountPasswordChangeRoutes";
 import { registerAccountPasswordResetRoutes } from "./accountPasswordResetRoutes";
 import { registerAccountPreferencesRoutes } from "./accountPreferencesRoutes";
@@ -45,4 +46,5 @@ export const registerAccountRoutes = (deps: RegisterAccountRoutesDeps) => {
   registerAccountProfileRoutes(deps);
   registerAccountApiKeyRoutes(deps);
   registerAccountPasswordChangeRoutes(deps);
+  registerAccountDeleteRoutes(deps);
 };

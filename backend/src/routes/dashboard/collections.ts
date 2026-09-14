@@ -27,8 +27,8 @@ export const registerCollectionRoutes = (
   // with strictNullChecks, so a discriminated union would not narrow here.
   type ParentResolution = { parentId: string | null; error?: string };
 
-  // Colours are picked from a fixed set rather than free-form, so a stored value
-  // can always be mapped to styling the client knows how to render.
+  // Colours are either one of the preset names below, which the client maps to
+  // its own styling, or a `#rrggbb` hex the client renders literally.
   const COLLECTION_COLORS = [
     "slate",
     "red",
@@ -41,6 +41,8 @@ export const registerCollectionRoutes = (
     "pink",
   ];
 
+  const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
   const resolveColor = (
     rawColor: unknown,
   ): { color: string | null; error?: string } => {
@@ -48,10 +50,11 @@ export const registerCollectionRoutes = (
     if (typeof rawColor !== "string") {
       return { color: null, error: "color must be a string or null" };
     }
+    if (HEX_COLOR.test(rawColor)) return { color: rawColor.toLowerCase() };
     if (!COLLECTION_COLORS.includes(rawColor)) {
       return {
         color: null,
-        error: `color must be one of: ${COLLECTION_COLORS.join(", ")}`,
+        error: `color must be #rrggbb or one of: ${COLLECTION_COLORS.join(", ")}`,
       };
     }
     return { color: rawColor };

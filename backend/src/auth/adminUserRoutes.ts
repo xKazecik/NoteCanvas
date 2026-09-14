@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { Prisma } from "../generated/client";
 import { logAuditEvent } from "../utils/audit";
 import type { RegisterAdminRoutesDeps } from "./adminRoutes";
+import { registerAdminUserDeleteRoutes } from "./adminUserDeleteRoutes";
 import { registerAdminUserPasswordRoutes } from "./adminUserPasswordRoutes";
 import { adminCreateUserSchema, adminRoleUpdateSchema, adminUpdateUserSchema } from "./schemas";
 
@@ -342,5 +343,6 @@ export const registerAdminUserRoutes = (deps: RegisterAdminRoutesDeps) => {
     },
   );
   registerAdminUserPasswordRoutes(deps);
+  registerAdminUserDeleteRoutes(deps);
 
 };

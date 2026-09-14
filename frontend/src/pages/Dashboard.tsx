@@ -147,7 +147,7 @@ export const Dashboard: React.FC = () => {
     refreshData,
   });
   // Collection cards turn the panel into folder navigation. They only make
-  // sense where nesting does: All Drawings shows the top level, and opening a
+  // sense where nesting does: the main page shows the top level, and opening a
   // collection shows its direct children. Unorganized, Shared and Trash are
   // flat views with no place in the tree.
   const collectionParentId = React.useMemo(() => {
@@ -183,7 +183,7 @@ export const Dashboard: React.FC = () => {
   };
 
   const viewTitle = React.useMemo(() => {
-    if (selectedCollectionId === undefined) return "All Drawings";
+    if (selectedCollectionId === undefined) return "Main page";
     if (selectedCollectionId === null) return "Unorganized";
     if (selectedCollectionId === "shared") return "Shared with me";
     if (selectedCollectionId === "trash") return "Trash";

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, LogIn, KeyRound } from 'lucide-react';
+import { Shield, LogIn, KeyRound, Trash2 } from 'lucide-react';
 import type { AdminUser } from './types';
 
 type UsersTableProps = {
@@ -12,6 +12,7 @@ type UsersTableProps = {
   onToggleMustReset: (user: AdminUser) => void;
   onImpersonate: (user: AdminUser) => void;
   onResetPassword: (user: AdminUser) => void | Promise<void>;
+  onDeleteUser: (user: AdminUser) => void;
 };
 
 export const UsersTable: React.FC<UsersTableProps> = ({
@@ -24,6 +25,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   onToggleMustReset,
   onImpersonate,
   onResetPassword,
+  onDeleteUser,
 }) => (
   <div className="bg-white dark:bg-neutral-900 border-2 border-black dark:border-neutral-700 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)] overflow-hidden">
     <div className="px-4 sm:px-6 py-4 border-b-2 border-slate-200 dark:border-neutral-700 flex items-center gap-3">
@@ -114,6 +116,19 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                   >
                     <KeyRound size={16} />
                     {resetPasswordLoadingId === user.id ? 'Generating…' : 'Reset Password'}
+                  </button>
+                  <button
+                    onClick={() => onDeleteUser(user)}
+                    disabled={user.id === currentUserId}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border-2 border-black dark:border-neutral-700 bg-rose-600 dark:bg-rose-500 text-white font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,0.2)] hover:-translate-y-0.5 transition-all disabled:opacity-60 disabled:hover:translate-y-0"
+                    title={
+                      user.id === currentUserId
+                        ? 'Use Profile → Delete Account for your own account'
+                        : 'Permanently delete this account and its data'
+                    }
+                  >
+                    <Trash2 size={16} />
+                    Remove
                   </button>
                 </div>
               </td>
