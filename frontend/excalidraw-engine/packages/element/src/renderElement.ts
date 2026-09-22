@@ -66,6 +66,7 @@ import {
   isImageElement,
 } from "./typeChecks";
 import { getContainingFrame } from "./frame";
+import { renderTableElement } from "./renderTable";
 import { getCornerRadius } from "./utils";
 
 import { ShapeCache } from "./shape";
@@ -73,6 +74,7 @@ import { ShapeCache } from "./shape";
 import type {
   ExcalidrawElement,
   ExcalidrawTextElement,
+  Theme,
   NonDeletedExcalidrawElement,
   ExcalidrawFreeDrawElement,
   ExcalidrawImageElement,
@@ -281,7 +283,7 @@ const generateElementCanvas = (
     context.filter = IMAGE_INVERT_FILTER;
   }
 
-  drawElementOnCanvas(element, rc, context, renderConfig);
+  drawElementOnCanvas(element, rc, context, renderConfig, appState.theme);
 
   context.restore();
 
@@ -416,6 +418,8 @@ const drawElementOnCanvas = (
   rc: RoughCanvas,
   context: CanvasRenderingContext2D,
   renderConfig: StaticCanvasRenderConfig,
+  // tables pick their header/banding tints from the theme
+  theme: Theme,
 ) => {
   switch (element.type) {
     case "rectangle":
@@ -467,6 +471,10 @@ const drawElementOnCanvas = (
       context.fill(path);
 
       context.restore();
+      break;
+    }
+    case "table": {
+      renderTableElement(element, context, theme);
       break;
     }
     case "image": {
@@ -819,7 +827,7 @@ export const renderElement = (
         context.translate(cx, cy);
         context.rotate(element.angle);
         context.translate(-shiftX, -shiftY);
-        drawElementOnCanvas(element, rc, context, renderConfig);
+        drawElementOnCanvas(element, rc, context, renderConfig, appState.theme);
         context.restore();
       } else {
         const elementWithCanvas = generateElementWithCanvas(
@@ -851,7 +859,8 @@ export const renderElement = (
     case "image":
     case "text":
     case "iframe":
-    case "embeddable": {
+    case "embeddable":
+    case "table": {
       // TODO investigate if we can do this in situ. Right now we need to call
       // beforehand because math helpers (such as getElementAbsoluteCoords)
       // rely on existing shapes
@@ -912,7 +921,13 @@ export const renderElement = (
 
           tempCanvasContext.translate(-shiftX, -shiftY);
 
-          drawElementOnCanvas(element, tempRc, tempCanvasContext, renderConfig);
+          drawElementOnCanvas(
+            element,
+            tempRc,
+            tempCanvasContext,
+            renderConfig,
+            appState.theme,
+          );
 
           tempCanvasContext.translate(shiftX, shiftY);
 
@@ -951,7 +966,7 @@ export const renderElement = (
           }
 
           context.translate(-shiftX, -shiftY);
-          drawElementOnCanvas(element, rc, context, renderConfig);
+          drawElementOnCanvas(element, rc, context, renderConfig, appState.theme);
         }
 
         context.restore();

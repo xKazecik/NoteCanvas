@@ -114,6 +114,7 @@ export const getDefaultAppState = (): Omit<
     viewModeEnabled: false,
     showHyperlinkPopup: false,
     selectedLinearElement: null,
+    selectedTableCells: null,
     snapLines: [],
     originSnapOffset: {
       x: 0,
@@ -252,6 +253,7 @@ const APP_STATE_STORAGE_CONF = (<
   viewModeEnabled: { browser: false, export: false, server: false },
   showHyperlinkPopup: { browser: false, export: false, server: false },
   selectedLinearElement: { browser: true, export: false, server: false },
+  selectedTableCells: { browser: false, export: false, server: false },
   snapLines: { browser: false, export: false, server: false },
   originSnapOffset: { browser: false, export: false, server: false },
   objectsSnapModeEnabled: { browser: true, export: false, server: false },

@@ -51,6 +51,7 @@ import { wrapText } from "./textWrapping";
 import {
   isArrowElement,
   isBindingElement,
+  isTableElement,
   isBoundToContainer,
   isElbowArrow,
   isFrameLikeElement,
@@ -59,6 +60,7 @@ import {
   isLinearElement,
   isTextElement,
 } from "./typeChecks";
+import { scaleTableTo } from "./tableOps";
 
 import { isInGroup } from "./groups";
 
@@ -80,6 +82,7 @@ import type {
   ElementsMap,
   ExcalidrawElbowArrowElement,
   ExcalidrawArrowElement,
+  ExcalidrawTableElement,
 } from "./types";
 import type { ElementUpdate } from "./mutateElement";
 
@@ -885,6 +888,19 @@ export const resizeSingleElement = (
       ...rescaledPoints,
     };
 
+    if (isTableElement(latestElement)) {
+      // a table reflows: its rows and columns absorb the new size instead of
+      // the whole grid being scaled like a bitmap
+      updates = {
+        ...updates,
+        ...scaleTableTo(
+          latestElement,
+          Math.abs(nextWidth),
+          Math.abs(nextHeight),
+        ),
+      } as ElementUpdate<ExcalidrawTableElement>;
+    }
+
     if (isBindingElement(latestElement)) {
       if (latestElement.startBinding) {
         updates = {
@@ -1430,6 +1446,11 @@ export const resizeMultipleElements = (
           return;
         }
         update.fontSize = metrics.size;
+      }
+
+      if (isTableElement(orig)) {
+        // same reflow as a single-element resize
+        Object.assign(update, scaleTableTo(orig, width, height));
       }
 
       const boundTextElement = originalElementsMap.get(

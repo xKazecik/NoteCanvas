@@ -441,6 +441,116 @@ export const EraserIcon = createIcon(
   tablerIconProps,
 );
 
+export const TableIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" />
+    <path d="M3 10h18" />
+    <path d="M10 3v18" />
+  </g>,
+  tablerIconProps,
+);
+
+export const BoldIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M7 5h6a3.5 3.5 0 0 1 0 7h-6z" />
+    <path d="M13 12h1a3.5 3.5 0 0 1 0 7h-7v-7" />
+  </g>,
+  tablerIconProps,
+);
+
+export const ItalicIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M11 5l6 0" />
+    <path d="M7 19l6 0" />
+    <path d="M14 5l-4 14" />
+  </g>,
+  tablerIconProps,
+);
+
+export const TableAddRowIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" />
+    <path d="M12 15l0 6" />
+    <path d="M9 18l6 0" />
+  </g>,
+  tablerIconProps,
+);
+
+export const TableAddColumnIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M3 5a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2z" />
+    <path d="M18 9l0 6" />
+    <path d="M15 12l6 0" />
+  </g>,
+  tablerIconProps,
+);
+
+export const TableDeleteRowIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" />
+    <path d="M9 18l6 0" />
+  </g>,
+  tablerIconProps,
+);
+
+export const TableDeleteColumnIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M3 5a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2z" />
+    <path d="M15 12l6 0" />
+  </g>,
+  tablerIconProps,
+);
+
+export const TableMergeIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" />
+    <path d="M3 12h4" />
+    <path d="M17 12h4" />
+    <path d="M10 9l3 3l-3 3" />
+  </g>,
+  tablerIconProps,
+);
+
+export const TableUnmergeIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" />
+    <path d="M12 3v18" />
+    <path d="M6 9l-3 3l3 3" />
+    <path d="M18 9l3 3l-3 3" />
+  </g>,
+  tablerIconProps,
+);
+
+export const TableHeaderIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" />
+    <path d="M3 9h18" />
+    <path d="M3 3h18v6h-18z" fill="currentColor" stroke="none" opacity="0.35" />
+  </g>,
+  tablerIconProps,
+);
+
+export const TableBandingIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" />
+    <path d="M3 9h18" />
+    <path d="M3 15h18" />
+    <path d="M3 9h18v6h-18z" fill="currentColor" stroke="none" opacity="0.35" />
+  </g>,
+  tablerIconProps,
+);
+
 export const ZoomInIcon = createIcon(
   <path strokeWidth="1.25" d="M10 4.167v11.666M4.167 10h11.666" />,
   modifiedTablerIconProps,

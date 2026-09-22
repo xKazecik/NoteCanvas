@@ -21,6 +21,12 @@ import {
   getResizedElementAbsoluteCoords,
 } from "./bounds";
 import { newElementWith } from "./mutateElement";
+import {
+  TABLE_DEFAULTS,
+  buildCells,
+  tableHeight,
+  tableWidth,
+} from "./table";
 import { getBoundTextMaxWidth } from "./textElement";
 import { normalizeText, measureText } from "./textMeasurements";
 import { wrapText } from "./textWrapping";
@@ -48,6 +54,8 @@ import type {
   ExcalidrawArrowElement,
   ExcalidrawElbowArrowElement,
   ExcalidrawLineElement,
+  ExcalidrawTableElement,
+  TableCell,
 } from "./types";
 
 export type ElementConstructorOpts = MarkOptional<
@@ -177,6 +185,40 @@ export const newIframeElement = (
 ): NonDeleted<ExcalidrawIframeElement> => {
   return {
     ..._newElementBase<ExcalidrawIframeElement>("iframe", opts),
+  };
+};
+
+export const newTableElement = (
+  opts: {
+    rows?: number;
+    cols?: number;
+    colWidths?: readonly number[];
+    rowHeights?: readonly number[];
+    cells?: readonly (readonly TableCell[])[];
+    headerRow?: boolean;
+    bandedRows?: boolean;
+  } & ElementConstructorOpts,
+): NonDeleted<ExcalidrawTableElement> => {
+  const rows = opts.rowHeights?.length ?? opts.rows ?? TABLE_DEFAULTS.rows;
+  const cols = opts.colWidths?.length ?? opts.cols ?? TABLE_DEFAULTS.cols;
+  const colWidths =
+    opts.colWidths ??
+    Array.from({ length: cols }, () => TABLE_DEFAULTS.colWidth);
+  const rowHeights =
+    opts.rowHeights ??
+    Array.from({ length: rows }, () => TABLE_DEFAULTS.rowHeight);
+
+  return {
+    ..._newElementBase<ExcalidrawTableElement>("table", opts),
+    type: "table",
+    colWidths,
+    rowHeights,
+    cells: opts.cells ?? buildCells(rows, cols),
+    headerRow: opts.headerRow ?? true,
+    bandedRows: opts.bandedRows ?? false,
+    // the outer box is always the sum of the tracks
+    width: tableWidth(colWidths),
+    height: tableHeight(rowHeights),
   };
 };
 

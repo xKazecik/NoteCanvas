@@ -31,6 +31,8 @@ export const CURSOR_TYPE = {
   GRAB: "grab",
   POINTER: "pointer",
   MOVE: "move",
+  COL_RESIZE: "col-resize",
+  ROW_RESIZE: "row-resize",
   AUTO: "",
 };
 export const POINTER_BUTTON = {
@@ -453,6 +455,7 @@ export const TOOL_TYPE = {
   frame: "frame",
   magicframe: "magicframe",
   embeddable: "embeddable",
+  table: "table",
   laser: "laser",
 } as const;
 

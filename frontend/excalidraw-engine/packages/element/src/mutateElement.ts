@@ -12,7 +12,7 @@ import { ShapeCache } from "./shape";
 
 import { updateElbowArrowPoints } from "./elbowArrow";
 
-import { isElbowArrow } from "./typeChecks";
+import { isElbowArrow, isTableElement } from "./typeChecks";
 
 import type {
   ElementsMap,
@@ -20,6 +20,15 @@ import type {
   ExcalidrawElement,
   NonDeletedSceneElementsMap,
 } from "./types";
+
+/** Table fields that change what gets painted. */
+const TABLE_VISUAL_KEYS = [
+  "cells",
+  "colWidths",
+  "rowHeights",
+  "headerRow",
+  "bandedRows",
+] as const;
 
 export type ElementUpdate<TElement extends ExcalidrawElement> = Omit<
   Partial<TElement>,
@@ -125,11 +134,19 @@ export const mutateElement = <TElement extends Mutable<ExcalidrawElement>>(
     return element;
   }
 
+  // A table's appearance lives entirely in its own fields rather than in a
+  // rough.js shape, so an in-place edit to the grid has to drop the cached
+  // canvas explicitly or the element keeps painting its previous contents.
+  const tableContentChanged =
+    isTableElement(element) &&
+    TABLE_VISUAL_KEYS.some((key) => typeof (updates as any)[key] !== "undefined");
+
   if (
     typeof updates.height !== "undefined" ||
     typeof updates.width !== "undefined" ||
     typeof fileId != "undefined" ||
-    typeof points !== "undefined"
+    typeof points !== "undefined" ||
+    tableContentChanged
   ) {
     ShapeCache.delete(element);
   }

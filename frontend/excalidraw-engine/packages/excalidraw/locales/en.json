@@ -171,7 +171,22 @@
     "linkToElement": "Link to object",
     "wrapSelectionInFrame": "Wrap selection in frame",
     "tab": "Tab",
-    "shapeSwitch": "Switch shape"
+    "shapeSwitch": "Switch shape",
+    "table": "Table",
+    "tableStructure": "Rows & columns",
+    "tableStyle": "Table style",
+    "insertRowBelow": "Insert row below",
+    "insertColumnAfter": "Insert column right",
+    "deleteRow": "Delete row",
+    "deleteColumn": "Delete column",
+    "headerRow": "Header row",
+    "bandedRows": "Banded rows",
+    "mergeCells": "Merge cells",
+    "unmergeCells": "Unmerge cells",
+    "cellBackground": "Cell background",
+    "cellText": "Cell text",
+    "bold": "Bold",
+    "italic": "Italic"
   },
   "elementLink": {
     "title": "Link to object",
@@ -315,6 +330,7 @@
     "penMode": "Pen mode - prevent touch",
     "link": "Add / Update link for a selected shape",
     "eraser": "Eraser",
+    "table": "Table",
     "frame": "Frame tool",
     "magicframe": "Wireframe to code",
     "embeddable": "Web Embed",
@@ -338,7 +354,8 @@
     "magicframe": "Wireframe to code",
     "embeddable": "Web Embed",
     "selection": "Selection",
-    "iframe": "IFrame"
+    "iframe": "IFrame",
+    "table": "Table"
   },
   "headings": {
     "canvasActions": "Canvas actions",

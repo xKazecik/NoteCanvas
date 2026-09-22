@@ -32,6 +32,7 @@ import {
 } from "@excalidraw/element";
 import { LinearElementEditor } from "@excalidraw/element";
 import { bumpVersion } from "@excalidraw/element";
+import { normalizeTable } from "@excalidraw/element";
 import { getContainerElement } from "@excalidraw/element";
 import { detectLineHeight } from "@excalidraw/element";
 import {
@@ -96,6 +97,7 @@ export const AllowedExcalidrawActiveTools: Record<
   selection: true,
   lasso: true,
   text: true,
+  table: true,
   rectangle: true,
   diamond: true,
   ellipse: true,
@@ -473,6 +475,21 @@ export const restoreElement = (
       return restoreElementWithProperties(element, {
         name: element.name ?? null,
       });
+    case "table": {
+      // the payload may predate a schema change or come from a peer, so the
+      // grid is rebuilt rather than trusted
+      const { colWidths, rowHeights, cells, width, height } =
+        normalizeTable(element);
+      const restored = restoreElementWithProperties(element, {
+        colWidths,
+        rowHeights,
+        cells,
+        headerRow: element.headerRow ?? false,
+        bandedRows: element.bandedRows ?? false,
+      });
+      // the outer box is always derived from the tracks, never from stored w/h
+      return { ...restored, width, height };
+    }
 
     // Don't use default case so as to catch a missing an element type case.
     // We also don't want to throw, but instead return void so we filter

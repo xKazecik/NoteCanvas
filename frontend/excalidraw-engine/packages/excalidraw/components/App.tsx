@@ -127,6 +127,13 @@ import {
   newFreeDrawElement,
   newEmbeddableElement,
   newMagicFrameElement,
+  newTableElement,
+  getCellAtLocalPoint,
+  getTrackHandleAtLocalPoint,
+  isTableElement,
+  setColumnWidth,
+  setRowHeight,
+  toLocalPoint,
   newIframeElement,
   newArrowElement,
   newElement,
@@ -276,7 +283,10 @@ import type {
   ExcalidrawElbowArrowElement,
   SceneElementsMap,
   ExcalidrawBindableElement,
+  ExcalidrawTableElement,
 } from "@excalidraw/element/types";
+
+import type { CellPosition } from "@excalidraw/element";
 
 import type { Mutable, ValueOf } from "@excalidraw/common/utility-types";
 
@@ -407,6 +417,9 @@ import { ElementCanvasButtons } from "../components/ElementCanvasButtons";
 import { LaserTrails } from "../laser-trails";
 import { withBatchedUpdates, withBatchedUpdatesThrottled } from "../reactUtils";
 import { textWysiwyg } from "../wysiwyg/textWysiwyg";
+import { tableCellWysiwyg } from "../wysiwyg/tableCellWysiwyg";
+
+import type { TableCellEditorHandle } from "../wysiwyg/tableCellWysiwyg";
 import { isOverScrollBars } from "../scene/scrollbars";
 
 import { isMaybeMermaidDefinition } from "../mermaid";
@@ -554,6 +567,9 @@ export const useExcalidrawSetAppState = () =>
 export const useExcalidrawActionManager = () =>
   useContext(ExcalidrawActionManagerContext);
 
+/** Pointer distance (px at 100% zoom) that grabs a table's row/column border. */
+const TABLE_TRACK_HANDLE_THRESHOLD = 5;
+
 let didTapTwice: boolean = false;
 let tappedTwiceTimer = 0;
 let firstTapPosition: { x: number; y: number } | null = null;
@@ -647,6 +663,8 @@ class App extends React.Component<AppProps, AppState> {
 
   animationFrameHandler = new AnimationFrameHandler();
 
+  /** Live table-cell text editor, when one is open. */
+  private tableCellEditor: TableCellEditorHandle | null = null;
   laserTrails = new LaserTrails(this.animationFrameHandler, this);
   eraserTrail = new EraserTrail(this.animationFrameHandler, this);
   lassoTrail = new LassoTrail(this.animationFrameHandler, this);
@@ -6025,6 +6043,13 @@ class App extends React.Component<AppProps, AppState> {
       return;
     }
 
+    const tableHit = this.getTableCellAtSceneCoords(sceneX, sceneY);
+    if (tableHit) {
+      resetCursor(this.interactiveCanvas);
+      this.startTableCellEditing(tableHit.element, tableHit.cell);
+      return;
+    }
+
     resetCursor(this.interactiveCanvas);
 
     const selectedGroupIds = getSelectedGroupIds(this.state);
@@ -6718,6 +6743,10 @@ class App extends React.Component<AppProps, AppState> {
       scenePointer,
       hitElementMightBeLocked,
     );
+    const tableTrackHandle = this.getTableTrackHandleAtSceneCoords(
+      scenePointer.x,
+      scenePointer.y,
+    );
     if (isEraserActive(this.state)) {
       return;
     }
@@ -6745,6 +6774,14 @@ class App extends React.Component<AppProps, AppState> {
         setCursor(
           this.interactiveCanvas,
           isTextElement(hitElement) ? CURSOR_TYPE.TEXT : CURSOR_TYPE.CROSSHAIR,
+        );
+      } else if (tableTrackHandle) {
+        // signal that this border can be dragged, the way a spreadsheet does
+        setCursor(
+          this.interactiveCanvas,
+          tableTrackHandle.handle.axis === "col"
+            ? CURSOR_TYPE.COL_RESIZE
+            : CURSOR_TYPE.ROW_RESIZE,
         );
       } else if (this.state.viewModeEnabled) {
         setCursor(this.interactiveCanvas, CURSOR_TYPE.GRAB);
@@ -7183,6 +7220,10 @@ class App extends React.Component<AppProps, AppState> {
     this.clearSelectionIfNotUsingSelection();
     this.updateBindingEnabledOnPointerMove(event);
 
+    if (this.maybeStartTableTrackResize(event)) {
+      return;
+    }
+
     if (this.handleSelectionOnPointerDown(event, pointerDownState)) {
       return;
     }
@@ -7348,6 +7389,8 @@ class App extends React.Component<AppProps, AppState> {
         pointerDownState.lastCoords.x,
         pointerDownState.lastCoords.y,
       );
+    } else if (this.state.activeTool.type === TOOL_TYPE.table) {
+      this.createTableElementOnPointerDown(pointerDownState);
     } else if (
       this.state.activeTool.type !== "eraser" &&
       this.state.activeTool.type !== "hand" &&
@@ -8822,6 +8865,202 @@ class App extends React.Component<AppProps, AppState> {
         newElement: element,
       });
     }
+  };
+
+  /**
+   * Tables are click-to-insert rather than drag-to-size: a dragged-out box would
+   * have to guess a row and column count, and the normal resize handles already
+   * reflow the tracks afterwards.
+   */
+  private createTableElementOnPointerDown = (
+    pointerDownState: PointerDownState,
+  ): void => {
+    const [gridX, gridY] = getGridPoint(
+      pointerDownState.origin.x,
+      pointerDownState.origin.y,
+      this.lastPointerDownEvent?.[KEYS.CTRL_OR_CMD]
+        ? null
+        : this.getEffectiveGridSize(),
+    );
+
+    const topLayerFrame = this.getTopLayerFrameAtSceneCoords({
+      x: gridX,
+      y: gridY,
+    });
+
+    const table = newTableElement({
+      x: gridX,
+      y: gridY,
+      strokeColor: this.state.currentItemStrokeColor,
+      backgroundColor: "transparent",
+      fillStyle: this.state.currentItemFillStyle,
+      strokeWidth: this.state.currentItemStrokeWidth,
+      strokeStyle: this.state.currentItemStrokeStyle,
+      roughness: this.state.currentItemRoughness,
+      opacity: this.state.currentItemOpacity,
+      roundness: null,
+      locked: false,
+      frameId: topLayerFrame ? topLayerFrame.id : null,
+    });
+
+    this.scene.insertElement(table);
+    this.setState((prevState) => ({
+      ...prevState,
+      multiElement: null,
+      newElement: null,
+      selectedElementIds: makeNextSelectedElementIds(
+        { [table.id]: true },
+        prevState,
+      ),
+      activeTool: updateActiveTool(this.state, { type: "selection" }),
+    }));
+  };
+
+  /** The table cell under a scene point, if any table sits there. */
+  private getTableCellAtSceneCoords = (sceneX: number, sceneY: number) => {
+    const hit = this.getElementAtPosition(sceneX, sceneY);
+    if (!isTableElement(hit)) {
+      return null;
+    }
+    const local = toLocalPoint(hit, sceneX, sceneY);
+    const cell = getCellAtLocalPoint(hit, local.x, local.y);
+    return cell ? { element: hit, cell } : null;
+  };
+
+  /**
+   * The column/row boundary under the pointer, on a selected table. Requiring
+   * the table to be selected keeps a first click on a table a plain selection
+   * rather than an accidental resize.
+   */
+  private getTableTrackHandleAtSceneCoords = (
+    sceneX: number,
+    sceneY: number,
+  ) => {
+    if (
+      this.state.viewModeEnabled ||
+      this.state.activeTool.type !== this.state.preferredSelectionTool.type
+    ) {
+      return null;
+    }
+    const table = this.scene
+      .getSelectedElements(this.state)
+      .find(isTableElement);
+    if (!table || table.locked) {
+      return null;
+    }
+    const local = toLocalPoint(table, sceneX, sceneY);
+    const handle = getTrackHandleAtLocalPoint(
+      table,
+      local.x,
+      local.y,
+      TABLE_TRACK_HANDLE_THRESHOLD / this.state.zoom.value,
+    );
+    return handle ? { table, handle } : null;
+  };
+
+  /**
+   * Drag a column or row boundary to resize just that track. Runs its own
+   * pointer loop rather than going through the element-drag state machine,
+   * which would move the table instead.
+   */
+  private maybeStartTableTrackResize = (
+    event: React.PointerEvent<HTMLElement>,
+  ): boolean => {
+    const origin = viewportCoordsToSceneCoords(event, this.state);
+    const target = this.getTableTrackHandleAtSceneCoords(origin.x, origin.y);
+    if (!target) {
+      return false;
+    }
+    const { table, handle } = target;
+    const startSize =
+      handle.axis === "col"
+        ? table.colWidths[handle.index]
+        : table.rowHeights[handle.index];
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const point = viewportCoordsToSceneCoords(moveEvent, this.state);
+      // project the drag onto the table's own axes so rotated tables behave
+      const cos = Math.cos(-table.angle);
+      const sin = Math.sin(-table.angle);
+      const dx = point.x - origin.x;
+      const dy = point.y - origin.y;
+      const delta =
+        handle.axis === "col" ? dx * cos - dy * sin : dx * sin + dy * cos;
+
+      const latest = this.scene.getElement(table.id);
+      if (!isTableElement(latest)) {
+        return;
+      }
+      this.scene.mutateElement(
+        latest,
+        handle.axis === "col"
+          ? setColumnWidth(latest, handle.index, startSize + delta)
+          : setRowHeight(latest, handle.index, startSize + delta),
+      );
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener(EVENT.POINTER_MOVE, onPointerMove);
+      window.removeEventListener(EVENT.POINTER_UP, onPointerUp);
+      this.store.scheduleCapture();
+    };
+
+    window.addEventListener(EVENT.POINTER_MOVE, onPointerMove);
+    window.addEventListener(EVENT.POINTER_UP, onPointerUp);
+    return true;
+  };
+
+  private startTableCellEditing = (
+    element: ExcalidrawTableElement,
+    cell: CellPosition,
+  ) => {
+    this.tableCellEditor?.submit();
+
+    const commit = (text: string) => {
+      const latest = this.scene.getElement(element.id);
+      if (!isTableElement(latest)) {
+        return;
+      }
+      const cells = latest.cells.map((row, rowIndex) =>
+        row.map((existing, colIndex) =>
+          rowIndex === cell.row && colIndex === cell.col
+            ? { ...existing, text }
+            : existing,
+        ),
+      );
+      this.scene.mutateElement(latest, { cells });
+    };
+
+    this.tableCellEditor =
+      tableCellWysiwyg({
+        element,
+        cell,
+        theme: this.state.theme,
+        excalidrawContainer: this.excalidrawContainerRef.current,
+        getViewportCoords: (x, y) => {
+          const { x: viewportX, y: viewportY } = sceneCoordsToViewportCoords(
+            { sceneX: x, sceneY: y },
+            this.state,
+          );
+          return [
+            viewportX - this.state.offsetLeft,
+            viewportY - this.state.offsetTop,
+          ];
+        },
+        getZoom: () => this.state.zoom.value,
+        onChange: () => {},
+        onSubmit: (text) => {
+          this.tableCellEditor = null;
+          commit(text);
+          this.store.scheduleCapture();
+        },
+        onMove: (next) => {
+          const latest = this.scene.getElement(element.id);
+          if (isTableElement(latest)) {
+            this.startTableCellEditing(latest, next);
+          }
+        },
+      }) ?? null;
   };
 
   private createFrameElementOnPointerDown = (
@@ -10479,8 +10718,24 @@ class App extends React.Component<AppProps, AppState> {
         this.restoreReadyToEraseElements();
       }
 
+      // Clicking inside an already-selected table picks a cell for the table
+      // panel to format; shift-clicking grows the range (used by merge). This
+      // is worked out before the element-selection handling below, which would
+      // otherwise read the same shift-click as "toggle this element off".
+      const tableCellClick =
+        !pointerDownState.drag.hasOccurred &&
+        !this.state.isResizing &&
+        isTableElement(hitElement) &&
+        this.state.selectedElementIds[hitElement.id]
+          ? this.getTableCellAtSceneCoords(
+              pointerDownState.origin.x,
+              pointerDownState.origin.y,
+            )
+          : null;
+
       if (
         hitElement &&
+        !tableCellClick &&
         !pointerDownState.drag.hasOccurred &&
         !pointerDownState.hit.wasAddedToSelection &&
         // if we're editing a line, pointerup shouldn't switch selection if
@@ -10644,7 +10899,25 @@ class App extends React.Component<AppProps, AppState> {
         }
       }
 
+      if (tableCellClick) {
+        const { element: table, cell } = tableCellClick;
+        this.setState((prevState) => ({
+          selectedTableCells: {
+            elementId: table.id,
+            anchor:
+              childEvent.shiftKey &&
+              prevState.selectedTableCells?.elementId === table.id
+                ? prevState.selectedTableCells.anchor
+                : cell,
+            focus: cell,
+          },
+        }));
+      }
+
       if (
+        // a click that landed on a table cell selects the cell instead of
+        // toggling the table off
+        !tableCellClick &&
         // do not clear selection if lasso is active
         this.state.activeTool.type !== "lasso" &&
         // not elbow midpoint dragged

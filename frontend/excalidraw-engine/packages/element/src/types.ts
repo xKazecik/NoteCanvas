@@ -160,6 +160,48 @@ export type InitializedExcalidrawImageElement = MarkNonNullable<
   "fileId"
 >;
 
+/** Per-cell visual overrides. Anything omitted falls back to the table-level
+    defaults, which in turn fall back to the element's own style. */
+export type TableCellStyle = {
+  backgroundColor?: string;
+  textColor?: string;
+  fontSize?: number;
+  fontFamily?: FontFamilyValues;
+  bold?: boolean;
+  italic?: boolean;
+  textAlign?: TextAlign;
+  verticalAlign?: VerticalAlign;
+};
+
+export type TableCell = {
+  text: string;
+  style?: TableCellStyle;
+  /** How many columns this cell spans. Absent or 1 means no horizontal merge. */
+  colSpan?: number;
+  /** How many rows this cell spans. Absent or 1 means no vertical merge. */
+  rowSpan?: number;
+  /** Set on the cells swallowed by a neighbour's span. They keep their slot in
+      the grid (so row/col indices stay stable) but are never drawn or edited. */
+  spannedBy?: { row: number; col: number };
+};
+
+export type ExcalidrawTableElement = _ExcalidrawElementBase &
+  Readonly<{
+    type: "table";
+    /** Column widths in scene units. Length defines the column count, and the
+        sum is kept equal to the element's width. */
+    colWidths: readonly number[];
+    /** Row heights in scene units. Length defines the row count, and the sum is
+        kept equal to the element's height. */
+    rowHeights: readonly number[];
+    /** Row-major grid. Always rowHeights.length x colWidths.length. */
+    cells: readonly (readonly TableCell[])[];
+    /** Style the first row as a header. */
+    headerRow: boolean;
+    /** Tint every other body row. */
+    bandedRows: boolean;
+  }>;
+
 export type ExcalidrawFrameElement = _ExcalidrawElementBase & {
   type: "frame";
   name: string | null;
@@ -196,6 +238,7 @@ export type ExcalidrawRectanguloidElement =
   | ExcalidrawIframeLikeElement
   | ExcalidrawFrameLikeElement
   | ExcalidrawEmbeddableElement
+  | ExcalidrawTableElement
   | ExcalidrawSelectionElement;
 
 /**
@@ -213,7 +256,8 @@ export type ExcalidrawElement =
   | ExcalidrawFrameElement
   | ExcalidrawMagicFrameElement
   | ExcalidrawIframeElement
-  | ExcalidrawEmbeddableElement;
+  | ExcalidrawEmbeddableElement
+  | ExcalidrawTableElement;
 
 export type ExcalidrawNonSelectionElement = Exclude<
   ExcalidrawElement,
@@ -265,7 +309,8 @@ export type ExcalidrawBindableElement =
   | ExcalidrawIframeElement
   | ExcalidrawEmbeddableElement
   | ExcalidrawFrameElement
-  | ExcalidrawMagicFrameElement;
+  | ExcalidrawMagicFrameElement
+  | ExcalidrawTableElement;
 
 export type ExcalidrawTextContainer =
   | ExcalidrawRectangleElement

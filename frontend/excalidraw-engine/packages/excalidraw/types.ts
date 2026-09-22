@@ -219,6 +219,7 @@ export type ToolType =
   | "frame"
   | "magicframe"
   | "embeddable"
+  | "table"
   | "laser";
 
 export type ElementOrToolType = ExcalidrawElementType | ToolType | "custom";
@@ -282,6 +283,7 @@ export type InteractiveCanvasAppState = Readonly<
     selectionElement: AppState["selectionElement"];
     selectedGroupIds: AppState["selectedGroupIds"];
     selectedLinearElement: AppState["selectedLinearElement"];
+    selectedTableCells: AppState["selectedTableCells"];
     multiElement: AppState["multiElement"];
     newElement: AppState["newElement"];
     isBindingEnabled: AppState["isBindingEnabled"];
@@ -496,6 +498,16 @@ export interface AppState {
       };
   showHyperlinkPopup: false | "info" | "editor";
   selectedLinearElement: LinearElementEditor | null;
+  /**
+   * The cell range selected inside a table, which the table panel formats.
+   * `anchor` is where the drag started, `focus` where it currently is; a
+   * single cell has both equal.
+   */
+  selectedTableCells: {
+    elementId: ExcalidrawElement["id"];
+    anchor: { row: number; col: number };
+    focus: { row: number; col: number };
+  } | null;
   snapLines: readonly SnapLine[];
   originSnapOffset: {
     x: number;

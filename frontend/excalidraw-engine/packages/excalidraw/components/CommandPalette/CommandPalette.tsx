@@ -529,7 +529,8 @@ function CommandPaletteInner({
 
           const letter =
             key && capitalizeString(typeof key === "string" ? key : key[0]);
-          const shortcut = letter || numericKey;
+          // the table tool has no numeric slot, so this can be null
+          const shortcut = letter || numericKey || undefined;
 
           const command: CommandPaletteItem = {
             label: t(`toolBar.${value}`),

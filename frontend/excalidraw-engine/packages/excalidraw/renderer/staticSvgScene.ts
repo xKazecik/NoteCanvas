@@ -41,6 +41,8 @@ import type {
   NonDeletedExcalidrawElement,
 } from "@excalidraw/element/types";
 
+import { renderTableToSvg, themeForExport } from "./svgTable";
+
 import type { RenderableElementsMap, SVGRenderConfig } from "../scene/types";
 import type { AppState, BinaryFiles } from "../types";
 import type { Drawable } from "roughjs/bin/core";
@@ -573,6 +575,31 @@ const renderElementToSvg = (
         );
         addToRoot(clipG || g, element);
       }
+      break;
+    }
+    case "table": {
+      const node = renderTableToSvg(
+        element,
+        themeForExport(renderConfig.exportWithDarkMode),
+      );
+      if (opacity !== 1) {
+        node.setAttribute("stroke-opacity", `${opacity}`);
+        node.setAttribute("fill-opacity", `${opacity}`);
+      }
+      node.setAttribute(
+        "transform",
+        `translate(${offsetX || 0} ${
+          offsetY || 0
+        }) rotate(${degree} ${cx} ${cy})`,
+      );
+      const g = maybeWrapNodesInFrameClipPath(
+        element,
+        root,
+        [node],
+        renderConfig.frameRendering,
+        elementsMap,
+      );
+      addToRoot(g || node, element);
       break;
     }
     // frames are not rendered and only acts as a container

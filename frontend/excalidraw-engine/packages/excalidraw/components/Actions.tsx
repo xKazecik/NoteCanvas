@@ -16,6 +16,7 @@ import {
   isElbowArrow,
   isImageElement,
   isLinearElement,
+  isTableElement,
   isTextElement,
   isArrowElement,
   hasStrokeColor,
@@ -240,6 +241,10 @@ export const SelectedShapeActions = ({
         targetElements.some((element) => canHaveArrowheads(element.type))) && (
         <>{renderAction("changeArrowhead")}</>
       )}
+
+      {targetElements.length === 1 &&
+        isTableElement(targetElements[0]) &&
+        renderAction("tableOperation")}
 
       {renderAction("changeOpacity")}
 
@@ -842,6 +847,13 @@ export const CompactShapeActions = ({
         container={container}
         app={app}
       />
+      {/* Table */}
+      {targetElements.length === 1 && isTableElement(targetElements[0]) && (
+        <div className="compact-action-item">
+          {renderAction("tableOperation")}
+        </div>
+      )}
+
       {/* Linear Editor */}
       {showLineEditorAction && (
         <div className="compact-action-item">
@@ -1096,9 +1108,10 @@ export const ShapesSwitcher = ({
           const label = t(`toolBar.${value}`);
           const letter =
             key && capitalizeString(typeof key === "string" ? key : key[0]);
-          const shortcut = letter
-            ? `${letter} ${t("helpDialog.or")} ${numericKey}`
-            : `${numericKey}`;
+          const shortcut =
+            letter && numericKey
+              ? `${letter} ${t("helpDialog.or")} ${numericKey}`
+              : `${letter || numericKey || ""}`;
           // when in compact styles panel mode (tablet)
           // use a ToolPopover for selection/lasso toggle as well
           if (

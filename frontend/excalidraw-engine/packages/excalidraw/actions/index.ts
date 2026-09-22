@@ -20,6 +20,7 @@ export {
   actionChangeVerticalAlign,
   actionChangeArrowProperties,
 } from "./actionProperties";
+export { actionTableOperation, getTableTarget } from "./actionTable";
 
 export {
   actionChangeViewBackgroundColor,

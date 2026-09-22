@@ -245,6 +245,7 @@ const getRelevantAppStateProps = (
   selectionElement: appState.selectionElement,
   selectedGroupIds: appState.selectedGroupIds,
   selectedLinearElement: appState.selectedLinearElement,
+  selectedTableCells: appState.selectedTableCells,
   multiElement: appState.multiElement,
   newElement: appState.newElement,
   isBindingEnabled: appState.isBindingEnabled,

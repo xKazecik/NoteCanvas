@@ -32,6 +32,10 @@ import {
   isLinearElement,
   isLineElement,
   isTextElement,
+  isTableElement,
+  columnOffsets,
+  rowOffsets,
+  normalizeRange,
   LinearElementEditor,
 } from "@excalidraw/element";
 
@@ -1275,6 +1279,40 @@ const _renderInteractiveScene = ({
       ) {
         renderLinearElementPointHighlight(context, appState, elementsMap);
       }
+    }
+  }
+
+  // Paint the table cell range, so the table panel's target is visible
+  if (appState.selectedTableCells) {
+    const table = elementsMap.get(appState.selectedTableCells.elementId);
+    if (isTableElement(table)) {
+      const { top, left, bottom, right } = normalizeRange(
+        table,
+        appState.selectedTableCells.anchor,
+        appState.selectedTableCells.focus,
+      );
+      const xs = columnOffsets(table);
+      const ys = rowOffsets(table);
+      const x = xs[left];
+      const y = ys[top];
+      const width = xs[right + 1] - x;
+      const height = ys[bottom + 1] - y;
+
+      context.save();
+      context.translate(appState.scrollX, appState.scrollY);
+      context.translate(
+        table.x + table.width / 2,
+        table.y + table.height / 2,
+      );
+      context.rotate(table.angle);
+      context.translate(-table.width / 2, -table.height / 2);
+
+      context.fillStyle = "rgba(105, 101, 219, 0.12)";
+      context.fillRect(x, y, width, height);
+      context.strokeStyle = renderConfig.selectionColor ?? "#6965db";
+      context.lineWidth = 2 / appState.zoom.value;
+      context.strokeRect(x, y, width, height);
+      context.restore();
     }
   }
 

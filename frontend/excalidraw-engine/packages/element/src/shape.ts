@@ -823,7 +823,9 @@ const generateElementShape = (
     case "frame":
     case "magicframe":
     case "text":
-    case "image": {
+    case "image":
+    // tables are painted directly onto the 2d context, not via rough.js
+    case "table": {
       const shape: ElementShapes[typeof element.type] = null;
       // we return (and cache) `null` to make sure we don't regenerate
       // `element.canvas` on rerenders
@@ -921,6 +923,7 @@ export const getElementShape = <Point extends GlobalPoint | LocalPoint>(
     case "image":
     case "iframe":
     case "text":
+    case "table":
     case "selection":
       return getPolygonShape(element);
     case "arrow":

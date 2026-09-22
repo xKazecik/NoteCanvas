@@ -10,6 +10,7 @@ export const hasBackground = (type: ElementOrToolType) =>
   type === "freedraw";
 
 export const hasStrokeColor = (type: ElementOrToolType) =>
+  type === "table" ||
   type === "rectangle" ||
   type === "ellipse" ||
   type === "diamond" ||
@@ -19,6 +20,7 @@ export const hasStrokeColor = (type: ElementOrToolType) =>
   type === "text";
 
 export const hasStrokeWidth = (type: ElementOrToolType) =>
+  type === "table" ||
   type === "rectangle" ||
   type === "iframe" ||
   type === "embeddable" ||
