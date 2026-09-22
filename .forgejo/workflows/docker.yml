@@ -37,10 +37,10 @@ on:
 env:
   REGISTRY: git.kazecik.com
   IMAGE: git.kazecik.com/xkazecik/notecanvas
-  VERSION_MAJOR: '1'
+  VERSION_MAJOR: '2'
   # MINOR = commit count - this. Set to the commit count at the fork point so
   # the first notecanvas build is 1.0.
-  COMMIT_OFFSET: '7'
+  COMMIT_OFFSET: '14'
 
 jobs:
   build:
