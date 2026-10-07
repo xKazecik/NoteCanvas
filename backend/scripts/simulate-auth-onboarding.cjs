@@ -3,7 +3,7 @@
 require("dotenv").config();
 
 const path = require("path");
-const { PrismaClient } = require("../src/generated/client");
+const { createPrismaClient } = require("./prisma-client.cjs");
 const { runPrisma } = require("./provider-prisma.cjs");
 
 const BOOTSTRAP_USER_ID = "bootstrap-admin";
@@ -151,7 +151,7 @@ const nodeEnv = process.env.NODE_ENV || "development";
     }
   }
 
-  const prisma = new PrismaClient();
+  const prisma = createPrismaClient();
 
   try {
     const before = {

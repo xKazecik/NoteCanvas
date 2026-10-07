@@ -1,12 +1,11 @@
 .PHONY: help install dev build test test-frontend test-backend test-e2e test-e2e-docker \
         lint lint-frontend lint-backend check clean docker-build docker-run docker-down docker-logs \
-        lab-build lab-up lab-down lab-reset lab-status lab-logs lab-smoke lab-open \
         release pre-release version-bump changelog changelog-open changelog-keep db-migrate db-reset
 
 DOCKER_USERNAME := zimengxiong
 IMAGE_NAME := excalidash
 VERSION := $(shell cat VERSION 2>/dev/null || echo "0.0.0")
-LAB_COMPOSE := docker compose -f docker-compose.lab.yml
+BUILD_COMPOSE := docker compose -f docker-compose.build.yml
 
 .DEFAULT_GOAL := help
 
@@ -22,8 +21,6 @@ help: ## Show this help message
 	@grep -hE '^test[-a-zA-Z0-9_]*:.*## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-20s %s\n", $$1, $$2}'
 	@echo "Docker:"
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '(docker)' | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
-	@echo "Environment lab:"
-	@grep -hE '^lab[-a-zA-Z0-9_]*:.*## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  %-20s %s\n", $$1, $$2}'
 	@echo "Release:"
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | grep -E '(release|version|changelog)' | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
 	@echo "Database:"
@@ -174,9 +171,9 @@ test-watch: ## Run tests in watch mode
 		(cd backend && npm run test:watch) & \
 		wait
 
-docker-build: ## Build Docker images locally
+docker-build: ## Build the Docker image from source (docker-compose.build.yml)
 	@echo "Building Docker images..."
-	docker compose build
+	$(BUILD_COMPOSE) build
 	@echo "Docker images built."
 
 docker-run: ## Start Docker containers (docker-compose up)
@@ -207,52 +204,8 @@ docker-ps: ## Show running Docker containers
 
 docker-restart: docker-down docker-run ## Restart Docker containers
 
-docker-rebuild: docker-down docker-build docker-run ## Rebuild and restart containers
-
-lab-build: ## Build reproducible local environment lab images
-	$(LAB_COMPOSE) build
-
-lab-up: ## Start all reproducible lab environments on ports 1101-1105
-	$(LAB_COMPOSE) up -d --build
-	@echo ""
-	@echo "ExcaliDash lab is starting:"
-	@echo "  basic local auth:       http://localhost:1101"
-	@echo "  basic + SeaweedFS S3:   http://localhost:1102"
-	@echo "  OIDC enforced:          http://localhost:1103"
-	@echo "  hybrid auth:            http://localhost:1104"
-	@echo "  trusted proxy variant:  http://localhost:1105"
-	@echo "  Keycloak admin:         http://localhost:18080/admin"
-	@echo "  SeaweedFS filer:        http://localhost:18888"
-	@echo "  SeaweedFS S3 endpoint:  http://localhost:18333"
-	@echo ""
-	@echo "Run 'make lab-smoke' once containers are healthy."
-
-lab-down: ## Stop lab containers without deleting volumes
-	$(LAB_COMPOSE) down
-
-lab-reset: ## Stop lab containers and delete lab volumes for a fresh reproducible run
-	$(LAB_COMPOSE) down -v --remove-orphans
-
-lab-status: ## Show lab container status
-	$(LAB_COMPOSE) ps
-
-lab-logs: ## Follow lab container logs
-	$(LAB_COMPOSE) logs -f
-
-lab-smoke: ## Verify all lab frontends, backend health proxies, and SeaweedFS bucket setup
-	chmod +x scripts/lab-smoke.sh
-	./scripts/lab-smoke.sh
-
-lab-open: ## Open all lab URLs in the default browser
-	@URLS="http://localhost:1101 http://localhost:1102 http://localhost:1103 http://localhost:1104 http://localhost:1105 http://localhost:18080/admin http://localhost:18888 http://localhost:18333"; \
-	if command -v open >/dev/null 2>&1; then \
-		for URL in $$URLS; do open "$$URL"; done; \
-	elif command -v xdg-open >/dev/null 2>&1; then \
-		for URL in $$URLS; do xdg-open "$$URL" >/dev/null 2>&1 & done; \
-	else \
-		echo "No browser opener found. Open these URLs manually:"; \
-		for URL in $$URLS; do echo "  $$URL"; done; \
-	fi
+docker-rebuild: docker-down ## Rebuild from source and restart (docker-compose.build.yml)
+	$(BUILD_COMPOSE) up -d --build
 
 version: ## Show current version
 	@echo "Current version: $(VERSION)"
@@ -321,19 +274,19 @@ include make/release.mk
 
 db-migrate: ## Run database migrations
 	@echo "Running database migrations..."
-	cd backend && node scripts/provider-prisma.cjs --persist-provider-migrations migrate dev --skip-generate
+	cd backend && node scripts/provider-prisma.cjs --persist-provider-migrations migrate dev
 	@echo "Migrations complete."
 
 db-generate: ## Generate Prisma client
 	@echo "Generating Prisma client..."
-	cd backend && npx prisma generate
+	cd backend && npm run prisma:generate
 	@echo "Client generated."
 
 db-reset: ## Reset database (WARNING: destroys all data)
 	@echo "WARNING: This will destroy all data!"
 	@read -p "Are you sure? [y/N]: " confirm; \
 	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
-		cd backend && node scripts/provider-prisma.cjs migrate reset --force --skip-generate; \
+		cd backend && node scripts/provider-prisma.cjs migrate reset --force; \
 		echo "Database reset complete."; \
 	else \
 		echo "Cancelled"; \

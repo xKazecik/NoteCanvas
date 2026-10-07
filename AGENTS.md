@@ -9,71 +9,26 @@ Core user-facing features include organizing drawings into collections, search, 
 
 ## Helpers (Operations)
 
-- Official supported deployment flow (production): `docker-compose.prod.yml`
-  - `curl -OL https://raw.githubusercontent.com/ZimengXiong/ExcaliDash/main/docker-compose.prod.yml`
-  - `docker compose -f docker-compose.prod.yml pull`
-  - `docker compose -f docker-compose.prod.yml up -d`
+- Deployment uses two compose files; every setting lives in `.env` (copied from `.env.example`):
+  - `docker-compose.yml`: runs the published image `git.kazecik.com/xkazecik/notecanvas` (official path).
+  - `docker-compose.build.yml`: builds the same image from the checkout; same container name, port and volumes.
+- Run / upgrade production:
+  - `docker compose pull`
+  - `docker compose up -d`
+  - From a source build, add `-f docker-compose.build.yml` and `--build` instead of `pull`.
 - Production hardening quick checklist:
-  - Pin images to a specific release tag (or digest) instead of `:latest` for reproducible upgrades/rollbacks.
-  - Stable tags are published as `zimengxiong/excalidash-backend:<VERSION>` and `zimengxiong/excalidash-frontend:<VERSION>` (and also `:latest`).
-  - Pre-release tags are published as `:dev` and `:<VERSION>-dev` (and do not update `:latest`).
+  - Pin `NOTECANVAS_TAG` in `.env` to a version tag (for example `2.1`) instead of `latest` for reproducible upgrades/rollbacks.
+  - Images are tagged `<MAJOR>.<MINOR>`, `sha-<commit>` and `latest` by `.forgejo/workflows/docker.yml`.
   - Set fixed `JWT_SECRET` and `CSRF_SECRET` for portability and multi-instance/redeploy scenarios.
   - Set `FRONTEND_URL` to your public URL(s) and keep `TRUST_PROXY=false` unless you are behind a trusted proxy hop.
-  - Ensure the backend volume is backed up (SQLite DB + persisted secrets).
+  - Ensure the `notecanvas-data` volume is backed up (SQLite DB + persisted secrets).
 - Re-check production health:
-  - `docker compose -f docker-compose.prod.yml ps`
-  - `docker compose -f docker-compose.prod.yml logs backend --tail=200`
-  - `docker compose -f docker-compose.prod.yml logs -f backend`
-- Upgrade production:
-  - `docker compose -f docker-compose.prod.yml down` (if needed)
-  - `docker compose -f docker-compose.prod.yml pull`
-  - `docker compose -f docker-compose.prod.yml up -d`
+  - `docker compose ps`
+  - `docker compose logs notecanvas --tail=200`
+  - `docker compose logs -f notecanvas`
 - Check bootstrap/setup signal if onboarding blocks access:
-  - `docker compose -f docker-compose.prod.yml logs backend --tail=200 | grep "BOOTSTRAP SETUP"`
-- For local helper debugging with compose (repo checkout): `docker compose up -d` (uses `docker-compose.yml`; use `-f docker-compose.prod.yml` if you deployed from Docker Hub images)
+  - `docker compose logs notecanvas --tail=200 | grep "BOOTSTRAP SETUP"`
 - Must-read first for common user issues: `README.md`
-
-### Pinning And Switching Docker Tags
-
-Pin to a stable release (recommended for production):
-
-```yaml
-services:
-  backend:
-    image: zimengxiong/excalidash-backend:0.4.18
-  frontend:
-    image: zimengxiong/excalidash-frontend:0.4.18
-```
-
-Switch to pre-release images (rolling `:dev` tag):
-
-```yaml
-services:
-  backend:
-    image: zimengxiong/excalidash-backend:dev
-  frontend:
-    image: zimengxiong/excalidash-frontend:dev
-```
-
-Switch to a specific pre-release build (pinned `:<VERSION>-dev` tag):
-
-```yaml
-services:
-  backend:
-    image: zimengxiong/excalidash-backend:0.4.18-dev
-  frontend:
-    image: zimengxiong/excalidash-frontend:0.4.18-dev
-```
-
-Switch to a one-off custom dev tag (published by `make dev-release NAME=...`):
-
-```yaml
-services:
-  backend:
-    image: zimengxiong/excalidash-backend:0.4.18-dev-issue38
-  frontend:
-    image: zimengxiong/excalidash-frontend:0.4.18-dev-issue38
-```
 
 ## Contributors (Code Changes)
 
@@ -82,7 +37,7 @@ services:
 - Entry server init: `backend/src/index.ts`
 - API client: `frontend/src/api/index.ts`
 - Realtime/editor behavior: `frontend/src/pages/Editor.tsx`
-- Deployment flow: `docker-compose*.yml`, `backend/Dockerfile`, `frontend/Dockerfile`, entrypoint scripts
+- Deployment flow: `docker-compose.yml`, `docker-compose.build.yml`, root `Dockerfile`, entrypoint scripts
 - Build/dev commands: `make build`, `npm test`, `make test-all`, `make test-e2e`
 - Development contributor flow:
   - `make install` → `make dev`
@@ -112,17 +67,16 @@ For setup and troubleshooting, start here.
 - If the question is about one error, find the nearest environment or script path before proposing code changes.
 - Encourage filing an issue when needed (new bug / unclear docs / missing troubleshooting):
   - Ask the user to include:
-    - Their deployment mode: Docker Hub compose (`docker-compose.prod.yml`) vs repo compose (`docker-compose.yml`) vs `make` vs direct `npm`
+    - Their deployment mode: published image (`docker-compose.yml`) vs source build (`docker-compose.build.yml`) vs `make` vs direct `npm`
     - App version tag(s) and image tags (or `VERSION` if built from source)
     - OS/arch (for example `linux/arm64`) and whether a reverse proxy is used
     - Sanitized relevant env vars: `AUTH_MODE`, `TRUST_PROXY`, `FRONTEND_URL` (do not share secrets)
-    - Logs: `docker compose ... logs backend --tail=200` and the exact error text
+    - Logs: `docker compose ... logs notecanvas --tail=200` and the exact error text
     - Repro steps and expected vs actual behavior
   - If the agent can reproduce or pinpoint the root cause, summarize findings and link relevant files/lines.
 - If startup is blocked, collect these values from the user first:
-  - Are they using Docker Hub compose (`docker-compose.prod.yml`), repo compose (`docker-compose.yml`), `make`, or direct `npm`?
-  - If using Docker Hub compose: `docker compose -f docker-compose.prod.yml ps` and `docker compose -f docker-compose.prod.yml logs backend --tail=200`
-  - If using repo compose: `docker compose ps` and `docker compose logs backend --tail=200`
+  - Are they using the published image (`docker-compose.yml`), a source build (`docker-compose.build.yml`), `make`, or direct `npm`?
+  - `docker compose ps` and `docker compose logs notecanvas --tail=200` (add `-f docker-compose.build.yml` for source builds)
   - If using a git clone: `git status`
   - Which auth mode is configured (`AUTH_MODE`)?
 
@@ -145,18 +99,17 @@ Understand runtime first, then touch code with local tests if requested.
 - `backend/`: Express API, Prisma schema, auth, sockets, scripts, Docker runtime.
 - `frontend/`: React UI, API client wiring, Vite config/build pipeline.
 - `e2e/`: Playwright tests and compose-based test runner.
-- `docker-compose.yml`: local compose setup for source builds.
-- `docker-compose.prod.yml`: production-style compose using published images.
+- `docker-compose.yml`: runs the published image; settings come from `.env`.
+- `docker-compose.build.yml`: builds the image from source; settings come from `.env`.
 - `Makefile`: repo-wide orchestration commands.
 - `README.md`: user-facing installation and operational docs.
 - `VERSION`: version string used in builds.
-  - Local OIDC helper: `docker-compose.oidc.yml` + `oidc/keycloak/realm-excalidash.json` (Keycloak container + realm seed; no users/passwords committed)
 
 ## Quick setup: local development
 
 Dependencies:
 
-- Node.js 20+
+- Node.js 24 LTS (22.12+ works)
 - npm
 - SQLite-supported environment (default)
 - Docker + Docker Compose if using compose path
@@ -172,7 +125,7 @@ Start backend + frontend in tmux:
 - Backend dev env:
   - `cd backend`
   - `cp .env.example .env`
-  - `npx prisma generate`
+  - `npm run prisma:generate`
   - `npx prisma db push`
   - `npm run dev`
 - Frontend dev env:
@@ -183,9 +136,8 @@ Start backend + frontend in tmux:
 
 Docker quickstart:
 
-- `docker compose -f docker-compose.prod.yml up -d` (official production path, pulls and runs image-based containers)
-- `docker compose -f docker-compose.prod.yml pull` and `up -d` for image-based deploy
-- Optional local-compose quickstart for source testing: `docker compose up -d` (uses `docker-compose.yml`)
+- `cp .env.example .env`, then `docker compose up -d` (official path, runs the published image)
+- Source build: `docker compose -f docker-compose.build.yml up -d --build`
 - App default host ports:
   - Compose production/frontend: `http://localhost:6767`
   - Backend internal port: `8000`

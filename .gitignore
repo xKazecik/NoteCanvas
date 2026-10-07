@@ -23,15 +23,13 @@ backend/prisma/.jwt_secret
 backend/prisma/.csrf_secret
 backend/prisma/.migration-lock/
 
-# Local OIDC/Keycloak dev files
-docker-compose.oidc.local.yml
-ops/keycloak/realm-excalidash-local.json
-
 # Uploads
 backend/uploads/
 
 # Generated files
 backend/src/generated/
+# Temporary PostgreSQL copy written by backend/scripts/generate-prisma-clients.cjs
+backend/prisma/schema.postgresql.prisma
 
 # Environment variables
 .env

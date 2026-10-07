@@ -200,6 +200,7 @@ export const resolveSafeUploadedFilePath = async (
   fileMeta: { filename?: unknown },
   uploadRoot: string
 ): Promise<string> => {
+  // nosemgrep -- resolved, realpath'd and checked with isPathInsideDirectory below
   const absoluteUploadRoot = path.resolve(uploadRoot);
   let canonicalUploadRoot = absoluteUploadRoot;
 
@@ -214,6 +215,7 @@ export const resolveSafeUploadedFilePath = async (
     throw new ImportValidationError("Invalid upload path");
   }
 
+  // nosemgrep -- filename matched against /^[a-f0-9]{32}$/ and checked with isPathInsideDirectory
   const joinedPath = path.resolve(canonicalUploadRoot, filename);
   if (!isPathInsideDirectory(joinedPath, canonicalUploadRoot)) {
     throw new ImportValidationError("Invalid upload path");
@@ -250,6 +252,7 @@ export const getCurrentLatestPrismaMigrationName = async (
   };
 
   try {
+    // nosemgrep -- constant path under the backend root
     const providerMigrationsDir = path.resolve(backendRoot, "prisma/migrations/sqlite");
 
     let dirs: string[] = [];
@@ -260,6 +263,7 @@ export const getCurrentLatestPrismaMigrationName = async (
     }
 
     if (dirs.length === 0) {
+      // nosemgrep -- constant path under the backend root
       dirs = await readMigrationDirs(path.resolve(backendRoot, "prisma/migrations"));
     }
 

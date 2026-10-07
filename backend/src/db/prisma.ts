@@ -1,5 +1,8 @@
 import { PrismaClient } from "../generated/client";
 import type { config as AppConfig } from "../config";
+import { resolveDatabaseUrl } from "../config/databaseUrl";
+import { readRaw } from "../config/env";
+import { createPrismaClient } from "./createPrismaClient";
 
 // Load config lazily. A static import would eagerly evaluate the config module
 // the moment this module is imported, snapshotting the environment before tests
@@ -13,7 +16,10 @@ declare global {
   var __excalidashPrisma: PrismaClient | undefined;
 }
 
-const prismaClient = globalThis.__excalidashPrisma ?? new PrismaClient();
+// Reads the raw env var rather than config for the same reason as above.
+const prismaClient =
+  globalThis.__excalidashPrisma ??
+  createPrismaClient(resolveDatabaseUrl(readRaw("DATABASE_URL")));
 
 // Cache the client across module re-imports (vitest resetModules, dev reload).
 // Done unconditionally so this module never needs config at load time.

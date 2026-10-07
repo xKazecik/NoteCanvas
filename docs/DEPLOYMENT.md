@@ -72,7 +72,8 @@ Auth modes:
 If you upgrade and see an onboarding/setup flow, follow the UI. For emergency-only operator access, you can temporarily bypass the onboarding gate:
 
 ```bash
-DISABLE_ONBOARDING_GATE=true docker compose -f docker-compose.prod.yml up -d
+# Add DISABLE_ONBOARDING_GATE=true to .env, then:
+docker compose up -d
 ```
 
 One-time first-admin bootstrap setup code (local auth only):
@@ -86,7 +87,7 @@ One-time first-admin bootstrap setup code (local auth only):
 Find the current code in logs:
 
 ```bash
-docker compose -f docker-compose.prod.yml logs excalidash --tail=200 | grep "BOOTSTRAP SETUP"
+docker compose logs notecanvas --tail=200 | grep "BOOTSTRAP SETUP"
 ```
 
 OIDC configuration (for `hybrid` / `oidc_enforced`) requires these backend env vars:
@@ -146,51 +147,6 @@ Notes:
 </details>
 
 <details>
-<summary>Local OIDC Test Stack (Docker + Keycloak)</summary>
-
-This repo includes a Keycloak container + realm seed for local OIDC testing:
-
-- Compose file: `docker-compose.oidc.yml`
-- Realm import: `oidc/keycloak/realm-excalidash.json`
-
-The realm seed intentionally contains **no users and no passwords**. You create a realm user and set a password via the Keycloak admin UI.
-
-Start Keycloak:
-
-```bash
-# From repo root
-# Choose a strong password; do not commit it.
-export KEYCLOAK_ADMIN_PASSWORD='...'
-docker compose -f docker-compose.oidc.yml up -d
-```
-
-Open Keycloak admin UI (realm/user setup):
-
-- `http://localhost:8080/admin`
-- Switch realm to `excalidash`
-- Create a user and set a password in `Credentials`
-
-Configure ExcaliDash backend for hybrid OIDC:
-
-```bash
-cd backend
-cp .env.oidc.example .env
-# If backend runs in Docker and Keycloak issuer is localhost for browser, set:
-# OIDC_DISCOVERY_URL=http://keycloak:8080/realms/excalidash
-# Ensure OIDC_REDIRECT_URI matches where your frontend is running:
-# - http://localhost:6767/api/auth/oidc/callback (repo frontend dev default)
-# - https://excalidash.example.com/api/auth/oidc/callback (production)
-```
-
-Stop/clean up:
-
-```bash
-docker compose -f docker-compose.oidc.yml down
-```
-
-</details>
-
-<details>
 <summary>Configuration (Backend Environment Variables)</summary>
 
 Base values are documented in `backend/.env.example`. Common ones to care about:
@@ -246,13 +202,7 @@ export DATABASE_URL="postgresql://user:password@localhost:5432/excalidash"
 
 The helper prompts for SQLite or PostgreSQL, sets `DATABASE_PROVIDER`, and writes the generated migration under `backend/prisma/migrations/<provider>/`. Switching providers does not migrate existing data between SQLite and PostgreSQL; treat the target database as a separate install unless you build and verify an explicit data migration.
 
-**PostgreSQL:** `docker-compose.pg-test.yml` is a runnable local example that brings up a PostgreSQL container alongside the backend wired to it. Use it to try the PostgreSQL path end to end:
-
-```bash
-docker compose -f docker-compose.pg-test.yml up
-```
-
-The credentials baked into that file are for local testing only; supply your own secrets and connection string for any real deployment.
+**PostgreSQL:** set `DATABASE_PROVIDER=postgresql` and a `DATABASE_URL` pointing at your server in `.env`; both compose files pass them through.
 
 </details>
 
@@ -275,8 +225,7 @@ Switching the Prisma provider does **not** copy your data — the two databases 
    ```
 3. Import the archive into the fresh postgres instance: `POST /api/import/excalidash` (Dashboard → Import). Optionally dry-run first with `POST /api/import/excalidash/verify`.
 
-Image blobs travel inside the archive, so this also carries database-stored images across. (`docker-compose.pg-test.yml` is a ready-made local postgres target for rehearsing the import.)
-
+Image blobs travel inside the archive, so this also carries database-stored images across.
 ### Migrate local (database bytes) → S3
 
 Set the S3 variables and restart — no script or downtime. For **AWS**, the bucket + credentials are enough:

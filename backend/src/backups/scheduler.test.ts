@@ -86,6 +86,7 @@ describe("cronMatches", () => {
 
 describe("createSqliteBackup", () => {
   const seedDb = (dir: string): string => {
+    // nosemgrep -- test temp directory
     const dbPath = path.join(dir, "source.db");
     const db = new Database(dbPath);
     db.exec("CREATE TABLE t (id INTEGER PRIMARY KEY, v TEXT)");

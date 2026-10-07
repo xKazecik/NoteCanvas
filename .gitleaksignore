@@ -1,0 +1,9 @@
+# Reviewed gitleaks findings in git history (format: commit:file:rule:line).
+
+# Test-only JWT_SECRET for the local PostgreSQL test compose file, since deleted.
+9877e3942d19fad1dfe445d6487a3901ccf9bcda:docker-compose.pg-test.yml:generic-api-key:29
+
+# excalidraw.com's public Firebase browser config, vendored with the upstream
+# Excalidraw source. Public by design and removed from these files since.
+9877e3942d19fad1dfe445d6487a3901ccf9bcda:frontend/excalidraw-engine/.env.development:gcp-api-key:17
+9877e3942d19fad1dfe445d6487a3901ccf9bcda:frontend/excalidraw-engine/.env.production:gcp-api-key:17

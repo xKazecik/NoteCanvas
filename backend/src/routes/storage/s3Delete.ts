@@ -21,7 +21,7 @@ export const deleteS3KeysInBatches = async ({
       if (result.status === "fulfilled") {
         deleted++;
       } else {
-        console.error(`${logPrefix} Failed to delete S3 object: ${batch[j]}`, result.reason);
+        console.error("%s Failed to delete S3 object:", logPrefix, batch[j], result.reason);
         errors++;
       }
     }

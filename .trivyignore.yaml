@@ -1,0 +1,42 @@
+# Findings reviewed and accepted. Each entry says why; dated entries come back
+# for review when they expire. Read by Trivy (trivy fs --ignorefile).
+
+vulnerabilities:
+  # braces: no fixed release exists. Only reached through Tailwind CSS 3 at
+  # build time (content globs from tailwind.config.js, never user input).
+  # The real fix is the Tailwind 4 migration.
+  - id: CVE-2026-93687
+    paths:
+      - frontend/package-lock.json
+    expired_at: 2027-04-01
+    statement: Build-time only (Tailwind 3); no fixed version; fixed by moving to Tailwind 4.
+
+  # Excalidraw 0.18.0 is flagged by version, but the XSS lives in mermaid
+  # (CVE-2025-54881, fixed in 10.9.4). The vendored fork already uses
+  # mermaid-to-excalidraw 1.1.3 and frontend/package.json overrides mermaid
+  # to 10.9.8.
+  - id: GHSA-39h7-pwv7-rc3x
+    paths:
+      - frontend/package-lock.json
+    statement: Not affected -- mermaid is overridden to 10.9.8 (fix landed in 10.9.4).
+
+misconfigurations:
+  # These images start as root on purpose: the entrypoint fixes ownership of
+  # the mounted volumes, then runs the backend as the unprivileged "nodejs"
+  # user (su-exec); nginx workers run as the "nginx" user.
+  - id: DS-0002
+    paths:
+      - Dockerfile
+      - backend/Dockerfile
+    statement: Entrypoint drops privileges (su-exec nodejs); root only for volume ownership.
+
+  # Test-only images, never deployed.
+  - id: DS-0002
+    paths:
+      - frontend/Dockerfile
+      - e2e/Dockerfile.playwright
+    statement: e2e test infrastructure; nginx needs root to bind :80.
+  - id: DS-0026
+    paths:
+      - e2e/Dockerfile.playwright
+    statement: Short-lived test runner container; nothing to health-check.

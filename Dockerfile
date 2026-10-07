@@ -9,7 +9,7 @@
 # ---------------------------------------------------------------------------
 # Frontend build
 # ---------------------------------------------------------------------------
-FROM node:20-alpine AS frontend-builder
+FROM node:24-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
@@ -50,7 +50,7 @@ RUN npm run build
 # ---------------------------------------------------------------------------
 # Backend build
 # ---------------------------------------------------------------------------
-FROM node:20-alpine AS backend-builder
+FROM node:24-alpine AS backend-builder
 
 WORKDIR /app
 
@@ -63,12 +63,12 @@ COPY backend/tsconfig.json ./
 RUN npm ci && npm cache clean --force
 
 COPY backend/prisma ./prisma/
+COPY backend/prisma.config.ts ./
+COPY backend/scripts ./scripts/
 
-# Set default provider for build-time Prisma generation (runtime can override via DATABASE_PROVIDER)
-RUN sed -i '/datasource db {/,/}/ s/provider = env("[^"]*")/provider = "sqlite"/; /datasource db {/,/}/ s/provider = "[^"]*"/provider = "sqlite"/' prisma/schema.prisma
-
-# Generate Prisma Client at build time (for TypeScript compilation)
-RUN npx prisma generate
+# Prisma 7 clients are TypeScript compiled with the app: generate the SQLite
+# and PostgreSQL ones here; the backend picks one from DATABASE_URL at runtime.
+RUN npm run prisma:generate
 
 COPY backend/src ./src
 
@@ -77,7 +77,7 @@ RUN npx tsc
 # ---------------------------------------------------------------------------
 # Runtime
 # ---------------------------------------------------------------------------
-FROM node:20-alpine
+FROM node:24-alpine
 
 # The update check compares this against the latest published image version.
 ARG VITE_APP_VERSION
@@ -106,8 +106,8 @@ COPY backend/prisma ./prisma_template/
 
 COPY --from=backend-builder /app/dist ./dist
 
-# Copy the generated Prisma Client from builder (will be regenerated at runtime if provider changes)
-COPY --from=backend-builder /app/src/generated ./dist/generated
+# Read by the Prisma CLI for migrations at startup.
+COPY backend/prisma.config.ts ./
 
 # Create necessary directories (ownership will be set in entrypoint)
 RUN mkdir -p /app/uploads /app/prisma
@@ -131,4 +131,9 @@ RUN sed -i 's/\r$//' /app/docker-entrypoint.sh /entrypoint.sh && \
 
 EXPOSE 80
 
+# Through nginx to the backend, so one check covers both processes. Migrations
+# run before the backend listens, hence the long start period.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 CMD wget --quiet --tries=1 --output-document=/dev/null http://127.0.0.1:80/api/health || exit 1
+
+# nosemgrep -- starts as root to fix volume ownership, then runs the backend as "nodejs" (su-exec)
 ENTRYPOINT ["/entrypoint.sh"]
