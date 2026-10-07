@@ -157,13 +157,6 @@ Notes:
 
 # Installation
 
-> [!CAUTION]
-> This is a BETA deployment and production-readiness depends on deployment controls:
-> use TLS, trusted reverse proxy, fixed secrets, backups, and endpoint rate limits.
-
-> [!CAUTION]
-> ExcaliDash is in BETA. Please backup your data regularly.
-
 ## Quickstart
 
 Prereqs: Docker + Docker Compose v2.
