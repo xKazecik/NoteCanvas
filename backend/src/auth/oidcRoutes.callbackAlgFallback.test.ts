@@ -96,6 +96,10 @@ const makeFlowCookie = (
 
 const createPrismaMock = (options?: {
   providerIdentity?: { id: string; issuer: string; subject: string } | null;
+  // Make the issuer+subject lookup find user-1 (a returning OIDC user).
+  linked?: boolean;
+  // Emails that belong to some other account.
+  takenEmails?: string[];
 }) => {
   const user = {
     id: "user-1",
@@ -114,7 +118,7 @@ const createPrismaMock = (options?: {
       findUnique: vi.fn(async (args?: Record<string, unknown>) => {
         const where = (args?.where || {}) as Record<string, unknown>;
         if (where.issuer_subject) {
-          return null;
+          return options?.linked ? { id: "identity-1", user } : null;
         }
         if (where.provider_userId) {
           return providerIdentity;
@@ -125,7 +129,13 @@ const createPrismaMock = (options?: {
       create: vi.fn(async () => ({})),
     },
     user: {
-      findUnique: vi.fn(async () => user),
+      findUnique: vi.fn(async (args: { where: { email?: string } }) => {
+        if (args.where.email === user.email) return user;
+        if (options?.takenEmails?.includes(args.where.email ?? "")) {
+          return { ...user, id: "user-2", email: args.where.email };
+        }
+        return null;
+      }),
       count: vi.fn(async () => 1),
       create: vi.fn(async () => user),
       update: vi.fn(async (args: { data: Record<string, unknown> }) => ({
@@ -350,6 +360,56 @@ describe("OIDC callback alg mismatch fallback", () => {
         data: { name: "Alice Renamed" },
       }),
     );
+  });
+
+  it("updates a returning user's email when it changed at the provider", async () => {
+    const prisma = createPrismaMock({ linked: true });
+
+    callbackMock.mockResolvedValue({
+      claims: () => ({
+        sub: "subject-1",
+        email: "Alice.New@Example.com",
+        email_verified: true,
+      }),
+    });
+
+    const app = await createApp(null, null, prisma as any);
+    const response = await request(app)
+      .get("/oidc/callback?code=test-code&state=state-fixed")
+      .set("Cookie", [`excalidash-oidc-flow=${makeFlowCookie("test-secret")}`]);
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe("/");
+    expect(prisma.__tx.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "user-1" },
+        data: { email: "alice.new@example.com" },
+      }),
+    );
+  });
+
+  it("keeps the old email when the new one belongs to another account", async () => {
+    const prisma = createPrismaMock({
+      linked: true,
+      takenEmails: ["bob@example.com"],
+    });
+
+    callbackMock.mockResolvedValue({
+      claims: () => ({
+        sub: "subject-1",
+        email: "bob@example.com",
+        email_verified: true,
+      }),
+    });
+
+    const app = await createApp(null, null, prisma as any);
+    const response = await request(app)
+      .get("/oidc/callback?code=test-code&state=state-fixed")
+      .set("Cookie", [`excalidash-oidc-flow=${makeFlowCookie("test-secret")}`]);
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe("/");
+    expect(prisma.__tx.user.update).not.toHaveBeenCalled();
   });
 
   it("rejects the login when the configured user-ID claim is missing", async () => {

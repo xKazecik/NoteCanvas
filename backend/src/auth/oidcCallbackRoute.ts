@@ -215,14 +215,35 @@ export const registerOidcCallbackRoute = (deps: RegisterOidcCallbackRouteDeps) =
             where: { id: linkedIdentity.id },
             data: { lastLoginAt: new Date(), emailAtLink: normalizedEmail },
           });
-          if (claimedName && linkedIdentity.user.name !== claimedName) {
+          const linkedUser = linkedIdentity.user;
+          const profileUpdate: { name?: string; email?: string } = {};
+          if (claimedName && linkedUser.name !== claimedName) {
+            profileUpdate.name = claimedName;
+          }
+          // Follow email changes made at the provider. Emails are unique, so
+          // if another account already has the new address keep the old one
+          // rather than failing the login.
+          if (linkedUser.email !== normalizedEmail) {
+            const emailOwner = await tx.user.findUnique({
+              where: { email: normalizedEmail },
+              select: { id: true },
+            });
+            if (emailOwner) {
+              console.warn(
+                `OIDC: not updating the email of user ${linkedUser.id}; the provider's new address is already used by another account.`,
+              );
+            } else {
+              profileUpdate.email = normalizedEmail;
+            }
+          }
+          if (Object.keys(profileUpdate).length > 0) {
             return tx.user.update({
-              where: { id: linkedIdentity.user.id },
-              data: { name: claimedName },
+              where: { id: linkedUser.id },
+              data: profileUpdate,
               select: userSelect,
             });
           }
-          return linkedIdentity.user;
+          return linkedUser;
         }
         const existingUser = await tx.user.findUnique({
           where: { email: normalizedEmail },
