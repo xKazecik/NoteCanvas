@@ -75,6 +75,25 @@ COPY backend/src ./src
 RUN npx tsc
 
 # ---------------------------------------------------------------------------
+# Backend production dependencies
+# ---------------------------------------------------------------------------
+FROM node:24-alpine AS backend-deps
+
+WORKDIR /app
+
+# Native build deps for modules that may compile from source (e.g., better-sqlite3 on arm64)
+RUN apk add --no-cache python3 make g++
+
+COPY backend/package*.json ./
+
+# The Prisma packages are moved aside so the runtime stage can copy them as a
+# layer of their own (see there).
+RUN npm ci --omit=dev && \
+    npm cache clean --force && \
+    mkdir /prisma-modules && \
+    mv node_modules/@prisma node_modules/prisma /prisma-modules/
+
+# ---------------------------------------------------------------------------
 # Runtime
 # ---------------------------------------------------------------------------
 FROM node:24-alpine
@@ -94,11 +113,11 @@ WORKDIR /app
 
 COPY backend/package*.json ./
 
-# Install production dependencies only
-RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
-    npm ci --omit=dev && \
-    npm cache clean --force && \
-    apk del .build-deps
+# Production node_modules in two layers on purpose: the registry
+# (git.kazecik.com) sits behind Cloudflare, which rejects any upload over
+# 100 MB, and Prisma 7 alone pushes a single node_modules layer past that.
+COPY --from=backend-deps /app/node_modules ./node_modules
+COPY --from=backend-deps /prisma-modules/ ./node_modules/
 
 # Copy prisma schema and migrations for runtime and hydration template
 COPY backend/prisma ./prisma/
