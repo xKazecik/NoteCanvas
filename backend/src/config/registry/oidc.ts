@@ -52,6 +52,20 @@ export const oidcEnv: readonly EnvVarSpec[] = [
     doc: "Space-separated OIDC scopes requested during login.",
   },
   {
+    name: "OIDC_USER_ID_CLAIM",
+    group: "OIDC",
+    kind: "string",
+    default: "sub",
+    doc: "ID-token claim holding the stable user identifier accounts are linked by.",
+  },
+  {
+    name: "OIDC_DISPLAY_NAME_CLAIM",
+    group: "OIDC",
+    kind: "string",
+    default: "name",
+    doc: "ID-token claim for the display name; re-synced on every login.",
+  },
+  {
     name: "OIDC_EMAIL_CLAIM",
     group: "OIDC",
     kind: "string",

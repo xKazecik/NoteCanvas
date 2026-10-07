@@ -79,6 +79,10 @@ RUN npx tsc
 # ---------------------------------------------------------------------------
 FROM node:20-alpine
 
+# The update check compares this against the latest published image version.
+ARG VITE_APP_VERSION
+ENV APP_VERSION=$VITE_APP_VERSION
+
 # nginx joins the backend's runtime packages here; su-exec is what the backend
 # entrypoint uses to drop from root to the nodejs user.
 RUN apk add --no-cache openssl su-exec nginx && \

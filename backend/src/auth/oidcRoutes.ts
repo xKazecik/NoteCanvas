@@ -51,6 +51,8 @@ export type RegisterOidcRoutesDeps = {
         | "client_secret_post"
         | null;
       scopes: string;
+      userIdClaim: string;
+      displayNameClaim: string;
       emailClaim: string;
       emailVerifiedClaim: string;
       groupsClaim: string;

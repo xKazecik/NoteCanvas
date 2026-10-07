@@ -6,15 +6,13 @@ export const updateCheckEnv: readonly EnvVarSpec[] = [
     group: "Update check",
     kind: "boolean",
     default: "true",
-    doc: "Allow outbound requests to GitHub to check for new releases.",
+    doc: "Allow outbound requests to git.kazecik.com to check for new container image versions.",
   },
   {
-    name: "UPDATE_CHECK_GITHUB_TOKEN",
+    name: "APP_VERSION",
     group: "Update check",
     kind: "string",
-    secret: true,
-    aliases: ["GITHUB_TOKEN"],
-    doc: "GitHub token used to raise the update-check API rate limit.",
+    doc: "Version of the running build, compared against the latest published image. Set by the Docker build; falls back to backend/package.json.",
   },
 ];
 

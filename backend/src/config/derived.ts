@@ -12,7 +12,7 @@ export interface LinkShareConfig {
 
 export interface UpdateCheckConfig {
   outbound: boolean;
-  githubToken: string | null;
+  appVersion: string | null;
 }
 
 /** Parse TRUST_PROXY exactly as backend/src/index.ts does today. */
@@ -54,9 +54,9 @@ export const resolveUpdateCheckConfig = (): UpdateCheckConfig => {
     .toLowerCase();
   const outbound =
     outboundRaw === "true" || outboundRaw === "1" || outboundRaw === "yes";
-  const tokenRaw = (readRaw("UPDATE_CHECK_GITHUB_TOKEN") ?? "").trim();
+  const appVersionRaw = (readRaw("APP_VERSION") ?? "").trim();
   return {
     outbound,
-    githubToken: tokenRaw.length > 0 ? tokenRaw : null,
+    appVersion: appVersionRaw.length > 0 ? appVersionRaw : null,
   };
 };
