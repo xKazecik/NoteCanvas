@@ -124,7 +124,11 @@ export const registerOidcCallbackRoute = (deps: RegisterOidcCallbackRouteDeps) =
       const emailMissingFromIdToken =
         !readStringClaim(idTokenClaims, config.oidc.emailClaim) &&
         !readStringClaim(idTokenClaims, "email");
-      if (emailMissingFromIdToken) {
+      const userIdMissingFromIdToken = !readStringClaim(
+        idTokenClaims,
+        config.oidc.userIdClaim,
+      );
+      if (emailMissingFromIdToken || userIdMissingFromIdToken) {
         try {
           userinfoClaims = (await client.userinfo(tokenSet)) as Record<
             string,
@@ -142,7 +146,7 @@ export const registerOidcCallbackRoute = (deps: RegisterOidcCallbackRouteDeps) =
         ...idTokenClaims,
       };
       const issuer = client.issuer.issuer;
-      const subject = readStringClaim(claims, "sub");
+      const subject = readStringClaim(claims, config.oidc.userIdClaim);
       if (!subject) {
         return redirectToLoginWithError(
           req,
@@ -163,6 +167,13 @@ export const registerOidcCallbackRoute = (deps: RegisterOidcCallbackRouteDeps) =
         );
       }
       const normalizedEmail = normalizeEmail(rawEmail);
+      const rawDisplayName = readStringClaim(
+        claims,
+        config.oidc.displayNameClaim,
+      );
+      const claimedName = rawDisplayName
+        ? sanitizeText(rawDisplayName, 100) || null
+        : null;
       const systemConfig = await ensureSystemConfig();
       const jitProvisioningEnabled =
         typeof systemConfig.oidcJitProvisioningEnabled === "boolean"
@@ -204,6 +215,13 @@ export const registerOidcCallbackRoute = (deps: RegisterOidcCallbackRouteDeps) =
             where: { id: linkedIdentity.id },
             data: { lastLoginAt: new Date(), emailAtLink: normalizedEmail },
           });
+          if (claimedName && linkedIdentity.user.name !== claimedName) {
+            return tx.user.update({
+              where: { id: linkedIdentity.user.id },
+              data: { name: claimedName },
+              select: userSelect,
+            });
+          }
           return linkedIdentity.user;
         }
         const existingUser = await tx.user.findUnique({
@@ -215,7 +233,14 @@ export const registerOidcCallbackRoute = (deps: RegisterOidcCallbackRouteDeps) =
         }
         let resolvedUser: OidcUser;
         if (existingUser) {
-          resolvedUser = existingUser;
+          resolvedUser =
+            claimedName && existingUser.name !== claimedName
+              ? await tx.user.update({
+                  where: { id: existingUser.id },
+                  data: { name: claimedName },
+                  select: userSelect,
+                })
+              : existingUser;
         } else {
           if (!jitProvisioningEnabled) {
             throw new Error("OIDC provisioning disabled");
@@ -224,11 +249,11 @@ export const registerOidcCallbackRoute = (deps: RegisterOidcCallbackRouteDeps) =
             where: { isActive: true },
           });
           const defaultName =
-            readStringClaim(claims, "name") ??
             readStringClaim(claims, "preferred_username") ??
             normalizedEmail.split("@")[0] ??
             "User";
-          const sanitizedName = sanitizeText(defaultName, 100) || "User";
+          const sanitizedName =
+            claimedName ?? (sanitizeText(defaultName, 100) || "User");
           const role =
             activeUsers === 0 && config.oidc.firstUserAdmin ? "ADMIN" : "USER";
           resolvedUser = await tx.user.create({

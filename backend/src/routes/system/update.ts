@@ -5,13 +5,15 @@ import type { SystemRouteDeps } from "./index";
 
 type UpdateChannel = "stable" | "prerelease";
 
-type GithubRelease = {
-  tag_name?: string;
+type ForgejoPackage = {
+  name?: string;
+  version?: string;
   html_url?: string;
-  prerelease?: boolean;
-  draft?: boolean;
-  published_at?: string;
+  created_at?: string;
 };
+
+const PACKAGE_NAME = "notecanvas";
+const PACKAGES_URL = `https://git.kazecik.com/api/v1/packages/xkazecik?type=container&q=${PACKAGE_NAME}&limit=50`;
 
 type UpdateResponse = {
   currentVersion: string | null;
@@ -42,27 +44,27 @@ const parseChannel = (raw: unknown): UpdateChannel => {
 
 const envOutboundEnabled = (): boolean => config.updateCheck.outbound;
 
-const envGithubToken = (): string | null => config.updateCheck.githubToken;
+// Images are tagged MAJOR.MINOR (see .forgejo/workflows/docker.yml), so pad a
+// missing patch number before comparing. Non-version tags (latest, sha-*) fail to parse.
+const parseVersion = (raw: string) =>
+  parseSemver(raw.trim().replace(/^v?(\d+)\.(\d+)(?=-|$)/, "$1.$2.0"));
 
-const pickLatestRelease = (
-  releases: GithubRelease[],
+const pickLatestPackage = (
+  packages: ForgejoPackage[],
   channel: UpdateChannel
-): GithubRelease | null => {
-  const candidates = releases
-    .filter((r) => r && !r.draft)
-    .filter((r) => {
-      if (channel === "prerelease") return true;
-      if (r.prerelease) return false;
-      const tag = typeof r.tag_name === "string" ? r.tag_name : "";
-      const parsed = parseSemver(tag);
-      return Boolean(parsed && parsed.prerelease.length === 0);
-    })
+): ForgejoPackage | null => {
+  const candidates = packages
+    .filter((p) => p && p.name === PACKAGE_NAME)
     .map((r) => {
-      const tag = typeof r.tag_name === "string" ? r.tag_name : "";
-      const parsed = parseSemver(tag);
+      const version = typeof r.version === "string" ? r.version : "";
+      const parsed = parseVersion(version);
       return { r, parsed };
     })
-    .filter((x) => Boolean(x.parsed)) as Array<{ r: GithubRelease; parsed: NonNullable<ReturnType<typeof parseSemver>> }>;
+    .filter((x) => Boolean(x.parsed))
+    .filter((x) => channel === "prerelease" || x.parsed!.prerelease.length === 0) as Array<{
+    r: ForgejoPackage;
+    parsed: NonNullable<ReturnType<typeof parseSemver>>;
+  }>;
 
   if (candidates.length === 0) return null;
 
@@ -73,13 +75,6 @@ const pickLatestRelease = (
     }
   }
   return best.r;
-};
-
-const normalizeVersion = (raw: string): string | null => {
-  const parsed = parseSemver(raw);
-  if (!parsed) return null;
-  const base = `${parsed.major}.${parsed.minor}.${parsed.patch}`;
-  return parsed.prerelease.length > 0 ? `${base}-${parsed.prerelease.join(".")}` : base;
 };
 
 export const fetchLatest = async (
@@ -104,19 +99,14 @@ export const fetchLatest = async (
   }
 
   const headers: Record<string, string> = {
-    Accept: "application/vnd.github+json",
-    "User-Agent": "ExcaliDash-UpdateCheck",
+    Accept: "application/json",
+    "User-Agent": "NoteCanvas-UpdateCheck",
   };
-  const token = envGithubToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
   if (cache && cache.channel === channel && cache.etag) {
     headers["If-None-Match"] = cache.etag;
   }
 
-  const url = "https://api.github.com/repos/ZimengXiong/ExcaliDash/releases?per_page=30";
-  const resp = await fetch(url, { headers });
+  const resp = await fetch(PACKAGES_URL, { headers });
 
   if (resp.status === 304 && cache && cache.channel === channel) {
     cache = { ...cache, fetchedAt: now };
@@ -131,7 +121,7 @@ export const fetchLatest = async (
       latestUrl: null,
       publishedAt: null,
       isUpdateAvailable: null,
-      error: `GitHub API error: HTTP ${resp.status}`,
+      error: `Package registry error: HTTP ${resp.status}`,
     };
     cache = { channel, fetchedAt: now, etag: null, response };
     return response;
@@ -139,16 +129,16 @@ export const fetchLatest = async (
 
   const etag = resp.headers.get("etag");
   const json = (await resp.json()) as unknown;
-  const releases = Array.isArray(json) ? (json as GithubRelease[]) : [];
-  const latest = pickLatestRelease(releases, channel);
+  const packages = Array.isArray(json) ? (json as ForgejoPackage[]) : [];
+  const latest = pickLatestPackage(packages, channel);
 
-  const latestVersion = latest?.tag_name ? normalizeVersion(latest.tag_name) : null;
+  const latestVersion = typeof latest?.version === "string" ? latest.version : null;
   const response: Omit<UpdateResponse, "currentVersion"> = {
     channel,
     outboundEnabled: true,
     latestVersion,
     latestUrl: typeof latest?.html_url === "string" ? latest.html_url : null,
-    publishedAt: typeof latest?.published_at === "string" ? latest.published_at : null,
+    publishedAt: typeof latest?.created_at === "string" ? latest.created_at : null,
     isUpdateAvailable: null, // computed once we know currentVersion
   };
 
@@ -161,8 +151,8 @@ export const computeIsUpdateAvailable = (
   latestVersion: string | null
 ): boolean | null => {
   if (!currentVersion || !latestVersion) return null;
-  const currentParsed = parseSemver(currentVersion);
-  const latestParsed = parseSemver(latestVersion);
+  const currentParsed = parseVersion(currentVersion);
+  const latestParsed = parseVersion(latestVersion);
   if (!currentParsed || !latestParsed) return null;
   return compareSemver(latestParsed, currentParsed) > 0;
 };
@@ -180,7 +170,7 @@ export const registerUpdateRoutes = (app: express.Express, deps: SystemRouteDeps
     "/system/update",
     deps.asyncHandler(async (req, res) => {
       const channel = parseChannel(req.query.channel);
-      const currentVersion = deps.getBackendVersion() || null;
+      const currentVersion = config.updateCheck.appVersion ?? (deps.getBackendVersion() || null);
 
       const latest = await fetchLatest(channel);
 

@@ -110,6 +110,8 @@ interface OidcConfig {
     | "client_secret_post"
     | null;
   scopes: string;
+  userIdClaim: string;
+  displayNameClaim: string;
   emailClaim: string;
   emailVerifiedClaim: string;
   groupsClaim: string;
@@ -308,6 +310,8 @@ const resolveOidcConfig = (authMode: AuthMode): OidcConfig => {
     idTokenSignedResponseAlg,
     tokenEndpointAuthMethod,
     scopes: readString("OIDC_SCOPES", "openid profile email"),
+    userIdClaim: readString("OIDC_USER_ID_CLAIM", "sub").trim(),
+    displayNameClaim: readString("OIDC_DISPLAY_NAME_CLAIM", "name").trim(),
     emailClaim: readString("OIDC_EMAIL_CLAIM", "email"),
     emailVerifiedClaim: readString("OIDC_EMAIL_VERIFIED_CLAIM", "email_verified"),
     groupsClaim,

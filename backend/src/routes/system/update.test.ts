@@ -25,20 +25,14 @@ const makeFetchResponse = (opts: {
 
 describe("system/update logic", () => {
   const originalOutbound = process.env.UPDATE_CHECK_OUTBOUND;
-  const originalToken = process.env.UPDATE_CHECK_GITHUB_TOKEN;
-  const originalGithubToken = process.env.GITHUB_TOKEN;
 
   beforeEach(() => {
     vi.resetModules();
     process.env.UPDATE_CHECK_OUTBOUND = "true";
-    delete process.env.UPDATE_CHECK_GITHUB_TOKEN;
-    delete process.env.GITHUB_TOKEN;
   });
 
   afterEach(() => {
     process.env.UPDATE_CHECK_OUTBOUND = originalOutbound;
-    process.env.UPDATE_CHECK_GITHUB_TOKEN = originalToken;
-    process.env.GITHUB_TOKEN = originalGithubToken;
     vi.restoreAllMocks();
   });
 
@@ -56,14 +50,17 @@ describe("system/update logic", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("stable channel picks latest stable (ignores prereleases)", async () => {
-    const releases = [
-      { tag_name: "v1.2.0-dev", prerelease: true, draft: false, html_url: "u1", published_at: "t1" },
-      { tag_name: "v1.1.9", prerelease: false, draft: false, html_url: "u2", published_at: "t2" },
-      { tag_name: "v1.2.0", prerelease: false, draft: false, html_url: "u3", published_at: "t3" },
+  it("stable channel picks the highest MAJOR.MINOR image tag (ignores latest, sha-*, prereleases)", async () => {
+    const packages = [
+      { name: "notecanvas", version: "latest", html_url: "u0", created_at: "t0" },
+      { name: "notecanvas", version: "sha-cfbf385", html_url: "u1", created_at: "t1" },
+      { name: "notecanvas", version: "2.10-rc.1", html_url: "u2", created_at: "t2" },
+      { name: "notecanvas", version: "2.9", html_url: "u3", created_at: "t3" },
+      { name: "notecanvas", version: "2.10", html_url: "u4", created_at: "t4" },
+      { name: "notecanvas-other", version: "9.9", html_url: "u5", created_at: "t5" },
     ];
     (globalThis as any).fetch = vi.fn().mockResolvedValue(
-      makeFetchResponse({ status: 200, json: releases, etag: "E1" })
+      makeFetchResponse({ status: 200, json: packages, etag: "E1" })
     );
 
     const mod = await import("./update");
@@ -71,18 +68,21 @@ describe("system/update logic", () => {
     const latest = await mod.fetchLatest("stable");
 
     expect(latest.channel).toBe("stable");
-    expect(latest.latestVersion).toBe("1.2.0");
-    expect(mod.computeIsUpdateAvailable("1.1.0", latest.latestVersion)).toBe(true);
+    expect(latest.latestVersion).toBe("2.10");
+    expect(latest.latestUrl).toBe("u4");
+    expect(latest.publishedAt).toBe("t4");
+    expect(mod.computeIsUpdateAvailable("2.9", latest.latestVersion)).toBe(true);
+    expect(mod.computeIsUpdateAvailable("2.10", latest.latestVersion)).toBe(false);
   });
 
   it("prerelease channel can pick prerelease when newer than stable", async () => {
-    const releases = [
-      { tag_name: "v1.2.0-dev.2", prerelease: true, draft: false, html_url: "u1", published_at: "t1" },
-      { tag_name: "v1.1.9", prerelease: false, draft: false, html_url: "u2", published_at: "t2" },
-      { tag_name: "v1.2.0-dev.10", prerelease: true, draft: false, html_url: "u3", published_at: "t3" },
+    const packages = [
+      { name: "notecanvas", version: "1.2-dev.2", html_url: "u1", created_at: "t1" },
+      { name: "notecanvas", version: "1.1", html_url: "u2", created_at: "t2" },
+      { name: "notecanvas", version: "1.2-dev.10", html_url: "u3", created_at: "t3" },
     ];
     (globalThis as any).fetch = vi.fn().mockResolvedValue(
-      makeFetchResponse({ status: 200, json: releases, etag: "E2" })
+      makeFetchResponse({ status: 200, json: packages, etag: "E2" })
     );
 
     const mod = await import("./update");
@@ -90,17 +90,17 @@ describe("system/update logic", () => {
     const latest = await mod.fetchLatest("prerelease");
 
     expect(latest.channel).toBe("prerelease");
-    expect(latest.latestVersion).toBe("1.2.0-dev.10");
-    expect(mod.computeIsUpdateAvailable("1.2.0-dev.1", latest.latestVersion)).toBe(true);
+    expect(latest.latestVersion).toBe("1.2-dev.10");
+    expect(mod.computeIsUpdateAvailable("1.2-dev.1", latest.latestVersion)).toBe(true);
   });
 
-  it("uses cached response when GitHub returns 304", async () => {
+  it("uses cached response when the registry returns 304", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
         makeFetchResponse({
           status: 200,
-          json: [{ tag_name: "v2.0.0", prerelease: false, draft: false, html_url: "u", published_at: "t" }],
+          json: [{ name: "notecanvas", version: "2.0", html_url: "u", created_at: "t" }],
           etag: "ETAG-1",
         })
       )
@@ -114,8 +114,8 @@ describe("system/update logic", () => {
     mod.__setUpdateTtlForTests(0);
     const r2 = await mod.fetchLatest("stable");
 
-    expect(r1.latestVersion).toBe("2.0.0");
-    expect(r2.latestVersion).toBe("2.0.0");
+    expect(r1.latestVersion).toBe("2.0");
+    expect(r2.latestVersion).toBe("2.0");
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
     const secondCall = fetchMock.mock.calls[1] as any[];

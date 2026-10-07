@@ -60,6 +60,8 @@ This file and `backend/.env.example` are generated from that registry; do not ed
 | `OIDC_CLIENT_SECRET` | _(none — secret)_ | No | OIDC client secret for confidential clients. |
 | `OIDC_PROVIDER_NAME` | `OIDC` | No | Display name of the OIDC provider shown in the UI. |
 | `OIDC_SCOPES` | `openid profile email` | No | Space-separated OIDC scopes requested during login. |
+| `OIDC_USER_ID_CLAIM` | `sub` | No | ID-token claim holding the stable user identifier accounts are linked by. |
+| `OIDC_DISPLAY_NAME_CLAIM` | `name` | No | ID-token claim for the display name; re-synced on every login. |
 | `OIDC_EMAIL_CLAIM` | `email` | No | ID-token claim to read the user email from. |
 | `OIDC_EMAIL_VERIFIED_CLAIM` | `email_verified` | No | ID-token claim indicating whether the email is verified. |
 | `OIDC_GROUPS_CLAIM` | `groups` | No | ID-token claim (key or path) carrying the user's groups. |
@@ -108,8 +110,8 @@ This file and `backend/.env.example` are generated from that registry; do not ed
 
 | Variable | Default | Required | Description |
 | --- | --- | --- | --- |
-| `UPDATE_CHECK_OUTBOUND` | `true` | No | Allow outbound requests to GitHub to check for new releases. |
-| `UPDATE_CHECK_GITHUB_TOKEN` | _(none — secret)_ | No | GitHub token used to raise the update-check API rate limit. Deprecated aliases: GITHUB_TOKEN. |
+| `UPDATE_CHECK_OUTBOUND` | `true` | No | Allow outbound requests to git.kazecik.com to check for new container image versions. |
+| `APP_VERSION` | — | No | Version of the running build, compared against the latest published image. Set by the Docker build; falls back to backend/package.json. |
 
 ## Link sharing
 

@@ -128,6 +128,10 @@ const createPrismaMock = (options?: {
       findUnique: vi.fn(async () => user),
       count: vi.fn(async () => 1),
       create: vi.fn(async () => user),
+      update: vi.fn(async (args: { data: Record<string, unknown> }) => ({
+        ...user,
+        ...args.data,
+      })),
     },
     collection: {
       findFirst: vi.fn(async () => ({ id: "trash:user-1" })),
@@ -150,6 +154,7 @@ const createApp = async (
   idTokenAlgOverride: string | null,
   issuerUrlOverride: string | null = null,
   prismaOverride?: Record<string, unknown>,
+  oidcOverrides: Record<string, unknown> = {},
 ) => {
   const { registerOidcRoutes } = await import("./oidcRoutes");
   const app = express();
@@ -188,6 +193,8 @@ const createApp = async (
         idTokenSignedResponseAlg: idTokenAlgOverride,
         tokenEndpointAuthMethod: null,
         scopes: "openid email profile",
+        userIdClaim: "sub",
+        displayNameClaim: "name",
         emailClaim: "email",
         emailVerifiedClaim: "email_verified",
         groupsClaim: "groups",
@@ -195,6 +202,7 @@ const createApp = async (
         requireEmailVerified: true,
         jitProvisioning: true,
         firstUserAdmin: true,
+        ...oidcOverrides,
       },
     },
   });
@@ -301,5 +309,64 @@ describe("OIDC callback alg mismatch fallback", () => {
     expect(response.headers.location).toBe("/");
     expect(prisma.__tx.authIdentity.update).toHaveBeenCalledTimes(1);
     expect(prisma.__tx.authIdentity.create).toHaveBeenCalledTimes(0);
+  });
+
+  it("links by the configured user-ID claim and syncs the display-name claim", async () => {
+    const prisma = createPrismaMock();
+
+    callbackMock.mockResolvedValue({
+      claims: () => ({
+        sub: "username-based-sub",
+        uid: "stable-42",
+        nickname: "Alice Renamed",
+        email: "alice@example.com",
+        email_verified: true,
+      }),
+    });
+
+    const app = await createApp(null, null, prisma as any, {
+      userIdClaim: "uid",
+      displayNameClaim: "nickname",
+    });
+    const response = await request(app)
+      .get("/oidc/callback?code=test-code&state=state-fixed")
+      .set("Cookie", [`excalidash-oidc-flow=${makeFlowCookie("test-secret")}`]);
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe("/");
+    expect(prisma.__tx.authIdentity.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          issuer_subject: { issuer: "https://issuer.example", subject: "stable-42" },
+        },
+      }),
+    );
+    expect(prisma.__tx.authIdentity.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ subject: "stable-42" }),
+    });
+    expect(prisma.__tx.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "user-1" },
+        data: { name: "Alice Renamed" },
+      }),
+    );
+  });
+
+  it("rejects the login when the configured user-ID claim is missing", async () => {
+    callbackMock.mockResolvedValue({
+      claims: () => ({
+        sub: "subject-1",
+        email: "alice@example.com",
+        email_verified: true,
+      }),
+    });
+
+    const app = await createApp(null, null, undefined, { userIdClaim: "uid" });
+    const response = await request(app)
+      .get("/oidc/callback?code=test-code&state=state-fixed")
+      .set("Cookie", [`excalidash-oidc-flow=${makeFlowCookie("test-secret")}`]);
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toContain("oidcError=missing_subject");
   });
 });
