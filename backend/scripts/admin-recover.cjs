@@ -20,7 +20,7 @@ process.env.DATABASE_URL =
   process.env.DATABASE_URL ||
   `file:${path.resolve(__dirname, "../prisma/dev.db")}`;
 
-const { PrismaClient } = require("../src/generated/client");
+const { createPrismaClient } = require("./prisma-client.cjs");
 const bcrypt = require("bcrypt");
 
 const parseArgs = (argv) => {
@@ -78,7 +78,7 @@ const main = async () => {
     return;
   }
 
-  const prisma = new PrismaClient();
+  const prisma = createPrismaClient();
 
   try {
     const activeAdminCount = await prisma.user.count({

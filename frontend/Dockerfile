@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app/frontend
 
@@ -37,6 +37,10 @@ COPY --from=builder /app/frontend/dist /usr/share/nginx/html
 
 EXPOSE 80
 
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget --quiet --tries=1 --output-document=/dev/null http://127.0.0.1:80/ || exit 1
+
 # Use custom entrypoint to process nginx config template
+# nosemgrep -- e2e-only image; nginx needs root to bind :80 and its workers run as the nginx user
 ENTRYPOINT ["/docker-entrypoint.sh"]
+# nosemgrep -- see above
 CMD ["nginx", "-g", "daemon off;"]

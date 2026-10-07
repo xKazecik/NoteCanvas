@@ -185,6 +185,8 @@ export const registerFileRoutes = (
       }
 
       // Database-bytes mode: persist the raw bytes inline.
+      // Prisma types Bytes as Uint8Array<ArrayBuffer>; a Node Buffer is exactly that.
+      const data = body as Uint8Array<ArrayBuffer>;
       await prisma.drawingFile.upsert({
         where: { drawingId_fileId: { drawingId, fileId } },
         create: {
@@ -194,12 +196,12 @@ export const registerFileRoutes = (
           sizeBytes: body.length,
           storage: "db",
           s3Key: null,
-          data: body,
+          data,
         },
         update: {
           storage: "db",
           s3Key: null,
-          data: body,
+          data,
           mimeType,
           sizeBytes: body.length,
         },

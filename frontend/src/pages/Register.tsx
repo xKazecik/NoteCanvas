@@ -35,7 +35,7 @@ export const Register: React.FC = () => {
   const passwordPolicy = getPasswordPolicy();
 
   const bootstrapLogsCommand =
-    'docker compose -f docker-compose.prod.yml logs backend --tail=200 | grep "BOOTSTRAP SETUP"';
+    'docker compose logs notecanvas --tail=200 | grep "BOOTSTRAP SETUP"';
 
   const copyBootstrapCommand = async () => {
     try {
@@ -178,7 +178,7 @@ export const Register: React.FC = () => {
                 </div>
               </div>
               <div className="mt-2 text-amber-800 dark:text-amber-200/90">
-                If you are not using <code>docker-compose.prod.yml</code>, drop the <code>-f ...</code> flag.
+                If you built from source, add <code>-f docker-compose.build.yml</code> after <code>docker compose</code>.
               </div>
             </div>
           )}

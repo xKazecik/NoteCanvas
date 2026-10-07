@@ -1,12 +1,17 @@
+// Prisma 7 clients are provider-specific TypeScript compiled with the app.
+// scripts/generate-prisma-clients.cjs generates this (SQLite) client plus a
+// PostgreSQL one in src/generated/postgresql; src/db/createPrismaClient.ts
+// picks one from DATABASE_URL at runtime.
 generator client {
-  provider      = "prisma-client-js"
-  output        = "../src/generated/client"
-  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+  provider     = "prisma-client"
+  output       = "../src/generated"
+  moduleFormat = "cjs"
 }
 
+// The connection URL lives in prisma.config.ts (Prisma 7 no longer reads it
+// from the schema).
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 model User {

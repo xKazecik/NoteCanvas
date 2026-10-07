@@ -1,0 +1,11 @@
+# Findings reviewed and accepted for frontend/package-lock.json. Mirrors
+# ../.trivyignore.yaml -- keep the two in sync.
+
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm" # braces, CVE-2026-93687
+ignoreUntil = 2027-04-01
+reason = "Build-time only (Tailwind 3 content globs from our own config); no fixed release; fixed by moving to Tailwind 4."
+
+[[IgnoredVulns]]
+id = "GHSA-39h7-pwv7-rc3x" # Excalidraw 0.18.0
+reason = "Not affected: the XSS is mermaid CVE-2025-54881 (fixed in 10.9.4) and package.json overrides mermaid to 10.9.8."

@@ -1,0 +1,22 @@
+# Paths Semgrep skips. A .semgrepignore replaces Semgrep's built-in defaults,
+# so those are repeated here.
+:include .gitignore
+.git/
+node_modules/
+dist/
+build/
+vendor/
+*.min.js
+
+# Vendored upstream Excalidraw source. Its findings are upstream's design (e.g.
+# postMessage to embeds, its own build scripts); its dependencies are still
+# checked through frontend/package-lock.json.
+frontend/excalidraw-engine/
+
+# Developer-only maintenance scripts, never deployed; every path they touch
+# comes from the repository itself.
+/scripts/
+/backend/scripts/
+
+# Playwright end-to-end specs (test code only).
+/e2e/tests/

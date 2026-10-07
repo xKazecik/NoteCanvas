@@ -24,6 +24,7 @@ export const splitCommentMentions = (
     .sort((a, b) => b.length - a.length)
     .map((name) => `@${escapeForRegExp(name)}`);
 
+  // nosemgrep -- every name is escaped with escapeForRegExp
   const pattern = new RegExp(`(${[...names, "@[\\w.-]+"].join("|")})`, "g");
 
   return content

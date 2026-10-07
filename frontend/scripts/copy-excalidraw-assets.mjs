@@ -8,7 +8,7 @@ const frontendRoot = path.resolve(__dirname, "..");
 // In 0.18.0 the old excalidraw-assets / excalidraw-assets-dev directories were
 // replaced by dist/prod and dist/dev.  Only the fonts sub-directory needs to be
 // copied to the public / dist output so that Excalidraw can load them at runtime
-// via window.EXCALIDRAW_ASSET_PATH (which is set to "/" in index.html).
+// via window.EXCALIDRAW_ASSET_PATH (set in src/excalidrawAssetPath.ts).
 const EXCALIDRAW_DIST_DIR = path.join(
   frontendRoot,
   "node_modules",

@@ -136,21 +136,18 @@ ExcaliDash includes an in-app update notifier that checks GitHub Releases. If yo
 UPDATE_CHECK_OUTBOUND=false
 ```
 
-## Docker Hub Upgrades
+## Upgrades
 
-If you deployed using `docker-compose.prod.yml` (Docker Hub images), upgrade by pulling the latest images and recreating containers:
+If you deployed with `docker-compose.yml` (the published image), upgrade by pulling the latest image and recreating the container:
 
 ```bash
-docker compose -f docker-compose.prod.yml pull && \
-  docker compose -f docker-compose.prod.yml up -d
+docker compose pull && docker compose up -d
 ```
 
 If you prefer a clean stop/start (more downtime, but simpler), you can do:
 
 ```bash
-docker compose -f docker-compose.prod.yml down && \
-  docker compose -f docker-compose.prod.yml pull && \
-  docker compose -f docker-compose.prod.yml up -d
+docker compose down && docker compose pull && docker compose up -d
 ```
 
 Notes:
@@ -160,38 +157,30 @@ Notes:
 
 # Installation
 
-> [!CAUTION]
-> This is a BETA deployment and production-readiness depends on deployment controls:
-> use TLS, trusted reverse proxy, fixed secrets, backups, and endpoint rate limits.
-
-> [!CAUTION]
-> ExcaliDash is in BETA. Please backup your data regularly.
-
 ## Quickstart
 
 Prereqs: Docker + Docker Compose v2.
 
 <details>
-<summary>Docker Hub (Recommended)</summary>
+<summary>Published image (Recommended)</summary>
 
-## Docker Hub (Recommended)
+## Published image (Recommended)
+
+You need two files: `docker-compose.yml` and a `.env` copied from `.env.example`. All settings go in `.env`.
 
 ```bash
-# Download docker-compose.prod.yml
-curl -OL https://raw.githubusercontent.com/ZimengXiong/ExcaliDash/main/docker-compose.prod.yml
+curl -OL https://git.kazecik.com/xkazecik/NoteCanvas/raw/branch/main/docker-compose.yml
+curl -L -o .env https://git.kazecik.com/xkazecik/NoteCanvas/raw/branch/main/.env.example
 
-# Pull images
-docker compose -f docker-compose.prod.yml pull
-
-# Run container
-docker compose -f docker-compose.prod.yml up -d
+# Edit .env, then:
+docker compose up -d
 
 # Access the frontend at localhost:6767
 ```
 
 For single-container deployments, `JWT_SECRET` can be omitted and will be auto-generated and persisted in the backend volume on first start. For portability and most production deployments, set a fixed `JWT_SECRET` explicitly.
 
-By default, the provided Compose files set `TRUST_PROXY=false` for safer setup. Only set `TRUST_PROXY` to a positive hop count (for example, `1`) when requests always pass through a trusted reverse proxy that correctly sets forwarded headers.
+`TRUST_PROXY` defaults to `false` for safer setup. Only set `TRUST_PROXY` to a positive hop count (for example, `1`) when requests always pass through a trusted reverse proxy that correctly sets forwarded headers.
 
 </details>
 
@@ -201,14 +190,11 @@ By default, the provided Compose files set `TRUST_PROXY=false` for safer setup. 
 ## Docker Build
 
 ```bash
-# Clone the repository (recommended)
-git clone git@github.com:ZimengXiong/ExcaliDash.git
+git clone https://git.kazecik.com/xkazecik/NoteCanvas.git
+cd NoteCanvas
+cp .env.example .env
 
-# or, clone with HTTPS
-# git clone https://github.com/ZimengXiong/ExcaliDash.git
-
-docker compose build
-docker compose up -d
+docker compose -f docker-compose.build.yml up -d --build
 
 # Access the frontend at localhost:6767
 ```
@@ -224,9 +210,6 @@ details.
 
 For the full environment-variable reference, see
 [configuration](docs/CONFIGURATION.md).
-
-For release-candidate validation across multiple local configurations, see the
-[configuration lab](docs/CONFIG_LAB.md).
 
 # Development
 
@@ -276,8 +259,8 @@ npm install
 # Copy environment file and customize if needed
 cp .env.example .env
 
-# Generate Prisma client and setup database
-npx prisma generate
+# Generate the Prisma clients (SQLite + PostgreSQL) and set up the database
+npm run prisma:generate
 npx prisma db push
 
 npm run dev

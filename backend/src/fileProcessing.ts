@@ -135,6 +135,8 @@ export const internDrawingFiles = async (
     }
 
     // Database-bytes mode: store the raw bytes inline in DrawingFile.data.
+    // Prisma types Bytes as Uint8Array<ArrayBuffer>; a Node Buffer is exactly that.
+    const data = decoded.buffer as Uint8Array<ArrayBuffer>;
     await prisma.drawingFile.upsert({
       where: { drawingId_fileId: { drawingId, fileId } },
       create: {
@@ -144,12 +146,12 @@ export const internDrawingFiles = async (
         sizeBytes,
         storage: "db",
         s3Key: null,
-        data: decoded.buffer,
+        data,
       },
       update: {
         storage: "db",
         s3Key: null,
-        data: decoded.buffer,
+        data,
         mimeType: decoded.mimeType,
         sizeBytes,
       },

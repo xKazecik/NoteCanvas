@@ -73,24 +73,17 @@ echo "Copying ${DATABASE_PROVIDER} migrations..."
 rm -rf /app/prisma/migrations/*
 cp -R /app/prisma_template/migrations/"${DATABASE_PROVIDER}"/. /app/prisma/migrations/
 
-# Update schema.prisma with the runtime provider (handles both env() and static values)
+# Update schema.prisma with the runtime provider (handles both env() and static values).
+# Only the migrate CLI reads this copy: both Prisma clients are compiled into
+# the image and the backend picks one from DATABASE_URL.
 echo "Configuring Prisma for provider: ${DATABASE_PROVIDER}"
 sed -i '/datasource db {/,/}/ s/provider = env("[^"]*")/provider = "'"${DATABASE_PROVIDER}"'"/' /app/prisma/schema.prisma
 sed -i '/datasource db {/,/}/ s/provider = "[^"]*"/provider = "'"${DATABASE_PROVIDER}"'"/' /app/prisma/schema.prisma
 
-# Generate Prisma Client at runtime (run as root since schema is owned by root)
-echo "Generating Prisma Client..."
-npx prisma generate --schema=/app/prisma/schema.prisma
-
-# Copy generated client to the expected location for the application
-mkdir -p /app/dist/generated
-cp -r /app/src/generated/* /app/dist/generated/
-
 # 2. Fix permissions unconditionally (Running as root)
 echo "Fixing filesystem permissions..."
-chown -R nodejs:nodejs /app/uploads /app/prisma /app/dist/generated
+chown -R nodejs:nodejs /app/uploads /app/prisma
 chmod 755 /app/uploads
-chmod -R 755 /app/dist/generated
 chmod 600 "${JWT_SECRET_FILE}"
 chmod 600 "${CSRF_SECRET_FILE}"
 

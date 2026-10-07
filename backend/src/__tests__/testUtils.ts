@@ -1,7 +1,8 @@
 /**
  * Test utilities for backend integration tests
  */
-import { PrismaClient } from "../generated/client";
+import { createPrismaClient } from "../db/createPrismaClient";
+import type { PrismaClient } from "../generated/client";
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
@@ -52,13 +53,7 @@ const withDbPushLock = (fn: () => void) => {
 export const getTestPrisma = () => {
   const databaseUrl = `file:${TEST_DB_PATH}`;
   process.env.DATABASE_URL = databaseUrl;
-  return new PrismaClient({
-    datasources: {
-      db: {
-        url: databaseUrl,
-      },
-    },
-  });
+  return createPrismaClient(databaseUrl);
 };
 
 /**
@@ -70,7 +65,7 @@ export const setupTestDb = () => {
   
   try {
     withDbPushLock(() => {
-      execSync("npx prisma db push --skip-generate --force-reset", {
+      execSync("npx prisma db push --force-reset", {
         cwd: path.resolve(__dirname, "../../"),
         env: {
           ...process.env,

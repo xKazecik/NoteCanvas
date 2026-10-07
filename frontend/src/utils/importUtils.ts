@@ -83,7 +83,7 @@ export const importDrawings = async (
         successCount++;
 
       } catch (err: any) {
-        console.error(`Failed to import ${file.name}:`, err);
+        console.error("Failed to import", file.name, err);
         failCount++;
         const errorMessage =
           err?.response?.data?.message ||
@@ -244,7 +244,7 @@ export const importLegacyFiles = async (
 
         throw new Error(`Invalid file structure: ${file.name}`);
       } catch (err: any) {
-        console.error(`Failed to import ${file.name}:`, err);
+        console.error("Failed to import", file.name, err);
         failCount += 1;
         const errorMessage =
           err?.response?.data?.message ||

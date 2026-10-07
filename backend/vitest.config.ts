@@ -14,8 +14,8 @@ export default defineConfig({
       AUTH_MODE: "local",
     },
     pool: "forks",
-    forks: {
-      singleFork: true,
-    },
+    // One file at a time: integration files share a lock around
+    // "prisma db push". (Vitest 4 dropped the old forks.singleFork option.)
+    maxWorkers: 1,
   },
 });

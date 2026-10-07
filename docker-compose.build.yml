@@ -1,0 +1,52 @@
+# NoteCanvas -- builds the image from this checkout and runs it.
+#
+#   cp .env.example .env      # all app settings live there
+#   docker compose -f docker-compose.build.yml up -d --build
+#
+# Same container, port and volumes as docker-compose.yml, so it is a drop-in
+# replacement for the published image (and shares its data).
+
+services:
+  notecanvas:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Shown in Settings and compared by the update check. A non-numeric
+        # value such as "local" turns the update prompt off for this build.
+        VITE_APP_VERSION: ${NOTECANVAS_VERSION:-local}
+    image: notecanvas:local
+    container_name: notecanvas
+    # Reaps zombies and forwards SIGTERM so nginx and node shut down cleanly.
+    init: true
+    ports:
+      - "${NOTECANVAS_PORT:-6767}:80"
+    env_file:
+      - .env
+    environment:
+      # Fixed by the image layout (nginx on :80, backend on loopback :8000).
+      - NODE_ENV=production
+      - PORT=8000
+      - BACKEND_URL=127.0.0.1:8000
+      # Prisma needs this set during migrations; override in .env for Postgres.
+      - DATABASE_URL=${DATABASE_URL:-file:/app/prisma/dev.db}
+    volumes:
+      # SQLite database and the auto-generated JWT/CSRF secrets.
+      - notecanvas-data:/app/prisma
+      # Uploaded images, when S3 storage is not configured.
+      - notecanvas-uploads:/app/uploads
+      # Scheduled backups (BACKUP_DIR defaults to /app/backups).
+      - notecanvas-backups:/app/backups
+    restart: unless-stopped
+    healthcheck:
+      # Goes through nginx to the backend, so one check covers both processes.
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--output-document=/dev/null", "http://127.0.0.1:80/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  notecanvas-data:
+  notecanvas-uploads:
+  notecanvas-backups:

@@ -48,12 +48,12 @@ jobs:
     # node runs the JS actions (checkout); the docker CLI talks to the
     # daemon the runner exposes as DOCKER_HOST.
     container:
-      image: docker.io/library/node:20-alpine
+      image: docker.io/library/node:24-alpine
     steps:
       - name: Install git and the docker CLI
         run: apk add --no-cache git docker-cli
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # The minor number IS the commit count, so the shallow clone that
           # checkout does by default (depth 1) would make every build "x.1".

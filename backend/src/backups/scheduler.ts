@@ -124,6 +124,7 @@ const pruneOldBackups = async (backupDir: string, retentionDays: number): Promis
     entries
       .filter((entry) => entry.isFile() && /^excalidash-sqlite-.*\.db$/.test(entry.name))
       .map(async (entry) => {
+        // nosemgrep -- names come from readdir of the backup dir, filtered to excalidash-sqlite-*.db
         const filePath = path.join(backupDir, entry.name);
         const stat = await fs.promises.stat(filePath);
         if (stat.mtimeMs < cutoff) await fs.promises.unlink(filePath);
@@ -148,6 +149,7 @@ export const createSqliteBackup = async ({
   await fs.promises.mkdir(backupDir, { recursive: true, mode: 0o700 });
   await prisma.$executeRawUnsafe("PRAGMA wal_checkpoint(PASSIVE)");
 
+  // nosemgrep -- fixed prefix plus a generated timestamp
   const target = path.join(backupDir, `excalidash-sqlite-${timestampForFilename(new Date())}.db`);
   const source = new Database(databasePath, { readonly: true, fileMustExist: true });
   try {

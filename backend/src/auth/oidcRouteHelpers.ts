@@ -220,6 +220,7 @@ export const readClaimByPath = (
   let current: unknown = claims;
   for (const segment of segments) {
     if (typeof current !== "object" || current === null) return undefined;
+    // nosemgrep -- read-only walk of a claim path from server config; nothing is assigned
     current = (current as Record<string, unknown>)[segment];
   }
   return current;
