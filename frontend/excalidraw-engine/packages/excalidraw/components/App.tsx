@@ -59,6 +59,7 @@ import {
   DEFAULT_TEXT_ALIGN,
   ARROW_TYPE,
   DEFAULT_REDUCED_GLOBAL_ALPHA,
+  EXPORT_DATA_TYPES,
   isLocalLink,
   normalizeLink,
   toValidURL,
@@ -134,6 +135,12 @@ import {
   setColumnWidth,
   setRowHeight,
   toLocalPoint,
+  fillCells,
+  insertRow,
+  normalizeRange,
+  parseTSV,
+  rangeToTSV,
+  resolveAnchorCell,
   newIframeElement,
   newArrowElement,
   newElement,
@@ -321,6 +328,17 @@ import {
   actionToggleLinearEditor,
   actionToggleObjectsSnapMode,
   actionToggleCropEditor,
+  actionTableInsertRowAbove,
+  actionTableInsertRowBelow,
+  actionTableInsertColumnLeft,
+  actionTableInsertColumnRight,
+  actionTableDeleteRow,
+  actionTableDeleteColumn,
+  actionTableClearCells,
+  actionTableSortAscending,
+  actionTableSortDescending,
+  getTableTarget,
+  performTableOperation,
 } from "../actions";
 import { actionWrapTextInContainer } from "../actions/actionBoundText";
 import { actionToggleHandTool, zoomToFit } from "../actions/actionCanvas";
@@ -417,9 +435,12 @@ import { ElementCanvasButtons } from "../components/ElementCanvasButtons";
 import { LaserTrails } from "../laser-trails";
 import { withBatchedUpdates, withBatchedUpdatesThrottled } from "../reactUtils";
 import { textWysiwyg } from "../wysiwyg/textWysiwyg";
-import { tableCellWysiwyg } from "../wysiwyg/tableCellWysiwyg";
+import { stepTableCell, tableCellWysiwyg } from "../wysiwyg/tableCellWysiwyg";
 
-import type { TableCellEditorHandle } from "../wysiwyg/tableCellWysiwyg";
+import type {
+  TableCellEditorHandle,
+  TableStepDirection,
+} from "../wysiwyg/tableCellWysiwyg";
 import { isOverScrollBars } from "../scene/scrollbars";
 
 import { isMaybeMermaidDefinition } from "../mermaid";
@@ -3346,6 +3367,11 @@ class App extends React.Component<AppProps, AppState> {
     if (!isExcalidrawActive || isWritableElement(event.target)) {
       return;
     }
+    if (this.copyTableCells(event, true)) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     this.actionManager.executeAction(actionCut, "keyboard", event);
     event.preventDefault();
     event.stopPropagation();
@@ -3356,6 +3382,11 @@ class App extends React.Component<AppProps, AppState> {
       document.activeElement,
     );
     if (!isExcalidrawActive || isWritableElement(event.target)) {
+      return;
+    }
+    if (this.copyTableCells(event, false)) {
+      event.preventDefault();
+      event.stopPropagation();
       return;
     }
     this.actionManager.executeAction(actionCopy, "keyboard", event);
@@ -3623,6 +3654,18 @@ class App extends React.Component<AppProps, AppState> {
         (!(elementUnderCursor instanceof HTMLCanvasElement) ||
           isWritableElement(target))
       ) {
+        return;
+      }
+
+      // text pasted while cells are picked goes into the table; read it before
+      // any await, for the same reason as below
+      if (
+        event &&
+        this.pasteIntoTableCells(
+          event.clipboardData?.getData("text/plain") ?? "",
+        )
+      ) {
+        event.preventDefault();
         return;
       }
 
@@ -4734,6 +4777,12 @@ class App extends React.Component<AppProps, AppState> {
         // or unless using arrows (to move between buttons)
         (isArrowKey(event.key) && isInputLike(event.target))
       ) {
+        return;
+      }
+
+      // picked table cells take the keyboard before tool shortcuts and the
+      // delete/nudge handling, which would act on the whole table
+      if (this.handleTableCellKeyDown(event)) {
         return;
       }
 
@@ -9010,11 +9059,177 @@ class App extends React.Component<AppProps, AppState> {
     return true;
   };
 
+  /** The selected table and its picked cell range, when the user can edit it. */
+  private getEditableTableSelection = () => {
+    const target = getTableTarget(
+      this.scene.getNonDeletedElements(),
+      this.state,
+    );
+    if (!target?.selection || target.table.locked) {
+      return null;
+    }
+    const { table, selection } = target;
+    return {
+      table,
+      selection,
+      range: normalizeRange(table, selection.anchor, selection.focus),
+    };
+  };
+
+  /**
+   * Spreadsheet keys while cells are picked in the selected table: arrows move
+   * the cell (Shift grows the range), Tab steps along the row, Enter or F2
+   * edits, typing replaces the cell, Delete clears the range and Escape goes
+   * back to the table as a whole. Returns true when the key was consumed.
+   */
+  private handleTableCellKeyDown = (
+    event: React.KeyboardEvent | KeyboardEvent,
+  ): boolean => {
+    const target = this.state.viewModeEnabled
+      ? null
+      : this.getEditableTableSelection();
+    if (!target || event.altKey) {
+      return false;
+    }
+    const { table, selection } = target;
+    const resolve = (cell: CellPosition) =>
+      resolveAnchorCell(table, cell.row, cell.col) ?? cell;
+    const anchor = resolve(selection.anchor);
+    const select = (from: CellPosition, to: CellPosition) =>
+      this.setState({
+        selectedTableCells: { elementId: table.id, anchor: from, focus: to },
+      });
+
+    if (event[KEYS.CTRL_OR_CMD]) {
+      // cut the cells rather than the table; the cut event does the work
+      return event.key.toLowerCase() === KEYS.X;
+    }
+
+    const arrows: Record<string, TableStepDirection> = {
+      [KEYS.ARROW_UP]: "up",
+      [KEYS.ARROW_DOWN]: "down",
+      [KEYS.ARROW_LEFT]: "left",
+      [KEYS.ARROW_RIGHT]: "right",
+    };
+    if (arrows[event.key]) {
+      event.preventDefault();
+      const extend = event.shiftKey;
+      const from = extend ? resolve(selection.focus) : anchor;
+      const next = stepTableCell(table, from, arrows[event.key]);
+      if (next) {
+        select(extend ? selection.anchor : next, next);
+      }
+      return true;
+    }
+
+    switch (event.key) {
+      case KEYS.TAB: {
+        event.preventDefault();
+        const next = stepTableCell(
+          table,
+          anchor,
+          event.shiftKey ? "prev" : "next",
+        );
+        if (next) {
+          select(next, next);
+        }
+        return true;
+      }
+      case KEYS.ENTER:
+      case "F2":
+        event.preventDefault();
+        this.startTableCellEditing(table, anchor);
+        return true;
+      case KEYS.DELETE:
+      case KEYS.BACKSPACE:
+        event.preventDefault();
+        this.actionManager.executeAction(actionTableClearCells, "keyboard");
+        return true;
+      case KEYS.ESCAPE:
+        this.setState({ selectedTableCells: null });
+        return true;
+    }
+
+    // a printable key starts editing with that character, like a spreadsheet;
+    // space is left alone because holding it pans the canvas
+    if (event.key.length === 1 && event.key !== " " && !event.metaKey) {
+      event.preventDefault();
+      this.startTableCellEditing(table, anchor, event.key);
+      return true;
+    }
+    return false;
+  };
+
+  /** Put the picked cells on the clipboard as TSV, so spreadsheets read them. */
+  private copyTableCells = (event: ClipboardEvent, cut: boolean): boolean => {
+    const target = this.getEditableTableSelection();
+    if (!target || !event.clipboardData) {
+      return false;
+    }
+    event.clipboardData.setData(
+      "text/plain",
+      rangeToTSV(target.table, target.range),
+    );
+    if (cut && !this.state.viewModeEnabled) {
+      this.actionManager.executeAction(actionTableClearCells, "keyboard");
+    }
+    return true;
+  };
+
+  /**
+   * Paste text into the picked cells, starting at the range's top-left corner.
+   * Tab- and newline-separated text (what spreadsheets copy) spreads across
+   * cells and grows the table as needed.
+   */
+  private pasteIntoTableCells = (text: string): boolean => {
+    const target = this.state.viewModeEnabled
+      ? null
+      : this.getEditableTableSelection();
+    if (!target || !text) {
+      return false;
+    }
+    try {
+      // copied canvas elements still paste as elements
+      const { type } = JSON.parse(text) ?? {};
+      if (
+        type === EXPORT_DATA_TYPES.excalidrawClipboard ||
+        type === EXPORT_DATA_TYPES.excalidrawClipboardWithAPI
+      ) {
+        return false;
+      }
+    } catch {
+      // not JSON, so plain text for the cells
+    }
+    const { table, range } = target;
+    const values = parseTSV(text);
+    const start = { row: range.top, col: range.left };
+    this.scene.mutateElement(table, fillCells(table, start, values));
+    this.store.scheduleCapture();
+    this.setState({
+      selectedTableCells: {
+        elementId: table.id,
+        anchor: start,
+        focus: {
+          row: start.row + values.length - 1,
+          col: start.col + Math.max(...values.map((line) => line.length)) - 1,
+        },
+      },
+    });
+    return true;
+  };
+
   private startTableCellEditing = (
     element: ExcalidrawTableElement,
     cell: CellPosition,
+    initialText?: string,
   ) => {
     this.tableCellEditor?.submit();
+
+    // the picked cell follows the editor, so leaving it with Escape lands the
+    // keyboard on the cell that was being edited
+    this.setState({
+      selectedTableCells: { elementId: element.id, anchor: cell, focus: cell },
+    });
 
     const commit = (text: string) => {
       const latest = this.scene.getElement(element.id);
@@ -9049,15 +9264,31 @@ class App extends React.Component<AppProps, AppState> {
         },
         getZoom: () => this.state.zoom.value,
         onChange: () => {},
+        initialText,
         onSubmit: (text) => {
           this.tableCellEditor = null;
           commit(text);
           this.store.scheduleCapture();
+          // give the keyboard back to the canvas so arrows keep moving cells
+          this.focusContainer();
         },
         onMove: (next) => {
           const latest = this.scene.getElement(element.id);
           if (isTableElement(latest)) {
             this.startTableCellEditing(latest, next);
+          }
+        },
+        onTabPastEnd: () => {
+          const latest = this.scene.getElement(element.id);
+          if (!isTableElement(latest) || latest.locked) {
+            return;
+          }
+          const row = latest.rowHeights.length;
+          this.scene.mutateElement(latest, insertRow(latest, row));
+          this.store.scheduleCapture();
+          const grown = this.scene.getElement(element.id);
+          if (isTableElement(grown)) {
+            this.startTableCellEditing(grown, { row, col: 0 });
           }
         },
       }) ?? null;
@@ -10912,6 +11143,10 @@ class App extends React.Component<AppProps, AppState> {
             focus: cell,
           },
         }));
+      } else if (this.state.selectedTableCells) {
+        // any other click drops the picked cells, so re-selecting a table later
+        // starts on the table itself rather than a stale cell
+        this.setState({ selectedTableCells: null });
       }
 
       if (
@@ -11787,6 +12022,36 @@ class App extends React.Component<AppProps, AppState> {
 
     trackEvent("contextMenu", "openContextMenu", type);
 
+    // right-clicking a table cell targets that cell for the table entries,
+    // unless it already sits inside the picked range
+    const tableCell = isTableElement(element)
+      ? this.getTableCellAtSceneCoords(x, y)
+      : null;
+    const pickedCells = this.state.selectedTableCells;
+    const pickedRange =
+      tableCell && pickedCells?.elementId === tableCell.element.id
+        ? normalizeRange(
+            tableCell.element,
+            pickedCells.anchor,
+            pickedCells.focus,
+          )
+        : null;
+    const selectedTableCells =
+      tableCell &&
+      !(
+        pickedRange &&
+        tableCell.cell.row >= pickedRange.top &&
+        tableCell.cell.row <= pickedRange.bottom &&
+        tableCell.cell.col >= pickedRange.left &&
+        tableCell.cell.col <= pickedRange.right
+      )
+        ? {
+            elementId: tableCell.element.id,
+            anchor: tableCell.cell,
+            focus: tableCell.cell,
+          }
+        : pickedCells;
+
     this.setState(
       {
         ...(element && !this.state.selectedElementIds[element.id]
@@ -11810,6 +12075,7 @@ class App extends React.Component<AppProps, AppState> {
             }
           : this.state),
         showHyperlinkPopup: false,
+        selectedTableCells,
       },
       () => {
         this.setState({
@@ -12223,6 +12489,18 @@ class App extends React.Component<AppProps, AppState> {
       actionCut,
       actionCopy,
       actionPaste,
+      CONTEXT_MENU_SEPARATOR,
+      // these only show when a single table is selected
+      actionTableInsertRowAbove,
+      actionTableInsertRowBelow,
+      actionTableInsertColumnLeft,
+      actionTableInsertColumnRight,
+      actionTableDeleteRow,
+      actionTableDeleteColumn,
+      CONTEXT_MENU_SEPARATOR,
+      actionTableSortAscending,
+      actionTableSortDescending,
+      actionTableClearCells,
       CONTEXT_MENU_SEPARATOR,
       actionSelectAllElementsInFrame,
       actionRemoveAllElementsFromFrame,

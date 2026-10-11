@@ -137,37 +137,41 @@ export const insertColumn = (
   return patch(colWidths, [...element.rowHeights], reindexSpans(cells));
 };
 
+/** Remove `count` rows starting at `at`; the last row can never be removed. */
 export const deleteRow = (
   element: ExcalidrawTableElement,
   at: number,
+  count = 1,
 ): TablePatch | null => {
-  if (tableRowCount(element) <= 1) {
+  if (tableRowCount(element) <= count) {
     return null;
   }
   const cells = cloneGrid(element);
   splitSpansAcross(cells, "row", at);
-  splitSpansAcross(cells, "row", at + 1);
-  cells.splice(at, 1);
+  splitSpansAcross(cells, "row", at + count);
+  cells.splice(at, count);
   const rowHeights = [...element.rowHeights];
-  rowHeights.splice(at, 1);
+  rowHeights.splice(at, count);
   return patch([...element.colWidths], rowHeights, reindexSpans(cells));
 };
 
+/** Remove `count` columns starting at `at`; the last column always stays. */
 export const deleteColumn = (
   element: ExcalidrawTableElement,
   at: number,
+  count = 1,
 ): TablePatch | null => {
-  if (tableColumnCount(element) <= 1) {
+  if (tableColumnCount(element) <= count) {
     return null;
   }
   const cells = cloneGrid(element);
   splitSpansAcross(cells, "col", at);
-  splitSpansAcross(cells, "col", at + 1);
+  splitSpansAcross(cells, "col", at + count);
   for (const row of cells) {
-    row.splice(at, 1);
+    row.splice(at, count);
   }
   const colWidths = [...element.colWidths];
-  colWidths.splice(at, 1);
+  colWidths.splice(at, count);
   return patch(colWidths, [...element.rowHeights], reindexSpans(cells));
 };
 

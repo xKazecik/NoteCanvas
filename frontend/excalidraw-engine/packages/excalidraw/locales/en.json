@@ -175,7 +175,9 @@
     "table": "Table",
     "tableStructure": "Rows & columns",
     "tableStyle": "Table style",
+    "insertRowAbove": "Insert row above",
     "insertRowBelow": "Insert row below",
+    "insertColumnBefore": "Insert column left",
     "insertColumnAfter": "Insert column right",
     "deleteRow": "Delete row",
     "deleteColumn": "Delete column",
@@ -185,6 +187,10 @@
     "unmergeCells": "Unmerge cells",
     "cellBackground": "Cell background",
     "cellText": "Cell text",
+    "tableData": "Data",
+    "clearCells": "Clear cells",
+    "sortAscending": "Sort A → Z",
+    "sortDescending": "Sort Z → A",
     "bold": "Bold",
     "italic": "Italic"
   },
@@ -560,6 +566,7 @@
   },
   "toast": {
     "addedToLibrary": "Added to library",
+    "tableSortMerged": "Unmerge the cells below the header to sort this table.",
     "copyStyles": "Copied styles.",
     "copyToClipboard": "Copied to clipboard.",
     "copyToClipboardAsPng": "Copied {{exportSelection}} to clipboard as PNG\n({{exportColorScheme}})",

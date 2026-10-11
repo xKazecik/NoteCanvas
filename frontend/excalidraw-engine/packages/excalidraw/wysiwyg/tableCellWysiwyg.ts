@@ -21,14 +21,23 @@ export type TableCellEditorHandle = {
   elementId: string;
 };
 
+export type TableStepDirection =
+  | "next"
+  | "prev"
+  | "up"
+  | "down"
+  | "left"
+  | "right";
+
 /**
  * Where to go when Tab or an arrow key leaves the current cell. Skips slots
- * hidden behind a merge so tabbing never lands on an uneditable cell.
+ * hidden behind a merge so tabbing never lands on an uneditable cell. Tab
+ * (`next`/`prev`) wraps across rows; the arrow directions stop at the edge.
  */
-const step = (
+export const stepTableCell = (
   element: ExcalidrawTableElement,
   from: CellPosition,
-  direction: "next" | "prev" | "up" | "down",
+  direction: TableStepDirection,
 ): CellPosition | null => {
   const rows = tableRowCount(element);
   const cols = tableColumnCount(element);
@@ -47,6 +56,8 @@ const step = (
         col = cols - 1;
         row -= 1;
       }
+    } else if (direction === "left" || direction === "right") {
+      col += direction === "right" ? 1 : -1;
     } else {
       row += direction === "down" ? 1 : -1;
     }
@@ -79,6 +90,8 @@ export const tableCellWysiwyg = ({
   onChange,
   onSubmit,
   onMove,
+  onTabPastEnd,
+  initialText,
 }: {
   element: ExcalidrawTableElement;
   cell: CellPosition;
@@ -89,6 +102,10 @@ export const tableCellWysiwyg = ({
   onChange: (text: string) => void;
   onSubmit: (text: string) => void;
   onMove: (next: CellPosition) => void;
+  /** Tab out of the last cell, which spreadsheets answer with a new row. */
+  onTabPastEnd?: () => void;
+  /** Start from this text instead of the cell's, as when typing over a cell. */
+  initialText?: string;
 }): TableCellEditorHandle | null => {
   const box = getCellBox(element, cell.row, cell.col);
   const host = excalidrawContainer?.querySelector(
@@ -108,7 +125,8 @@ export const tableCellWysiwyg = ({
   editable.tabIndex = 0;
   editable.dataset.type = "table-cell";
   editable.wrap = "soft";
-  editable.value = element.cells[cell.row]?.[cell.col]?.text ?? "";
+  editable.value =
+    initialText ?? element.cells[cell.row]?.[cell.col]?.text ?? "";
   editable.classList.add("excalidraw-wysiwyg");
 
   let submitted = false;
@@ -184,10 +202,15 @@ export const tableCellWysiwyg = ({
     }
   }
 
-  const moveTo = (direction: "next" | "prev" | "up" | "down") => {
-    const target = step(element, cell, direction);
-    if (teardown() && target) {
+  const moveTo = (direction: TableStepDirection) => {
+    const target = stepTableCell(element, cell, direction);
+    if (!teardown()) {
+      return;
+    }
+    if (target) {
       onMove(target);
+    } else if (direction === "next") {
+      onTabPastEnd?.();
     }
   };
 
@@ -213,7 +236,12 @@ export const tableCellWysiwyg = ({
   position();
   host.appendChild(editable);
   editable.focus();
-  editable.select();
+  if (initialText === undefined) {
+    editable.select();
+  } else {
+    // typing over a cell carries on after the key that opened the editor
+    editable.setSelectionRange(editable.value.length, editable.value.length);
+  }
 
   requestAnimationFrame(() => {
     window.addEventListener("pointerdown", onPointerDown, { capture: true });

@@ -480,6 +480,50 @@ export const TableAddRowIcon = createIcon(
   tablerIconProps,
 );
 
+export const TableAddRowAboveIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M3 15a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" />
+    <path d="M12 3l0 6" />
+    <path d="M9 6l6 0" />
+  </g>,
+  tablerIconProps,
+);
+
+export const TableAddColumnLeftIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M13 5a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-4a2 2 0 0 1 -2 -2z" />
+    <path d="M6 9l0 6" />
+    <path d="M3 12l6 0" />
+  </g>,
+  tablerIconProps,
+);
+
+export const TableSortAscendingIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M4 15l3 3l3 -3" />
+    <path d="M7 6v12" />
+    <path d="M13 6h3" />
+    <path d="M13 12h5" />
+    <path d="M13 18h8" />
+  </g>,
+  tablerIconProps,
+);
+
+export const TableSortDescendingIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M4 15l3 3l3 -3" />
+    <path d="M7 6v12" />
+    <path d="M13 6h8" />
+    <path d="M13 12h5" />
+    <path d="M13 18h3" />
+  </g>,
+  tablerIconProps,
+);
+
 export const TableAddColumnIcon = createIcon(
   <g strokeWidth="1.5">
     <path stroke="none" d="M0 0h24v24H0z" fill="none" />

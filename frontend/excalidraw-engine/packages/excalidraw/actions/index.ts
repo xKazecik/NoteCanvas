@@ -20,7 +20,20 @@ export {
   actionChangeVerticalAlign,
   actionChangeArrowProperties,
 } from "./actionProperties";
-export { actionTableOperation, getTableTarget } from "./actionTable";
+export {
+  actionTableOperation,
+  actionTableInsertRowAbove,
+  actionTableInsertRowBelow,
+  actionTableInsertColumnLeft,
+  actionTableInsertColumnRight,
+  actionTableDeleteRow,
+  actionTableDeleteColumn,
+  actionTableClearCells,
+  actionTableSortAscending,
+  actionTableSortDescending,
+  getTableTarget,
+  performTableOperation,
+} from "./actionTable";
 
 export {
   actionChangeViewBackgroundColor,
