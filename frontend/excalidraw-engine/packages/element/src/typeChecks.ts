@@ -51,6 +51,16 @@ export const isEmbeddableElement = (
   return !!element && element.type === "embeddable";
 };
 
+/**
+ * A browser is an embeddable flagged in its customData: it loads any web page
+ * rather than the embed allow-list, and stays interactive in view mode.
+ */
+export const isBrowserElement = (
+  element: ExcalidrawElement | null | undefined,
+): element is ExcalidrawEmbeddableElement => {
+  return isEmbeddableElement(element) && !!element.customData?.browser;
+};
+
 export const isIframeElement = (
   element: ExcalidrawElement | null,
 ): element is ExcalidrawIframeElement => {

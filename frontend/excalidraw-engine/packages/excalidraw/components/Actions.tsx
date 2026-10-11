@@ -30,7 +30,7 @@ import type {
   NonDeletedSceneElementsMap,
 } from "@excalidraw/element/types";
 
-import { actionToggleZenMode } from "../actions";
+import { actionInsertBrowser, actionToggleZenMode } from "../actions";
 
 import { alignActionsPredicate } from "../actions/actionAlign";
 import { trackEvent } from "../analytics";
@@ -60,6 +60,7 @@ import {
   useEditorInterface,
   useStylesPanelMode,
   useExcalidrawContainer,
+  useExcalidrawActionManager,
 } from "./App";
 import Stack from "./Stack";
 import { ToolButton } from "./ToolButton";
@@ -69,6 +70,7 @@ import DropdownMenu from "./dropdownMenu/DropdownMenu";
 import { PropertiesPopover } from "./PropertiesPopover";
 import {
   EmbedIcon,
+  BrowserIcon,
   extraToolsIcon,
   frameToolIcon,
   mermaidLogoIcon,
@@ -1062,6 +1064,7 @@ export const ShapesSwitcher = ({
   UIOptions: AppProps["UIOptions"];
 }) => {
   const [isExtraToolsMenuOpen, setIsExtraToolsMenuOpen] = useState(false);
+  const actionManager = useExcalidrawActionManager();
   const stylesPanelMode = useStylesPanelMode();
   const isFullStylesPanel = stylesPanelMode === "full";
   const isCompactStylesPanel = stylesPanelMode === "compact";
@@ -1240,6 +1243,13 @@ export const ShapesSwitcher = ({
             selected={embeddableToolSelected}
           >
             {t("toolBar.embeddable")}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            onSelect={() => actionManager.executeAction(actionInsertBrowser)}
+            icon={BrowserIcon}
+            data-testid="toolbar-browser"
+          >
+            {t("toolBar.browser")}
           </DropdownMenu.Item>
           <DropdownMenu.Item
             onSelect={() => app.setActiveTool({ type: "laser" })}

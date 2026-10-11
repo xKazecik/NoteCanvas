@@ -16,7 +16,7 @@ import { hitElementBoundingBox } from "@excalidraw/element";
 
 import { isElementLink } from "@excalidraw/element";
 
-import { getEmbedLink, embeddableURLValidator } from "@excalidraw/element";
+import { getEmbedLink, isEmbeddableLinkAllowed } from "@excalidraw/element";
 
 import {
   sceneCoordsToViewportCoords,
@@ -26,7 +26,11 @@ import {
   normalizeLink,
 } from "@excalidraw/common";
 
-import { isEmbeddableElement } from "@excalidraw/element";
+import {
+  getBrowserURL,
+  isBrowserElement,
+  isEmbeddableElement,
+} from "@excalidraw/element";
 
 import type { Scene } from "@excalidraw/element";
 
@@ -101,7 +105,12 @@ export const Hyperlink = ({
       return;
     }
 
-    const link = normalizeLink(inputRef.current.value) || null;
+    const typed = normalizeLink(inputRef.current.value) || null;
+    // a browser keeps the full address it resolved a bare host to, since the
+    // server drops links that have no scheme
+    const link = isBrowserElement(element)
+      ? getBrowserURL(typed) ?? typed
+      : typed;
 
     if (!element.link && link) {
       trackEvent("hyperlink", "create");
@@ -119,7 +128,9 @@ export const Hyperlink = ({
         return;
       }
 
-      if (!embeddableURLValidator(link, appProps.validateEmbeddable)) {
+      if (
+        !isEmbeddableLinkAllowed(element, link, appProps.validateEmbeddable)
+      ) {
         if (link) {
           setToast({ message: t("toast.unableToEmbed"), closable: true });
         }

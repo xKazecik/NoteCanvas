@@ -44,6 +44,7 @@ export type ActionFilterFn = (action: Action) => void;
 
 export type ActionName =
   | "tableOperation"
+  | "insertBrowser"
   | "copy"
   | "cut"
   | "paste"

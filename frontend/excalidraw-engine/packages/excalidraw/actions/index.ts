@@ -32,7 +32,10 @@ export {
   actionToggleTheme,
 } from "./actionCanvas";
 
-export { actionSetEmbeddableAsActiveTool } from "./actionEmbeddable";
+export {
+  actionSetEmbeddableAsActiveTool,
+  actionInsertBrowser,
+} from "./actionEmbeddable";
 
 export { actionFinalize } from "./actionFinalize";
 

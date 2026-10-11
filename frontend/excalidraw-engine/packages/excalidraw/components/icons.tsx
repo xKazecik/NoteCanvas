@@ -587,6 +587,27 @@ export const EmbedIcon = createIcon(
   modifiedTablerIconProps,
 );
 
+export const BrowserIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M4 5a1 1 0 0 1 1 -1h14a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-14a1 1 0 0 1 -1 -1z" />
+    <path d="M4 8h16" />
+    <path d="M8 4v4" />
+  </g>,
+  tablerIconProps,
+);
+
+/** Tabler "home": takes a browser element back to its start page. */
+export const BrowserHomeIcon = createIcon(
+  <g strokeWidth="1.5">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+    <path d="M5 12l-2 0l9 -9l9 9l-2 0" />
+    <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />
+    <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" />
+  </g>,
+  tablerIconProps,
+);
+
 export const DuplicateIcon = createIcon(
   <g strokeWidth="1.25">
     <path d="M14.375 6.458H8.958a2.5 2.5 0 0 0-2.5 2.5v5.417a2.5 2.5 0 0 0 2.5 2.5h5.417a2.5 2.5 0 0 0 2.5-2.5V8.958a2.5 2.5 0 0 0-2.5-2.5Z" />
