@@ -140,6 +140,7 @@ export type ActionName =
   | "updateFrameRendering"
   | "setFrameAsActiveTool"
   | "setEmbeddableAsActiveTool"
+  | "insertBrowser"
   | "createContainerFromText"
   | "wrapTextInContainer"
   | "commandPalette"

@@ -178,6 +178,10 @@ import {
   isPathALoop,
   createSrcDoc,
   embeddableURLValidator,
+  getBrowserURL,
+  getBrowserZoom,
+  isBrowserElement,
+  isEmbeddableLinkAllowed,
   maybeParseEmbedSrc,
   getEmbedLink,
   getInitializedImageElements,
@@ -460,6 +464,7 @@ import ConvertElementTypePopup, {
 import { activeConfirmDialogAtom } from "./ActiveConfirmDialog";
 import BraveMeasureTextError from "./BraveMeasureTextError";
 import { ContextMenu, CONTEXT_MENU_SEPARATOR } from "./ContextMenu";
+import { BrowserFrame } from "./BrowserFrame";
 import { activeEyeDropperAtom } from "./EyeDropper";
 import FollowMode from "./FollowMode/FollowMode";
 import LayerUI from "./LayerUI";
@@ -1358,7 +1363,8 @@ class App extends React.Component<AppProps, AppState> {
         if (!this.embedsValidationStatus.has(element.id)) {
           updated = true;
 
-          const validated = embeddableURLValidator(
+          const validated = isEmbeddableLinkAllowed(
+            element,
             element.link,
             this.props.validateEmbeddable,
           );
@@ -1564,6 +1570,19 @@ class App extends React.Component<AppProps, AppState> {
             src = getEmbedLink(toValidURL(el.link || ""));
           }
 
+          const browserURL = isBrowserElement(el)
+            ? getBrowserURL(el.link)
+            : null;
+          const browserFrame =
+            browserURL && isEmbeddableElement(el) ? (
+              <BrowserFrame
+                url={browserURL}
+                zoom={getBrowserZoom(el)}
+                canEdit={!this.state.viewModeEnabled && !el.locked}
+                onZoomChange={(zoom) => this.setBrowserZoom(el, zoom)}
+              />
+            ) : null;
+
           const isActive =
             this.state.activeEmbeddable?.element === el &&
             this.state.activeEmbeddable?.state === "active";
@@ -1621,9 +1640,12 @@ class App extends React.Component<AppProps, AppState> {
                   width: isVisible ? `${el.width}px` : 0,
                   height: isVisible ? `${el.height}px` : 0,
                   transform: isVisible ? `rotate(${el.angle}rad)` : "none",
-                  pointerEvents: isActive
-                    ? POINTER_EVENTS.enabled
-                    : POINTER_EVENTS.disabled,
+                  // a browser is live whenever the scene cannot be edited, so
+                  // it can be used straight away during a presentation
+                  pointerEvents:
+                    isActive || (browserURL && this.state.viewModeEnabled)
+                      ? POINTER_EVENTS.enabled
+                      : POINTER_EVENTS.disabled,
                 }}
               >
                 {isHovered && (
@@ -1638,7 +1660,8 @@ class App extends React.Component<AppProps, AppState> {
                   }}
                 >
                   {(isEmbeddableElement(el)
-                    ? this.props.renderEmbeddable?.(el, this.state)
+                    ? this.props.renderEmbeddable?.(el, this.state) ??
+                      browserFrame
                     : null) ?? (
                     <iframe
                       ref={(ref) => this.cacheEmbeddableRef(el, ref)}
@@ -1670,6 +1693,24 @@ class App extends React.Component<AppProps, AppState> {
       </>
     );
   }
+
+  /** Store a browser element's page zoom, which every viewer then sees. */
+  private setBrowserZoom = (
+    element: ExcalidrawEmbeddableElement,
+    zoom: number,
+  ) => {
+    const latest = this.scene.getElement(element.id);
+    if (!isBrowserElement(latest)) {
+      return;
+    }
+    this.scene.mutateElement(latest, {
+      customData: {
+        ...latest.customData,
+        browser: { ...latest.customData?.browser, zoom },
+      },
+    });
+    this.store.scheduleCapture();
+  };
 
   private getFrameNameDOMId = (frameElement: ExcalidrawElement) => {
     return `${this.id}-frame-name-${frameElement.id}`;
