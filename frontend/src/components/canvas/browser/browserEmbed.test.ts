@@ -3,8 +3,7 @@ import {
   BROWSER_ZOOM,
   getBrowserURL,
   getBrowserZoom,
-  isBrowserElement,
-  isEmbeddableLinkAllowed,
+  getBrowserFrameURL,
   newBrowserData,
   newEmbeddableElement,
 } from "@excalidraw/element";
@@ -21,15 +20,6 @@ const embed = (customData?: Record<string, unknown>) =>
 
 const browser = (zoom?: unknown) =>
   embed({ browser: zoom === undefined ? newBrowserData() : { zoom } });
-
-describe("isBrowserElement", () => {
-  it("tells a browser apart from a plain web embed", () => {
-    expect(isBrowserElement(browser())).toBe(true);
-    expect(isBrowserElement(embed())).toBe(false);
-    expect(isBrowserElement(embed({ other: true }))).toBe(false);
-    expect(isBrowserElement(null)).toBe(false);
-  });
-});
 
 describe("getBrowserURL", () => {
   it("keeps http and https addresses", () => {
@@ -70,26 +60,73 @@ describe("getBrowserZoom", () => {
   });
 });
 
-describe("isEmbeddableLinkAllowed", () => {
-  it("lets a browser load any web page", () => {
+
+describe("getBrowserZoom on older web embeds", () => {
+  it("treats an embed saved before browsers existed as 100%", () => {
+    expect(getBrowserZoom(embed())).toBe(BROWSER_ZOOM.default);
+  });
+});
+
+describe("getBrowserFrameURL", () => {
+  it("loads Instagram posts, reels and profiles through their embed page", () => {
+    expect(getBrowserFrameURL("https://www.instagram.com/p/C0nZxVnLc2H/")).toBe(
+      "https://www.instagram.com/p/C0nZxVnLc2H/embed/",
+    );
     expect(
-      isEmbeddableLinkAllowed(browser(), "https://example.com", undefined),
-    ).toBe(true);
+      getBrowserFrameURL("https://www.instagram.com/reels/C0nZxVnLc2H/?igsh=x"),
+    ).toBe("https://www.instagram.com/reel/C0nZxVnLc2H/embed/");
     expect(
-      isEmbeddableLinkAllowed(browser(), "javascript:alert(1)", undefined),
-    ).toBe(false);
+      getBrowserFrameURL("https://www.instagram.com/natgeo/p/C0nZxVnLc2H/"),
+    ).toBe("https://www.instagram.com/p/C0nZxVnLc2H/embed/");
+    expect(getBrowserFrameURL("https://www.instagram.com/natgeo/")).toBe(
+      "https://www.instagram.com/natgeo/embed/",
+    );
   });
 
-  it("keeps plain web embeds on the allow-list", () => {
+  it("leaves Instagram pages without an embed page alone", () => {
+    for (const url of [
+      "https://www.instagram.com/",
+      "https://www.instagram.com/explore/",
+      "https://www.instagram.com/p/",
+    ]) {
+      expect(getBrowserFrameURL(url)).toBe(url);
+    }
+  });
+
+  it("plays YouTube videos and playlists through the embed player", () => {
     expect(
-      isEmbeddableLinkAllowed(embed(), "https://example.com", undefined),
-    ).toBe(false);
+      getBrowserFrameURL("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+    ).toMatch(/^https:\/\/www\.youtube\.com\/embed\/dQw4w9WgXcQ\b/);
+    expect(getBrowserFrameURL("https://youtu.be/dQw4w9WgXcQ?t=42")).toMatch(
+      /^https:\/\/www\.youtube\.com\/embed\/dQw4w9WgXcQ\?.*start=42/,
+    );
     expect(
-      isEmbeddableLinkAllowed(
-        embed(),
-        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        undefined,
-      ),
-    ).toBe(true);
+      getBrowserFrameURL("https://www.youtube.com/shorts/dQw4w9WgXcQ"),
+    ).toMatch(/^https:\/\/www\.youtube\.com\/embed\/dQw4w9WgXcQ\b/);
+    expect(
+      getBrowserFrameURL("https://www.youtube.com/playlist?list=PLabc123"),
+    ).toMatch(/^https:\/\/www\.youtube\.com\/embed\/videoseries\?list=PLabc123/);
+  });
+
+  it("does not turn YouTube pages that are not videos into a player", () => {
+    for (const url of [
+      "https://www.youtube.com/",
+      "https://www.youtube.com/results?search_query=cats",
+      "https://www.youtube.com/@channel",
+    ]) {
+      expect(getBrowserFrameURL(url)).toBe(url);
+    }
+  });
+
+  it("shows tweets through Twitter's embed page", () => {
+    expect(getBrowserFrameURL("https://x.com/jack/status/20")).toBe(
+      "https://platform.twitter.com/embed/Tweet.html?id=20",
+    );
+  });
+
+  it("loads any other page as it is", () => {
+    expect(getBrowserFrameURL("https://example.com/docs")).toBe(
+      "https://example.com/docs",
+    );
   });
 });

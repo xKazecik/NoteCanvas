@@ -180,8 +180,7 @@ import {
   embeddableURLValidator,
   getBrowserURL,
   getBrowserZoom,
-  isBrowserElement,
-  isEmbeddableLinkAllowed,
+  getBrowserFrameURL,
   maybeParseEmbedSrc,
   getEmbedLink,
   getInitializedImageElements,
@@ -1363,11 +1362,8 @@ class App extends React.Component<AppProps, AppState> {
         if (!this.embedsValidationStatus.has(element.id)) {
           updated = true;
 
-          const validated = isEmbeddableLinkAllowed(
-            element,
-            element.link,
-            this.props.validateEmbeddable,
-          );
+          // every embed is a browser now, so any web page is allowed
+          const validated = !!getBrowserURL(element.link);
 
           this.updateEmbedValidationStatus(element, validated);
         }
@@ -1570,13 +1566,14 @@ class App extends React.Component<AppProps, AppState> {
             src = getEmbedLink(toValidURL(el.link || ""));
           }
 
-          const browserURL = isBrowserElement(el)
+          const browserURL = isEmbeddableElement(el)
             ? getBrowserURL(el.link)
             : null;
           const browserFrame =
             browserURL && isEmbeddableElement(el) ? (
               <BrowserFrame
                 url={browserURL}
+                frameURL={getBrowserFrameURL(browserURL)}
                 zoom={getBrowserZoom(el)}
                 canEdit={!this.state.viewModeEnabled && !el.locked}
                 onZoomChange={(zoom) => this.setBrowserZoom(el, zoom)}
@@ -1700,7 +1697,7 @@ class App extends React.Component<AppProps, AppState> {
     zoom: number,
   ) => {
     const latest = this.scene.getElement(element.id);
-    if (!isBrowserElement(latest)) {
+    if (!isEmbeddableElement(latest)) {
       return;
     }
     this.scene.mutateElement(latest, {
@@ -10997,6 +10994,9 @@ class App extends React.Component<AppProps, AppState> {
       const tableCellClick =
         !pointerDownState.drag.hasOccurred &&
         !this.state.isResizing &&
+        // the click that selects the table only selects it; the next one
+        // picks a cell
+        !pointerDownState.hit.wasAddedToSelection &&
         isTableElement(hitElement) &&
         this.state.selectedElementIds[hitElement.id]
           ? this.getTableCellAtSceneCoords(

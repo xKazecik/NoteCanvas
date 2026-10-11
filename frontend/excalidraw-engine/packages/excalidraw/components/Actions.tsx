@@ -1237,14 +1237,6 @@ export const ShapesSwitcher = ({
             {t("toolBar.frame")}
           </DropdownMenu.Item>
           <DropdownMenu.Item
-            onSelect={() => app.setActiveTool({ type: "embeddable" })}
-            icon={EmbedIcon}
-            data-testid="toolbar-embeddable"
-            selected={embeddableToolSelected}
-          >
-            {t("toolBar.embeddable")}
-          </DropdownMenu.Item>
-          <DropdownMenu.Item
             onSelect={() => actionManager.executeAction(actionInsertBrowser)}
             icon={BrowserIcon}
             data-testid="toolbar-browser"

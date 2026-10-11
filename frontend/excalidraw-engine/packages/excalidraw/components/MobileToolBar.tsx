@@ -9,8 +9,10 @@ import { t } from "../i18n";
 
 import { isHandToolActive } from "../appState";
 
+import { actionInsertBrowser } from "../actions";
 import { useTunnels } from "../context/tunnels";
 
+import { useExcalidrawActionManager } from "./App";
 import { HandButton } from "./HandButton";
 import { ToolButton } from "./ToolButton";
 import DropdownMenu from "./dropdownMenu/DropdownMenu";
@@ -30,6 +32,7 @@ import {
   ImageIcon,
   frameToolIcon,
   EmbedIcon,
+  BrowserIcon,
   laserPointerToolIcon,
   LassoIcon,
   mermaidLogoIcon,
@@ -93,6 +96,7 @@ export const MobileToolBar = ({
   setAppState,
 }: MobileToolBarProps) => {
   const activeTool = app.state.activeTool;
+  const actionManager = useExcalidrawActionManager();
   const [isOtherShapesMenuOpen, setIsOtherShapesMenuOpen] = useState(false);
   const [lastActiveGenericShape, setLastActiveGenericShape] = useState<
     "rectangle" | "diamond" | "ellipse"
@@ -121,7 +125,6 @@ export const MobileToolBar = ({
 
   const frameToolSelected = activeTool.type === "frame";
   const laserToolSelected = activeTool.type === "laser";
-  const embeddableToolSelected = activeTool.type === "embeddable";
 
   const { TTDDialogTriggerTunnel } = useTunnels();
 
@@ -438,12 +441,11 @@ export const MobileToolBar = ({
             </DropdownMenu.Item>
           )}
           <DropdownMenu.Item
-            onSelect={() => app.setActiveTool({ type: "embeddable" })}
-            icon={EmbedIcon}
-            data-testid="toolbar-embeddable"
-            selected={embeddableToolSelected}
+            onSelect={() => actionManager.executeAction(actionInsertBrowser)}
+            icon={BrowserIcon}
+            data-testid="toolbar-browser"
           >
-            {t("toolBar.embeddable")}
+            {t("toolBar.browser")}
           </DropdownMenu.Item>
           <DropdownMenu.Item
             onSelect={() => app.setActiveTool({ type: "laser" })}

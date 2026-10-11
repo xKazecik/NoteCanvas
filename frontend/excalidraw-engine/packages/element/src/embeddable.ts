@@ -10,7 +10,7 @@ import type { MarkRequired } from "@excalidraw/common/utility-types";
 
 import { newTextElement } from "./newElement";
 import { wrapText } from "./textWrapping";
-import { isBrowserElement, isIframeElement } from "./typeChecks";
+import { isIframeElement } from "./typeChecks";
 
 import type {
   ExcalidrawElement,
@@ -507,9 +507,7 @@ export const createPlaceholderEmbeddableLabel = (
   if (isIframeElement(element)) {
     text = "IFrame element";
   } else if (!element.link || element?.link === "") {
-    text = isBrowserElement(element)
-      ? "Browser: add a link"
-      : "Empty Web-Embed";
+    text = "Browser: add a link";
   } else {
     text = element.link;
   }

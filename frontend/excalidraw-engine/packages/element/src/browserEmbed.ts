@@ -1,9 +1,6 @@
-import { embeddableURLValidator } from "./embeddable";
-import { isBrowserElement } from "./typeChecks";
+import { getEmbedLink } from "./embeddable";
 
-import type { ExcalidrawProps } from "@excalidraw/excalidraw/types";
-
-import type { ExcalidrawElement, ExcalidrawEmbeddableElement } from "./types";
+import type { ExcalidrawEmbeddableElement } from "./types";
 
 /** How far the page inside a browser element can be zoomed out or in. */
 export const BROWSER_ZOOM = {
@@ -56,15 +53,68 @@ export const getBrowserURL = (link: string | null | undefined) => {
   }
 };
 
+const RE_INSTAGRAM_POST =
+  /^https?:\/\/(?:www\.)?instagram\.com\/(?:[\w.]+\/)?(p|reels?|tv)\/([\w-]+)/i;
+const RE_INSTAGRAM_PROFILE =
+  /^https?:\/\/(?:www\.)?instagram\.com\/([\w.]+)\/?(?:[?#].*)?$/i;
+/** First path segments that are Instagram pages rather than usernames. */
+const INSTAGRAM_RESERVED = new Set([
+  "accounts",
+  "direct",
+  "explore",
+  "p",
+  "reel",
+  "reels",
+  "stories",
+  "tv",
+]);
+
+const RE_TWEET =
+  /^https?:\/\/(?:www\.|mobile\.)?(?:twitter|x)\.com\/\w+\/status\/(\d+)/i;
+
+const RE_YOUTUBE_HOST =
+  /^https?:\/\/(?:[\w-]+\.)?(?:youtube\.com|youtu\.be)\//i;
+/** YouTube addresses that point at something playable. */
+const RE_YOUTUBE_PLAYABLE =
+  /^https?:\/\/(?:youtu\.be\/[\w-]+|(?:www\.)?youtube\.com\/(?:watch\?|shorts\/|embed\/|playlist\?))/i;
+
 /**
- * Whether an embeddable may load `link`. Browser elements accept any web page;
- * every other embed stays on the host's allow-list.
+ * The address the frame actually loads for a browser's `url`.
+ *
+ * Big sites refuse to be shown inside other pages (X-Frame-Options), but most
+ * publish an embed page for a single post or video that may be framed. Links
+ * to those are swapped for their embed page here; everything else loads as
+ * is. A home page or feed has no embed page and still refuses, so the frame
+ * offers to open it in a tab instead.
  */
-export const isEmbeddableLinkAllowed = (
-  element: ExcalidrawElement,
-  link: string | null | undefined,
-  validateEmbeddable: ExcalidrawProps["validateEmbeddable"],
-): boolean =>
-  isBrowserElement(element)
-    ? !!getBrowserURL(link)
-    : embeddableURLValidator(link, validateEmbeddable);
+export const getBrowserFrameURL = (url: string): string => {
+  const post = url.match(RE_INSTAGRAM_POST);
+  if (post) {
+    const kind = post[1].toLowerCase();
+    return `https://www.instagram.com/${
+      kind === "reels" ? "reel" : kind
+    }/${post[2]}/embed/`;
+  }
+  const profile = url.match(RE_INSTAGRAM_PROFILE);
+  if (profile && !INSTAGRAM_RESERVED.has(profile[1].toLowerCase())) {
+    return `https://www.instagram.com/${profile[1]}/embed/`;
+  }
+
+  const tweet = url.match(RE_TWEET);
+  if (tweet) {
+    return `https://platform.twitter.com/embed/Tweet.html?id=${tweet[1]}`;
+  }
+
+  // the shared embed parser reads any youtube.com path as a video id, which
+  // would turn a channel or search page into a broken player
+  if (RE_YOUTUBE_HOST.test(url) && !RE_YOUTUBE_PLAYABLE.test(url)) {
+    return url;
+  }
+
+  // YouTube videos, Vimeo, Google Docs, Figma and the other services the
+  // embed parser knows; pages it would render from its own HTML are skipped
+  const embed = getEmbedLink(url);
+  return embed && embed.type !== "document" && !embed.error
+    ? embed.link
+    : url;
+};

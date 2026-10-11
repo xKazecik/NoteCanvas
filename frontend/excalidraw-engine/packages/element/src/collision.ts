@@ -46,6 +46,7 @@ import {
   isIframeLikeElement,
   isImageElement,
   isLinearElement,
+  isTableElement,
   isTextElement,
 } from "./typeChecks";
 import {
@@ -84,7 +85,10 @@ export const shouldTestInside = (element: ExcalidrawElement) => {
     !isTransparent(element.backgroundColor) ||
     hasBoundTextElement(element) ||
     isIframeLikeElement(element) ||
-    isTextElement(element);
+    isTextElement(element) ||
+    // a table's cells are part of it even with no fill, so a click on any
+    // cell picks the table rather than only a click on its outer border
+    isTableElement(element);
 
   if (element.type === "line") {
     return isDraggableFromInside && isPathALoop(element.points);

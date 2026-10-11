@@ -21,11 +21,15 @@ import "./BrowserFrame.scss";
  */
 export const BrowserFrame = ({
   url,
+  frameURL,
   zoom,
   canEdit,
   onZoomChange,
 }: {
+  /** The address shown in the bar and opened in a new tab. */
   url: string;
+  /** What the frame loads: `url`, or its embed page when the site has one. */
+  frameURL: string;
   zoom: number;
   /** Zoom is stored on the element, so only editors get to change it. */
   canEdit: boolean;
@@ -37,7 +41,7 @@ export const BrowserFrame = ({
 
   // A page from our own origin must not get allow-same-origin next to
   // allow-scripts, or it could reach out of the sandbox into the editor.
-  const sameOrigin = new URL(url).origin === window.location.origin;
+  const sameOrigin = new URL(frameURL).origin === window.location.origin;
   const address = url.replace(/^https?:\/\//, "");
 
   return (
@@ -96,7 +100,7 @@ export const BrowserFrame = ({
       <div className="excalidraw__browser__page">
         <iframe
           key={session}
-          src={url}
+          src={frameURL}
           title={address}
           // the page is laid out at 1/zoom of the box and scaled back to fit,
           // so zooming out shows more of a site rather than shrinking the box

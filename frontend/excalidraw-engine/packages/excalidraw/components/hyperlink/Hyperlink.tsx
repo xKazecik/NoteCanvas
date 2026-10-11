@@ -16,7 +16,7 @@ import { hitElementBoundingBox } from "@excalidraw/element";
 
 import { isElementLink } from "@excalidraw/element";
 
-import { getEmbedLink, isEmbeddableLinkAllowed } from "@excalidraw/element";
+import { getEmbedLink } from "@excalidraw/element";
 
 import {
   sceneCoordsToViewportCoords,
@@ -26,11 +26,7 @@ import {
   normalizeLink,
 } from "@excalidraw/common";
 
-import {
-  getBrowserURL,
-  isBrowserElement,
-  isEmbeddableElement,
-} from "@excalidraw/element";
+import { getBrowserURL, isEmbeddableElement } from "@excalidraw/element";
 
 import type { Scene } from "@excalidraw/element";
 
@@ -45,7 +41,7 @@ import { getTooltipDiv, updateTooltipPosition } from "../../components/Tooltip";
 
 import { t } from "../../i18n";
 
-import { useAppProps, useEditorInterface, useExcalidrawAppState } from "../App";
+import { useEditorInterface, useExcalidrawAppState } from "../App";
 import { ToolButton } from "../ToolButton";
 import { FreedrawIcon, TrashIcon, elementLinkIcon } from "../icons";
 import { getSelectedElements } from "../../scene";
@@ -91,7 +87,6 @@ export const Hyperlink = ({
 }) => {
   const elementsMap = scene.getNonDeletedElementsMap();
   const appState = useExcalidrawAppState();
-  const appProps = useAppProps();
   const editorInterface = useEditorInterface();
 
   const linkVal = element.link || "";
@@ -108,7 +103,7 @@ export const Hyperlink = ({
     const typed = normalizeLink(inputRef.current.value) || null;
     // a browser keeps the full address it resolved a bare host to, since the
     // server drops links that have no scheme
-    const link = isBrowserElement(element)
+    const link = isEmbeddableElement(element)
       ? getBrowserURL(typed) ?? typed
       : typed;
 
@@ -129,7 +124,7 @@ export const Hyperlink = ({
       }
 
       if (
-        !isEmbeddableLinkAllowed(element, link, appProps.validateEmbeddable)
+        !getBrowserURL(link)
       ) {
         if (link) {
           setToast({ message: t("toast.unableToEmbed"), closable: true });
@@ -184,7 +179,6 @@ export const Hyperlink = ({
     element,
     scene,
     setToast,
-    appProps.validateEmbeddable,
     appState.activeEmbeddable,
     setAppState,
     updateEmbedValidationStatus,
