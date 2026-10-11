@@ -92,6 +92,7 @@ export * from "./sortElements";
 export * from "./store";
 export * from "./table";
 export * from "./tableOps";
+export * from "./tableData";
 export * from "./textElement";
 export * from "./textMeasurements";
 export * from "./textWrapping";

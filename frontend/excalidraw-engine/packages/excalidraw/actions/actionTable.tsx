@@ -1,5 +1,6 @@
 import {
   CaptureUpdateAction,
+  clearCells,
   deleteColumn,
   deleteRow,
   insertColumn,
@@ -8,10 +9,11 @@ import {
   mergeCells,
   newElementWith,
   normalizeRange,
+  sortRowsByColumn,
   unmergeCells,
 } from "@excalidraw/element";
 
-import type { TablePatch } from "@excalidraw/element";
+import type { CellPosition, CellRange } from "@excalidraw/element";
 import type {
   ExcalidrawElement,
   ExcalidrawTableElement,
@@ -19,9 +21,11 @@ import type {
 } from "@excalidraw/element/types";
 
 import { TableActions } from "../components/TableActions";
+import { t } from "../i18n";
 
 import { register } from "./register";
 
+import type { ActionName, ActionResult } from "./types";
 import type { AppState } from "../types";
 
 /** Everything the table panel can ask for, as one discriminated payload. */
@@ -34,7 +38,9 @@ export type TableOperation =
   | { op: "unmerge" }
   | { op: "toggleHeaderRow" }
   | { op: "toggleBandedRows" }
-  | { op: "styleCells"; style: TableCellStyle };
+  | { op: "styleCells"; style: TableCellStyle }
+  | { op: "clearCells" }
+  | { op: "sort"; direction: "asc" | "desc" };
 
 type Selection = NonNullable<AppState["selectedTableCells"]>;
 
@@ -57,24 +63,28 @@ export const getTableTarget = (
   return { table, selection };
 };
 
+/** The selected rectangle, or just the first cell when nothing is picked. */
+const getRange = (
+  table: ExcalidrawTableElement,
+  selection: Selection | null,
+): CellRange =>
+  selection
+    ? normalizeRange(table, selection.anchor, selection.focus)
+    : { top: 0, left: 0, bottom: 0, right: 0 };
+
 /** Merge a style patch into every cell in the selected range. */
 const styleRange = (
   table: ExcalidrawTableElement,
-  selection: Selection,
+  range: CellRange,
   style: TableCellStyle,
 ): Pick<ExcalidrawTableElement, "cells"> => {
-  const { top, left, bottom, right } = normalizeRange(
-    table,
-    selection.anchor,
-    selection.focus,
-  );
   const cells = table.cells.map((row, rowIndex) =>
     row.map((cell, colIndex) => {
       if (
-        rowIndex < top ||
-        rowIndex > bottom ||
-        colIndex < left ||
-        colIndex > right
+        rowIndex < range.top ||
+        rowIndex > range.bottom ||
+        colIndex < range.left ||
+        colIndex > range.right
       ) {
         return cell;
       }
@@ -84,43 +94,146 @@ const styleRange = (
   return { cells };
 };
 
+type OperationResult = {
+  update: Partial<ExcalidrawTableElement>;
+  /** Where the cell selection lands afterwards; defaults to the anchor. */
+  select?: CellPosition;
+  /** Keep the whole range selected rather than collapsing it. */
+  keepRange?: boolean;
+};
+
 const applyOperation = (
   table: ExcalidrawTableElement,
   selection: Selection | null,
   operation: TableOperation,
-): Partial<ExcalidrawTableElement> | null => {
-  // structural edits act on the anchor cell, or the first cell when the user
-  // has not picked one yet
+): OperationResult | null => {
+  // structural edits act on the selected range, or the first cell when the
+  // user has not picked one yet
+  const range = getRange(table, selection);
   const at = selection?.anchor ?? { row: 0, col: 0 };
 
-  const structural = (patch: TablePatch | null) => patch;
+  const withUpdate = (
+    update: Partial<ExcalidrawTableElement> | null,
+    rest: Omit<OperationResult, "update"> = {},
+  ) => (update ? { update, ...rest } : null);
 
   switch (operation.op) {
-    case "insertRow":
-      return structural(insertRow(table, operation.before ? at.row : at.row + 1));
-    case "insertColumn":
-      return structural(
-        insertColumn(table, operation.before ? at.col : at.col + 1),
-      );
+    case "insertRow": {
+      // the new row is selected so the user can start typing into it
+      const row = operation.before ? range.top : range.bottom + 1;
+      return withUpdate(insertRow(table, row), {
+        select: { row, col: range.left },
+      });
+    }
+    case "insertColumn": {
+      const col = operation.before ? range.left : range.right + 1;
+      return withUpdate(insertColumn(table, col), {
+        select: { row: range.top, col },
+      });
+    }
     case "deleteRow":
-      return structural(deleteRow(table, at.row));
+      return withUpdate(
+        deleteRow(table, range.top, range.bottom - range.top + 1),
+        { select: { row: range.top, col: range.left } },
+      );
     case "deleteColumn":
-      return structural(deleteColumn(table, at.col));
+      return withUpdate(
+        deleteColumn(table, range.left, range.right - range.left + 1),
+        { select: { row: range.top, col: range.left } },
+      );
     case "merge":
       return selection
-        ? structural(mergeCells(table, selection.anchor, selection.focus))
+        ? withUpdate(mergeCells(table, selection.anchor, selection.focus))
         : null;
     case "unmerge":
-      return selection ? structural(unmergeCells(table, at)) : null;
+      return selection ? withUpdate(unmergeCells(table, at)) : null;
     case "toggleHeaderRow":
-      return { headerRow: !table.headerRow };
+      return withUpdate({ headerRow: !table.headerRow }, { keepRange: true });
     case "toggleBandedRows":
-      return { bandedRows: !table.bandedRows };
+      return withUpdate({ bandedRows: !table.bandedRows }, { keepRange: true });
     case "styleCells":
-      return selection ? styleRange(table, selection, operation.style) : null;
+      return selection
+        ? withUpdate(styleRange(table, range, operation.style), {
+            keepRange: true,
+          })
+        : null;
+    case "clearCells":
+      return selection
+        ? withUpdate(clearCells(table, range), { keepRange: true })
+        : null;
+    case "sort":
+      return withUpdate(
+        sortRowsByColumn(table, at.col, operation.direction),
+        { keepRange: true },
+      );
     default:
       return null;
   }
+};
+
+/**
+ * Run one table operation against the selected table. Shared by the panel,
+ * the context menu entries and the keyboard handling in App.
+ */
+export const performTableOperation = (
+  elements: readonly ExcalidrawElement[],
+  appState: AppState,
+  operation: TableOperation,
+): ActionResult => {
+  const target = getTableTarget(elements, appState);
+  if (!target || target.table.locked) {
+    return { elements, appState, captureUpdate: CaptureUpdateAction.EVENTUALLY };
+  }
+
+  const result = applyOperation(target.table, target.selection, operation);
+  if (!result) {
+    // a sort is only refused over merges; say why rather than doing nothing
+    const sortBlocked =
+      operation.op === "sort" &&
+      target.table.cells.some((row) => row.some((cell) => cell.spannedBy));
+    return {
+      elements,
+      appState: sortBlocked
+        ? {
+            ...appState,
+            toast: { message: t("toast.tableSortMerged"), closable: true },
+          }
+        : appState,
+      captureUpdate: CaptureUpdateAction.EVENTUALLY,
+    };
+  }
+  const { update } = result;
+
+  const next = elements.map((element) =>
+    element.id === target.table.id
+      ? newElementWith(element, update as Parameters<typeof newElementWith>[1])
+      : element,
+  );
+
+  // a structural change can move or remove the selected cell, so the range
+  // collapses to a single cell clamped into the new grid
+  const rows = update.rowHeights?.length ?? target.table.rowHeights.length;
+  const cols = update.colWidths?.length ?? target.table.colWidths.length;
+  const clamp = (cell: CellPosition) => ({
+    row: Math.min(cell.row, rows - 1),
+    col: Math.min(cell.col, cols - 1),
+  });
+  const anchor = clamp(
+    result.select ?? target.selection?.anchor ?? { row: 0, col: 0 },
+  );
+  const focus =
+    result.keepRange && target.selection
+      ? clamp(target.selection.focus)
+      : anchor;
+
+  return {
+    elements: next,
+    appState: {
+      ...appState,
+      selectedTableCells: { elementId: target.table.id, anchor, focus },
+    },
+    captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+  };
 };
 
 export const actionTableOperation = register({
@@ -138,53 +251,11 @@ export const actionTableOperation = register({
         captureUpdate: CaptureUpdateAction.EVENTUALLY,
       };
     }
-    const operation = value as TableOperation;
-
-    const target = getTableTarget(elements, app.state);
-    if (!target) {
-      return { elements, appState, captureUpdate: CaptureUpdateAction.EVENTUALLY };
-    }
-
-    const update = applyOperation(target.table, target.selection, operation);
-    if (!update) {
-      return { elements, appState, captureUpdate: CaptureUpdateAction.EVENTUALLY };
-    }
-
-    const next = elements.map((element) =>
-      element.id === target.table.id
-        ? newElementWith(
-            element,
-            update as Parameters<typeof newElementWith>[1],
-          )
-        : element,
+    return performTableOperation(
+      elements,
+      { ...appState, selectedTableCells: app.state.selectedTableCells },
+      value as TableOperation,
     );
-
-    // a structural change can move or remove the selected cell, so the range
-    // collapses back to the anchor and is clamped into the new grid
-    const resized = update as Partial<ExcalidrawTableElement>;
-    const rows = resized.rowHeights?.length ?? target.table.rowHeights.length;
-    const cols = resized.colWidths?.length ?? target.table.colWidths.length;
-    const anchor = target.selection?.anchor ?? { row: 0, col: 0 };
-    const clamped = {
-      row: Math.min(anchor.row, rows - 1),
-      col: Math.min(anchor.col, cols - 1),
-    };
-
-    return {
-      elements: next,
-      appState: {
-        ...appState,
-        selectedTableCells: {
-          elementId: target.table.id,
-          anchor: clamped,
-          focus:
-            operation.op === "styleCells" && target.selection
-              ? target.selection.focus
-              : clamped,
-        },
-      },
-      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
-    };
   },
   PanelComponent: ({ elements, appState, updateData, app }) => {
     const target = getTableTarget(elements, app.state);
@@ -201,3 +272,67 @@ export const actionTableOperation = register({
     );
   },
 });
+
+/** A context-menu entry that runs one fixed table operation. */
+const tableMenuAction = (
+  name: ActionName,
+  label: string,
+  operation: TableOperation,
+) =>
+  register({
+    name,
+    label,
+    trackEvent: false,
+    predicate: (elements, appState) => {
+      const target = getTableTarget(elements, appState);
+      return !!target && !target.table.locked && !appState.viewModeEnabled;
+    },
+    perform: (elements, appState) =>
+      performTableOperation(elements, appState, operation),
+  });
+
+export const actionTableInsertRowAbove = tableMenuAction(
+  "tableInsertRowAbove",
+  "labels.insertRowAbove",
+  { op: "insertRow", before: true },
+);
+export const actionTableInsertRowBelow = tableMenuAction(
+  "tableInsertRowBelow",
+  "labels.insertRowBelow",
+  { op: "insertRow", before: false },
+);
+export const actionTableInsertColumnLeft = tableMenuAction(
+  "tableInsertColumnLeft",
+  "labels.insertColumnBefore",
+  { op: "insertColumn", before: true },
+);
+export const actionTableInsertColumnRight = tableMenuAction(
+  "tableInsertColumnRight",
+  "labels.insertColumnAfter",
+  { op: "insertColumn", before: false },
+);
+export const actionTableDeleteRow = tableMenuAction(
+  "tableDeleteRow",
+  "labels.deleteRow",
+  { op: "deleteRow" },
+);
+export const actionTableDeleteColumn = tableMenuAction(
+  "tableDeleteColumn",
+  "labels.deleteColumn",
+  { op: "deleteColumn" },
+);
+export const actionTableClearCells = tableMenuAction(
+  "tableClearCells",
+  "labels.clearCells",
+  { op: "clearCells" },
+);
+export const actionTableSortAscending = tableMenuAction(
+  "tableSortAscending",
+  "labels.sortAscending",
+  { op: "sort", direction: "asc" },
+);
+export const actionTableSortDescending = tableMenuAction(
+  "tableSortDescending",
+  "labels.sortDescending",
+  { op: "sort", direction: "desc" },
+);

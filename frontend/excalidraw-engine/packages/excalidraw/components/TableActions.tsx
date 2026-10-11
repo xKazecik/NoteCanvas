@@ -24,7 +24,12 @@ import {
   BoldIcon,
   ItalicIcon,
   TableAddRowIcon,
+  TableAddRowAboveIcon,
   TableAddColumnIcon,
+  TableAddColumnLeftIcon,
+  TableSortAscendingIcon,
+  TableSortDescendingIcon,
+  EraserIcon,
   TableDeleteRowIcon,
   TableDeleteColumnIcon,
   TableMergeIcon,
@@ -78,10 +83,24 @@ export const TableActions = ({
         <div className="buttonList">
           <ToolButton
             type="button"
+            icon={TableAddRowAboveIcon}
+            title={t("labels.insertRowAbove")}
+            aria-label={t("labels.insertRowAbove")}
+            onClick={() => updateData({ op: "insertRow", before: true })}
+          />
+          <ToolButton
+            type="button"
             icon={TableAddRowIcon}
             title={t("labels.insertRowBelow")}
             aria-label={t("labels.insertRowBelow")}
             onClick={() => updateData({ op: "insertRow", before: false })}
+          />
+          <ToolButton
+            type="button"
+            icon={TableAddColumnLeftIcon}
+            title={t("labels.insertColumnBefore")}
+            aria-label={t("labels.insertColumnBefore")}
+            onClick={() => updateData({ op: "insertColumn", before: true })}
           />
           <ToolButton
             type="button"
@@ -90,6 +109,8 @@ export const TableActions = ({
             aria-label={t("labels.insertColumnAfter")}
             onClick={() => updateData({ op: "insertColumn", before: false })}
           />
+        </div>
+        <div className="buttonList">
           <ToolButton
             type="button"
             icon={TableDeleteRowIcon}
@@ -140,6 +161,33 @@ export const TableActions = ({
 
       {hasSelection && (
         <>
+          <fieldset>
+            <legend>{t("labels.tableData")}</legend>
+            <div className="buttonList">
+              <ToolButton
+                type="button"
+                icon={TableSortAscendingIcon}
+                title={t("labels.sortAscending")}
+                aria-label={t("labels.sortAscending")}
+                onClick={() => updateData({ op: "sort", direction: "asc" })}
+              />
+              <ToolButton
+                type="button"
+                icon={TableSortDescendingIcon}
+                title={t("labels.sortDescending")}
+                aria-label={t("labels.sortDescending")}
+                onClick={() => updateData({ op: "sort", direction: "desc" })}
+              />
+              <ToolButton
+                type="button"
+                icon={EraserIcon}
+                title={t("labels.clearCells")}
+                aria-label={t("labels.clearCells")}
+                onClick={() => updateData({ op: "clearCells" })}
+              />
+            </div>
+          </fieldset>
+
           <fieldset>
             <legend>{t("labels.cellBackground")}</legend>
             <ColorPicker
