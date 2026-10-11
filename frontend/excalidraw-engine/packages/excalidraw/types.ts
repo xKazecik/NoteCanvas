@@ -507,6 +507,8 @@ export interface AppState {
     elementId: ExcalidrawElement["id"];
     anchor: { row: number; col: number };
     focus: { row: number; col: number };
+    /** Single cells added with Ctrl+click, on top of the anchor–focus range. */
+    extra?: readonly { row: number; col: number }[];
   } | null;
   snapLines: readonly SnapLine[];
   originSnapOffset: {

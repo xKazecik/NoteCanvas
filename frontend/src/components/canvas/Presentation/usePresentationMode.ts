@@ -7,6 +7,8 @@ import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import { atom, useAtom } from "jotai";
 
+import { getSlideTransition, playSlideTransition } from "./slideTransitions";
+
 // Keep these atoms for PresentationPanel slide ordering (AstraDraw-specific feature)
 // The core presentation state is now in AppState.presentationMode
 export const slidesAtom = atom<ExcalidrawFrameLikeElement[]>([]);
@@ -87,17 +89,33 @@ export const usePresentationMode = ({
         0,
         Math.min(slideIndex, currentSlides.length - 1),
       );
-      const frameId = currentSlides[targetIndex];
       const elements = excalidrawAPI.getSceneElements();
-      const frame = elements.find((el) => el.id === frameId);
+      const findFrame = (id: string | undefined) =>
+        elements.find((el) => el.id === id && el.type === "frame") as
+          | ExcalidrawFrameLikeElement
+          | undefined;
+      const frame = findFrame(currentSlides[targetIndex]);
 
       if (frame) {
-        excalidrawAPI.scrollToContent(frame, {
-          fitToViewport: true,
-          viewportZoomFactor: PRESENTATION_VIEWPORT_ZOOM_FACTOR,
-          animate: true,
-          duration: SLIDE_TRANSITION_DURATION,
-        });
+        const from =
+          findFrame(currentSlides[presentationMode.currentSlide]) ?? null;
+        // a pair of slides animates the same way in both directions, using
+        // the transition set on the later of the two
+        const later =
+          from && targetIndex < presentationMode.currentSlide ? from : frame;
+        playSlideTransition(
+          excalidrawAPI,
+          from,
+          frame,
+          getSlideTransition(later),
+          (target, animate, duration = SLIDE_TRANSITION_DURATION) =>
+            excalidrawAPI.scrollToContent(target, {
+              fitToViewport: true,
+              viewportZoomFactor: PRESENTATION_VIEWPORT_ZOOM_FACTOR,
+              animate,
+              duration,
+            }),
+        );
       }
 
       excalidrawAPI.updateScene({

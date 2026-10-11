@@ -34,7 +34,11 @@ import {
 
 import { LinearElementEditor } from "@excalidraw/element";
 
-import { newElementWith } from "@excalidraw/element";
+import {
+  isFilledShape,
+  moveAllLeft,
+  newElementWith,
+} from "@excalidraw/element";
 
 import {
   getBoundTextElement,
@@ -413,6 +417,25 @@ export const actionChangeBackgroundColor = register<
           backgroundColor: value.currentItemBackgroundColor,
         }),
       );
+    }
+
+    // shapes that just gained a fill move to the back, so the fill does not
+    // cover text or drawings that were visible through them
+    const newlyFilled = selectedElements.filter(
+      (el) =>
+        isTransparent(el.backgroundColor) &&
+        isFilledShape({
+          ...el,
+          backgroundColor: value.currentItemBackgroundColor,
+        }),
+    );
+    if (newlyFilled.length) {
+      nextElements = moveAllLeft(nextElements, {
+        ...appState,
+        selectedElementIds: Object.fromEntries(
+          newlyFilled.map((el) => [el.id, true as const]),
+        ),
+      });
     }
 
     return {

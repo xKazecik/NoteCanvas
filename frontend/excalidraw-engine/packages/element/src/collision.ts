@@ -632,7 +632,7 @@ const intersectEllipseWithLineSegment = (
  * @param tolerance
  * @returns
  */
-const isPointOnElementOutline = (
+export const isPointOnElementOutline = (
   point: GlobalPoint,
   element: ExcalidrawElement,
   elementsMap: ElementsMap,

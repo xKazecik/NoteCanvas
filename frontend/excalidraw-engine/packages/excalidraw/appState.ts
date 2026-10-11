@@ -101,7 +101,9 @@ export const getDefaultAppState = (): Omit<
     },
     startBoundElement: null,
     suggestedBinding: null,
-    frameRendering: { enabled: true, clip: true, name: true, outline: true },
+    // frames mark slides, so content may stick out of them instead of being
+    // cut off at the edge
+    frameRendering: { enabled: true, clip: false, name: true, outline: true },
     frameToHighlight: null,
     editingFrame: null,
     elementsToHighlight: null,

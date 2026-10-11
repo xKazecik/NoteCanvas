@@ -1,4 +1,4 @@
-import { ROUNDNESS, assertNever } from "@excalidraw/common";
+import { ROUNDNESS, assertNever, isTransparent } from "@excalidraw/common";
 
 import { pointsEqual } from "@excalidraw/math";
 
@@ -70,6 +70,17 @@ export const isTableElement = (
 ): element is ExcalidrawTableElement => {
   return !!element && element.type === "table";
 };
+
+/**
+ * A shape whose fill would hide whatever sits behind it. These are kept at the
+ * back of the canvas so they never cover text or drawings.
+ */
+export const isFilledShape = (element: ExcalidrawElement | null | undefined) =>
+  !!element &&
+  (element.type === "rectangle" ||
+    element.type === "diamond" ||
+    element.type === "ellipse") &&
+  !isTransparent(element.backgroundColor);
 
 export const isTextElement = (
   element: ExcalidrawElement | null,

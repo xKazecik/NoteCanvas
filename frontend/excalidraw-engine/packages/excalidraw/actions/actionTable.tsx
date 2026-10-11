@@ -72,23 +72,31 @@ const getRange = (
     ? normalizeRange(table, selection.anchor, selection.focus)
     : { top: 0, left: 0, bottom: 0, right: 0 };
 
-/** Merge a style patch into every cell in the selected range. */
-const styleRange = (
+/** The selected rectangle plus each Ctrl+clicked cell, as separate ranges. */
+const getPickedRanges = (
   table: ExcalidrawTableElement,
-  range: CellRange,
+  selection: Selection,
+): CellRange[] => [
+  normalizeRange(table, selection.anchor, selection.focus),
+  ...(selection.extra ?? []).map((cell) => normalizeRange(table, cell, cell)),
+];
+
+/** Merge a style patch into every cell in the picked ranges. */
+const styleRanges = (
+  table: ExcalidrawTableElement,
+  ranges: readonly CellRange[],
   style: TableCellStyle,
 ): Pick<ExcalidrawTableElement, "cells"> => {
   const cells = table.cells.map((row, rowIndex) =>
     row.map((cell, colIndex) => {
-      if (
-        rowIndex < range.top ||
-        rowIndex > range.bottom ||
-        colIndex < range.left ||
-        colIndex > range.right
-      ) {
-        return cell;
-      }
-      return { ...cell, style: { ...cell.style, ...style } };
+      const picked = ranges.some(
+        (range) =>
+          rowIndex >= range.top &&
+          rowIndex <= range.bottom &&
+          colIndex >= range.left &&
+          colIndex <= range.right,
+      );
+      return picked ? { ...cell, style: { ...cell.style, ...style } } : cell;
     }),
   );
   return { cells };
@@ -153,13 +161,24 @@ const applyOperation = (
       return withUpdate({ bandedRows: !table.bandedRows }, { keepRange: true });
     case "styleCells":
       return selection
-        ? withUpdate(styleRange(table, range, operation.style), {
-            keepRange: true,
-          })
+        ? withUpdate(
+            styleRanges(
+              table,
+              getPickedRanges(table, selection),
+              operation.style,
+            ),
+            { keepRange: true },
+          )
         : null;
     case "clearCells":
       return selection
-        ? withUpdate(clearCells(table, range), { keepRange: true })
+        ? withUpdate(
+            getPickedRanges(table, selection).reduce(
+              (cleared, picked) => clearCells({ ...table, ...cleared }, picked),
+              { cells: table.cells },
+            ),
+            { keepRange: true },
+          )
         : null;
     case "sort":
       return withUpdate(
@@ -226,11 +245,22 @@ export const performTableOperation = (
       ? clamp(target.selection.focus)
       : anchor;
 
+  // Ctrl+clicked cells survive edits that leave the grid's shape alone
+  const extra =
+    result.keepRange && !update.rowHeights && !update.colWidths
+      ? target.selection?.extra
+      : undefined;
+
   return {
     elements: next,
     appState: {
       ...appState,
-      selectedTableCells: { elementId: target.table.id, anchor, focus },
+      selectedTableCells: {
+        elementId: target.table.id,
+        anchor,
+        focus,
+        ...(extra?.length ? { extra } : {}),
+      },
     },
     captureUpdate: CaptureUpdateAction.IMMEDIATELY,
   };

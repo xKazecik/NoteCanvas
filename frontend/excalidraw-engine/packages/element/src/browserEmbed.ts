@@ -72,6 +72,10 @@ const INSTAGRAM_RESERVED = new Set([
 const RE_TWEET =
   /^https?:\/\/(?:www\.|mobile\.)?(?:twitter|x)\.com\/\w+\/status\/(\d+)/i;
 
+/** Google's home and results pages, which honour `igu=1` for framing. */
+const RE_GOOGLE_SEARCH =
+  /^https?:\/\/(?:www\.)?google\.[a-z.]+\/(?:webhp|search)?(?:[?#]|$)/i;
+
 const RE_YOUTUBE_HOST =
   /^https?:\/\/(?:[\w-]+\.)?(?:youtube\.com|youtu\.be)\//i;
 /** YouTube addresses that point at something playable. */
@@ -98,6 +102,12 @@ export const getBrowserFrameURL = (url: string): string => {
   const profile = url.match(RE_INSTAGRAM_PROFILE);
   if (profile && !INSTAGRAM_RESERVED.has(profile[1].toLowerCase())) {
     return `https://www.instagram.com/${profile[1]}/embed/`;
+  }
+
+  if (RE_GOOGLE_SEARCH.test(url)) {
+    const google = new URL(url);
+    google.searchParams.set("igu", "1");
+    return google.href;
   }
 
   const tweet = url.match(RE_TWEET);

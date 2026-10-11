@@ -107,10 +107,11 @@ const shouldResetImageFilter = (
   appState: StaticCanvasAppState | InteractiveCanvasAppState,
 ) => {
   return (
+    // every image keeps its own colours in dark mode, SVG ones included, so
+    // emoji stickers (Twemoji SVGs) are not inverted along with the canvas
     appState.theme === THEME.DARK &&
     isInitializedImageElement(element) &&
-    !isPendingImageElement(element, renderConfig) &&
-    renderConfig.imageCache.get(element.fileId)?.mimeType !== MIME_TYPES.svg
+    !isPendingImageElement(element, renderConfig)
   );
 };
 
@@ -413,6 +414,50 @@ const drawImagePlaceholder = (
   );
 };
 
+const EMOJI = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
+
+/**
+ * Draw one line of text in dark mode without letting the theme invert its
+ * emoji. The canvas is inverted as a whole, so each emoji run is drawn with
+ * the same counter-filter images get, and the rest of the line as normal.
+ */
+const fillTextKeepingEmojiColors = (
+  context: CanvasRenderingContext2D,
+  line: string,
+  x: number,
+  y: number,
+) => {
+  // runs of whole graphemes, so a ZWJ sequence or a flag is never split
+  const runs: { text: string; emoji: boolean }[] = [];
+  for (const { segment } of new Intl.Segmenter().segment(line)) {
+    const emoji = EMOJI.test(segment);
+    const last = runs[runs.length - 1];
+    if (last?.emoji === emoji) {
+      last.text += segment;
+    } else {
+      runs.push({ text: segment, emoji });
+    }
+  }
+
+  const width = context.measureText(line).width;
+  let cursor =
+    context.textAlign === "center"
+      ? x - width / 2
+      : context.textAlign === "right"
+      ? x - width
+      : x;
+
+  const { textAlign, filter } = context;
+  context.textAlign = "left";
+  for (const run of runs) {
+    context.filter = run.emoji ? IMAGE_INVERT_FILTER : filter;
+    context.fillText(run.text, cursor, y);
+    cursor += context.measureText(run.text).width;
+  }
+  context.textAlign = textAlign;
+  context.filter = filter;
+};
+
 const drawElementOnCanvas = (
   element: NonDeletedExcalidrawElement,
   rc: RoughCanvas,
@@ -556,11 +601,17 @@ const drawElementOnCanvas = (
         );
 
         for (let index = 0; index < lines.length; index++) {
-          context.fillText(
-            lines[index],
-            horizontalOffset,
-            index * lineHeightPx + verticalOffset,
-          );
+          const y = index * lineHeightPx + verticalOffset;
+          if (theme === THEME.DARK && !rtl && EMOJI.test(lines[index])) {
+            fillTextKeepingEmojiColors(
+              context,
+              lines[index],
+              horizontalOffset,
+              y,
+            );
+          } else {
+            context.fillText(lines[index], horizontalOffset, y);
+          }
         }
         context.restore();
         if (shouldTemporarilyAttach) {

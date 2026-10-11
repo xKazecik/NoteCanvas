@@ -132,6 +132,8 @@ import {
   getCellAtLocalPoint,
   getTrackHandleAtLocalPoint,
   isTableElement,
+  isFilledShape,
+  moveAllLeft,
   setColumnWidth,
   setRowHeight,
   toLocalPoint,
@@ -141,6 +143,7 @@ import {
   parseTSV,
   rangeToTSV,
   resolveAnchorCell,
+  toggleCellInPick,
   newIframeElement,
   newArrowElement,
   newElement,
@@ -209,6 +212,7 @@ import {
   hitElementBoundText,
   hitElementBoundingBoxOnly,
   hitElementItself,
+  isPointOnElementOutline,
   getVisibleSceneBounds,
   FlowChartCreator,
   FlowChartNavigator,
@@ -6851,7 +6855,8 @@ class App extends React.Component<AppProps, AppState> {
       hideHyperlinkToolip();
       if (
         hitElement &&
-        (hitElement.link || isEmbeddableElement(hitElement)) &&
+        hitElement.link &&
+        !isEmbeddableElement(hitElement) &&
         this.state.selectedElementIds[hitElement.id] &&
         !this.state.contextMenu &&
         !this.state.showHyperlinkPopup
@@ -7433,7 +7438,7 @@ class App extends React.Component<AppProps, AppState> {
               this,
             ),
             showHyperlinkPopup:
-              hitElement.link || isEmbeddableElement(hitElement)
+              hitElement.link && !isEmbeddableElement(hitElement)
                 ? "info"
                 : false,
           };
@@ -8297,7 +8302,7 @@ class App extends React.Component<AppProps, AppState> {
                     this,
                   ),
                   showHyperlinkPopup:
-                    hitElement.link || isEmbeddableElement(hitElement)
+                    hitElement.link && !isEmbeddableElement(hitElement)
                       ? "info"
                       : false,
                 };
@@ -10275,8 +10280,8 @@ class App extends React.Component<AppProps, AppState> {
                   : null,
               showHyperlinkPopup:
                 elementsWithinSelection.length === 1 &&
-                (elementsWithinSelection[0].link ||
-                  isEmbeddableElement(elementsWithinSelection[0]))
+                elementsWithinSelection[0].link &&
+                !isEmbeddableElement(elementsWithinSelection[0])
                   ? "info"
                   : false,
             };
@@ -10740,6 +10745,16 @@ class App extends React.Component<AppProps, AppState> {
             isDragging: false,
           },
         );
+        // a shape drawn with a fill starts at the back, so it never covers
+        // the text and drawings already on the canvas
+        if (isFilledShape(newElement)) {
+          this.scene.replaceAllElements(
+            moveAllLeft(this.scene.getElementsIncludingDeleted(), {
+              ...this.state,
+              selectedElementIds: { [newElement.id]: true },
+            }),
+          );
+        }
         // the above does not guarantee the scene to be rendered again, hence the trigger below
         this.scene.triggerUpdate();
       }
@@ -10973,9 +10988,23 @@ class App extends React.Component<AppProps, AppState> {
             },
             this.state,
           );
+          // as with the eraser trail, a filled shape or a table is only taken
+          // from its border, so a click on a pencil stroke drawn over one
+          // erases just the stroke
           const hitElements = this.getElementsAtPosition(
             scenePointer.x,
             scenePointer.y,
+          ).filter(
+            (element) =>
+              isTextElement(element) ||
+              isImageElement(element) ||
+              isIframeLikeElement(element) ||
+              isPointOnElementOutline(
+                pointFrom(scenePointer.x, scenePointer.y),
+                element,
+                this.scene.getNonDeletedElementsMap(),
+                this.getElementHitThreshold(element),
+              ),
           );
           hitElements.forEach((hitElement) =>
             this.elementsPendingErasure.add(hitElement.id),
@@ -11129,7 +11158,7 @@ class App extends React.Component<AppProps, AppState> {
                   this,
                 ),
                 showHyperlinkPopup:
-                  hitElement.link || isEmbeddableElement(hitElement)
+                  hitElement.link && !isEmbeddableElement(hitElement)
                     ? "info"
                     : false,
               };
@@ -11173,17 +11202,28 @@ class App extends React.Component<AppProps, AppState> {
 
       if (tableCellClick) {
         const { element: table, cell } = tableCellClick;
-        this.setState((prevState) => ({
-          selectedTableCells: {
-            elementId: table.id,
-            anchor:
-              childEvent.shiftKey &&
-              prevState.selectedTableCells?.elementId === table.id
-                ? prevState.selectedTableCells.anchor
-                : cell,
-            focus: cell,
-          },
-        }));
+        this.setState((prevState) => {
+          const prevPick =
+            prevState.selectedTableCells?.elementId === table.id
+              ? prevState.selectedTableCells
+              : null;
+          // Ctrl+click adds or removes single cells, like a spreadsheet
+          if (childEvent[KEYS.CTRL_OR_CMD] && prevPick) {
+            return {
+              selectedTableCells: {
+                elementId: table.id,
+                ...toggleCellInPick(table, prevPick, cell),
+              },
+            };
+          }
+          return {
+            selectedTableCells: {
+              elementId: table.id,
+              anchor: childEvent.shiftKey && prevPick ? prevPick.anchor : cell,
+              focus: cell,
+            },
+          };
+        });
       } else if (this.state.selectedTableCells) {
         // any other click drops the picked cells, so re-selecting a table later
         // starts on the table itself rather than a stale cell

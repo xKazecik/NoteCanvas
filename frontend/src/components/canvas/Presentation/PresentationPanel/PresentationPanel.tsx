@@ -12,6 +12,8 @@ import type {
 } from "@excalidraw/excalidraw/types";
 
 import { usePresentationMode } from "../usePresentationMode";
+import { addSlideFromView } from "../slideTransitions";
+import { TransitionsPanel } from "../TransitionsPanel/TransitionsPanel";
 import { SlidesLayoutDialog, applyLayoutToFrames } from "../SlidesLayoutDialog";
 
 import styles from "./PresentationPanel.module.scss";
@@ -324,7 +326,8 @@ const SlideThumb: React.FC<SlideThumbProps> = ({
 
 const PresentationInstructions: React.FC<{
   onCreateSlide: () => void;
-}> = ({ onCreateSlide }) => {
+  onAddView: () => void;
+}> = ({ onCreateSlide, onAddView }) => {
   return (
     <div className={styles.instructions}>
       <div className={styles.instructionsIcon}>
@@ -360,6 +363,9 @@ const PresentationInstructions: React.FC<{
       <button className={styles.createSlideButton} onClick={onCreateSlide}>
         {PlusIcon}
         <span>{t("presentation.createFirstSlide")}</span>
+      </button>
+      <button className={styles.addViewButton} onClick={onAddView}>
+        {t("presentation.addViewAsSlide")}
       </button>
     </div>
   );
@@ -754,6 +760,23 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
               </button>
               <button
                 className={styles.headerButton}
+                onClick={() => excalidrawAPI && addSlideFromView(excalidrawAPI)}
+                title={t("presentation.addViewAsSlide")}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg>
+              </button>
+              <button
+                className={styles.headerButton}
                 onClick={handleCreateSlide}
                 title={t("presentation.createSlide")}
               >
@@ -797,6 +820,13 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
             ))}
           </div>
 
+          {excalidrawAPI && (
+            <TransitionsPanel
+              frames={orderedFrames}
+              excalidrawAPI={excalidrawAPI}
+            />
+          )}
+
           {/* Start button */}
           <div className={styles.footer}>
             <button
@@ -816,7 +846,10 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
           </div>
         </>
       ) : (
-        <PresentationInstructions onCreateSlide={handleCreateSlide} />
+        <PresentationInstructions
+          onCreateSlide={handleCreateSlide}
+          onAddView={() => excalidrawAPI && addSlideFromView(excalidrawAPI)}
+        />
       )}
     </div>
   );

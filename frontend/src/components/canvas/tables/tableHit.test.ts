@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { hitElementItself, newTableElement } from "@excalidraw/element";
+import {
+  hitElementItself,
+  isFilledShape,
+  newElement,
+  newTableElement,
+} from "@excalidraw/element";
 
 import type { GlobalPoint } from "@excalidraw/math";
 import type { ElementsMap } from "@excalidraw/element/types";
@@ -29,5 +34,18 @@ describe("clicking a table", () => {
 
   it("does not hit the table from outside it", () => {
     expect(hit(100 + table.width + 50, 100 + table.height + 50)).toBe(false);
+  });
+});
+
+describe("isFilledShape", () => {
+  const rectangle = (backgroundColor: string) =>
+    newElement({ type: "rectangle", x: 0, y: 0, backgroundColor });
+
+  it("is true only for a closed shape with a visible fill", () => {
+    expect(isFilledShape(rectangle("#ffc9c9"))).toBe(true);
+    expect(isFilledShape(rectangle("transparent"))).toBe(false);
+    expect(
+      isFilledShape(newTableElement({ x: 0, y: 0, backgroundColor: "#fff" })),
+    ).toBe(false);
   });
 });

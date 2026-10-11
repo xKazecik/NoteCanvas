@@ -8,6 +8,8 @@ import {
   tableWidth,
 } from "./table";
 
+import { normalizeRange } from "./tableOps";
+
 import type { TablePatch } from "./tableOps";
 import type { CellPosition } from "./table";
 import type { ExcalidrawTableElement, TableCell } from "./types";
@@ -25,6 +27,41 @@ const inRange = (range: CellRange, row: number, col: number) =>
   row <= range.bottom &&
   col >= range.left &&
   col <= range.right;
+
+/** A picked range plus any single cells added to it with Ctrl+click. */
+export type CellPick = {
+  anchor: CellPosition;
+  focus: CellPosition;
+  extra?: readonly CellPosition[];
+};
+
+/**
+ * Ctrl+click on a cell: add it to the pick, or take it out again if it was
+ * already added. A cell inside the main range can only be taken out when that
+ * range is the lone cell, in which case the next added cell takes its place.
+ */
+export const toggleCellInPick = (
+  element: ExcalidrawTableElement,
+  pick: CellPick,
+  cell: CellPosition,
+): CellPick => {
+  const extra = pick.extra ?? [];
+  const same = (other: CellPosition) =>
+    other.row === cell.row && other.col === cell.col;
+
+  if (extra.some(same)) {
+    return { ...pick, extra: extra.filter((other) => !same(other)) };
+  }
+  const main = normalizeRange(element, pick.anchor, pick.focus);
+  if (!inRange(main, cell.row, cell.col)) {
+    return { ...pick, extra: [...extra, cell] };
+  }
+  const isLoneCell = main.top === main.bottom && main.left === main.right;
+  if (isLoneCell && extra.length) {
+    return { anchor: extra[0], focus: extra[0], extra: extra.slice(1) };
+  }
+  return pick;
+};
 
 /**
  * Parse tab-separated text the way spreadsheets put it on the clipboard: rows

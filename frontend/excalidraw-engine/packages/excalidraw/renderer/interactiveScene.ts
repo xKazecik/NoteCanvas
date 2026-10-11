@@ -1286,17 +1286,9 @@ const _renderInteractiveScene = ({
   if (appState.selectedTableCells) {
     const table = elementsMap.get(appState.selectedTableCells.elementId);
     if (isTableElement(table)) {
-      const { top, left, bottom, right } = normalizeRange(
-        table,
-        appState.selectedTableCells.anchor,
-        appState.selectedTableCells.focus,
-      );
+      const { anchor, focus, extra = [] } = appState.selectedTableCells;
       const xs = columnOffsets(table);
       const ys = rowOffsets(table);
-      const x = xs[left];
-      const y = ys[top];
-      const width = xs[right + 1] - x;
-      const height = ys[bottom + 1] - y;
 
       context.save();
       context.translate(appState.scrollX, appState.scrollY);
@@ -1308,10 +1300,21 @@ const _renderInteractiveScene = ({
       context.translate(-table.width / 2, -table.height / 2);
 
       context.fillStyle = "rgba(105, 101, 219, 0.12)";
-      context.fillRect(x, y, width, height);
       context.strokeStyle = renderConfig.selectionColor ?? "#6965db";
       context.lineWidth = 2 / appState.zoom.value;
-      context.strokeRect(x, y, width, height);
+      // the anchor–focus range, then each Ctrl+clicked cell on its own
+      for (const [from, to] of [
+        [anchor, focus],
+        ...extra.map((cell) => [cell, cell]),
+      ]) {
+        const { top, left, bottom, right } = normalizeRange(table, from, to);
+        const x = xs[left];
+        const y = ys[top];
+        const width = xs[right + 1] - x;
+        const height = ys[bottom + 1] - y;
+        context.fillRect(x, y, width, height);
+        context.strokeRect(x, y, width, height);
+      }
       context.restore();
     }
   }

@@ -1,0 +1,39 @@
+.transitions {
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--default-border-color, #e5e5e5);
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.heading {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary-color, #1b1b1f);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 12px;
+  color: var(--text-secondary-color, #6b6b6b);
+}
+
+.pair {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.select {
+  min-width: 0;
+  max-width: 140px;
+  padding: 3px 6px;
+  border: 1px solid var(--default-border-color, #e5e5e5);
+  border-radius: 6px;
+  background: var(--island-bg-color, #fff);
+  color: var(--text-primary-color, #1b1b1f);
+  font-size: 12px;
+}

@@ -129,10 +129,10 @@
     "createContainerFromText": "Wrap text in a container",
     "link": {
       "edit": "Edit link",
-      "editEmbed": "Edit embeddable link",
+      "editEmbed": "Change browser link",
       "create": "Add link",
       "label": "Link",
-      "labelEmbed": "Link & embed",
+      "labelEmbed": "Browser link",
       "empty": "No link is set",
       "hint": "Type or paste your link here",
       "goToElement": "Go to target element"
@@ -735,7 +735,13 @@
     "renameFrame": "Rename frame",
     "doubleClickToRename": "Double-click to rename",
     "dragToReorder": "Drag to reorder",
-    "toggleSidebar": "Toggle presentation sidebar"
+    "toggleSidebar": "Toggle presentation sidebar",
+    "addViewAsSlide": "Add the current view as a slide",
+    "transitions": "Transitions",
+    "transitionSmooth": "Glide",
+    "transitionCut": "Cut",
+    "transitionFade": "Fade",
+    "transitionZoom": "Zoom out & in"
   },
   "slidesLayout": {
     "title": "Slides layout",

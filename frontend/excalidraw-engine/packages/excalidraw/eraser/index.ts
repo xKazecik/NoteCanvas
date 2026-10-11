@@ -24,7 +24,11 @@ import {
 
 import { getElementsInGroup } from "@excalidraw/element";
 
-import { shouldTestInside } from "@excalidraw/element";
+import {
+  isIframeLikeElement,
+  isImageElement,
+  isTextElement,
+} from "@excalidraw/element";
 import { hasBoundTextElement, isBoundToContainer } from "@excalidraw/element";
 import { getBoundTextElementId } from "@excalidraw/element";
 
@@ -223,11 +227,14 @@ const eraserTest = (
     return false;
   }
 
-  // There are shapes where the inner area should trigger erasing
-  // even though the eraser path segment doesn't intersect with or
-  // get close to the shape's stroke
+  // Text, images and browsers have no outline to cross, so their inner area
+  // triggers erasing. A filled shape or a table only goes when the eraser
+  // crosses its border; otherwise erasing a pencil stroke drawn on top of a
+  // filled rectangle would take the rectangle with it.
   if (
-    shouldTestInside(element) &&
+    (isTextElement(element) ||
+      isImageElement(element) ||
+      isIframeLikeElement(element)) &&
     isPointInElement(lastPoint, element, elementsMap)
   ) {
     return true;

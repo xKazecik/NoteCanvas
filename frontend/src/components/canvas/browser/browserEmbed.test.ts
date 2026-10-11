@@ -130,3 +130,20 @@ describe("getBrowserFrameURL", () => {
     );
   });
 });
+
+describe("getBrowserFrameURL for Google", () => {
+  it("asks Google for its frameable home and results pages", () => {
+    expect(getBrowserFrameURL("https://www.google.com/")).toBe(
+      "https://www.google.com/?igu=1",
+    );
+    expect(getBrowserFrameURL("https://www.google.com/search?q=cats")).toBe(
+      "https://www.google.com/search?q=cats&igu=1",
+    );
+  });
+
+  it("leaves other Google services alone", () => {
+    expect(getBrowserFrameURL("https://www.google.com/maps")).toBe(
+      "https://www.google.com/maps",
+    );
+  });
+});

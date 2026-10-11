@@ -9,6 +9,7 @@ import {
   parseTSV,
   rangeToTSV,
   sortRowsByColumn,
+  toggleCellInPick,
 } from "@excalidraw/element";
 
 import type { ExcalidrawTableElement } from "@excalidraw/element/types";
@@ -231,5 +232,34 @@ describe("multi-track delete", () => {
   it("never removes every row or column", () => {
     expect(deleteRow(table, 0, 3)).toBeNull();
     expect(deleteColumn(table, 0, 3)).toBeNull();
+  });
+});
+
+describe("toggleCellInPick (Ctrl+click)", () => {
+  const table = tableOf([
+    ["a", "b", "c"],
+    ["d", "e", "f"],
+  ]);
+  const single = { anchor: { row: 0, col: 0 }, focus: { row: 0, col: 0 } };
+
+  it("adds a cell outside the pick and removes it on a second click", () => {
+    const added = toggleCellInPick(table, single, { row: 1, col: 2 });
+    expect(added.extra).toEqual([{ row: 1, col: 2 }]);
+    const removed = toggleCellInPick(table, added, { row: 1, col: 2 });
+    expect(removed.extra).toEqual([]);
+  });
+
+  it("hands the lone main cell over to the next added cell", () => {
+    const pick = { ...single, extra: [{ row: 1, col: 1 }] };
+    expect(toggleCellInPick(table, pick, { row: 0, col: 0 })).toEqual({
+      anchor: { row: 1, col: 1 },
+      focus: { row: 1, col: 1 },
+      extra: [],
+    });
+  });
+
+  it("leaves a cell inside a larger range alone", () => {
+    const range = { anchor: { row: 0, col: 0 }, focus: { row: 1, col: 1 } };
+    expect(toggleCellInPick(table, range, { row: 1, col: 0 })).toBe(range);
   });
 });
