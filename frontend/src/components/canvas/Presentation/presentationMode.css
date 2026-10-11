@@ -1,0 +1,21 @@
+/*
+ * While presenting, only the slides and the presentation controls are on
+ * screen. Presenting already turns on view and zen mode, which hide the shape
+ * toolbar and the styles panel; this hides what those leave behind: the page
+ * header, the editor's top bar (main menu, Slides and stickers), zoom and undo,
+ * help, and zen mode's own exit button.
+ */
+body.excalidraw-presentation-mode .notecanvas-editor-header,
+body.excalidraw-presentation-mode .excalidraw .App-menu_top,
+body.excalidraw-presentation-mode .excalidraw .layer-ui__wrapper__footer-left,
+body.excalidraw-presentation-mode .excalidraw .layer-ui__wrapper__footer-right,
+body.excalidraw-presentation-mode .excalidraw .disable-zen-mode {
+  display: none !important;
+}
+
+/* the canvas takes the header's place at once, so slides fit the full screen */
+body.excalidraw-presentation-mode .notecanvas-editor-canvas {
+  height: 100vh !important;
+  margin-top: 0 !important;
+  transition: none !important;
+}

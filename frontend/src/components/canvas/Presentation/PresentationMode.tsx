@@ -5,6 +5,8 @@ import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { PresentationControls } from "./PresentationControls";
 import { usePresentationMode } from "./usePresentationMode";
 
+import "./presentationMode.css";
+
 interface PresentationModeProps {
   excalidrawAPI: ExcalidrawImperativeAPI | null;
 }

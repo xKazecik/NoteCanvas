@@ -166,7 +166,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
   <div className="h-screen flex flex-col bg-white dark:bg-neutral-950 overflow-hidden">
     <header
       className={clsx(
-        "h-16 bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-800 flex items-center px-4 justify-between z-10 fixed top-0 left-0 right-0 transition-transform duration-300",
+        "notecanvas-editor-header h-16 bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-800 flex items-center px-4 justify-between z-10 fixed top-0 left-0 right-0 transition-transform duration-300",
         isHeaderVisible ? "translate-y-0" : "-translate-y-full",
       )}
     >
@@ -274,7 +274,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
     </header>
     <div
       ref={editorContainerRef}
-      className="flex-1 w-full relative transition-all duration-300"
+      className="notecanvas-editor-canvas flex-1 w-full relative transition-all duration-300"
       onDropCapture={onCanvasDropCapture}
       style={{
         height: isHeaderVisible ? "calc(100vh - 4rem)" : "100vh",
