@@ -1,13 +1,21 @@
-# NoteCanvas -- runs the published image.
+# NoteCanvas -- builds the image from this checkout and runs it.
 #
 #   cp .env.example .env      # all app settings live there
-#   docker compose up -d
+#   docker compose up -d --build
 #
-# To build from this checkout instead, use docker-compose.build.yml.
+# Same container, port and volumes as docker-compose.prod.yml, so it is a
+# drop-in replacement for the published image (and shares its data).
 
 services:
   notecanvas:
-    image: git.kazecik.com/xkazecik/notecanvas:${NOTECANVAS_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Shown in Settings and compared by the update check. A non-numeric
+        # value such as "local" turns the update prompt off for this build.
+        VITE_APP_VERSION: ${NOTECANVAS_VERSION:-local}
+    image: notecanvas:local
     container_name: notecanvas
     # Reaps zombies and forwards SIGTERM so nginx and node shut down cleanly.
     init: true
