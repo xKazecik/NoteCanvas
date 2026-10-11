@@ -44,7 +44,6 @@ export type ActionFilterFn = (action: Action) => void;
 
 export type ActionName =
   | "tableOperation"
-  | "insertBrowser"
   | "copy"
   | "cut"
   | "paste"
@@ -132,6 +131,7 @@ export type ActionName =
   | "updateFrameRendering"
   | "setFrameAsActiveTool"
   | "setEmbeddableAsActiveTool"
+  | "insertBrowser"
   | "createContainerFromText"
   | "wrapTextInContainer"
   | "commandPalette"
