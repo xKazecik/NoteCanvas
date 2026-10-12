@@ -27,6 +27,15 @@ export const OfflineModeToggle: React.FC<{ className: string }> = ({ className }
       await disableGlobalOffline();
       return;
     }
+    // Browsers only allow the service worker that caches the app on HTTPS or
+    // localhost. Boards are still kept locally, but the page itself can't be
+    // reloaded without a connection.
+    if (!window.isSecureContext) {
+      toast.warning(
+        "This address isn't HTTPS, so the browser won't save the app for offline use. Your boards are kept in this browser, but reloading the page without a connection won't work. Open NoteCanvas over HTTPS to use it fully offline.",
+        { duration: 15_000 },
+      );
+    }
     setLoading(true);
     try {
       const shared = (await getOfflineCandidates()).filter((c) => c.isShared);
