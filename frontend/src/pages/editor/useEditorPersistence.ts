@@ -5,6 +5,7 @@ import debounce from "lodash/debounce";
 import { toast } from "sonner";
 import * as api from "../../api";
 import { reloadAndReconcile } from "./reconcileSave";
+import { isNetworkError } from "../../offline/offlineState";
 import { compressExcalidrawFiles } from "../../utils/imageCompression";
 import {
   applyUploadedFileRefs,
@@ -317,6 +318,7 @@ export const useEditorPersistence = ({
     } catch (err) {
       console.error("Failed to save library", err);
       if (api.isAxiosError(err) && err.response?.status === 401) return;
+      if (isNetworkError(err)) return; // offline: saved next time it changes
       toast.error("Failed to save library");
     }
   };

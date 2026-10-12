@@ -1,5 +1,11 @@
 import type { Drawing, DrawingSummary } from "../types";
 import { normalizePreviewSvg } from "../utils/previewSvg";
+import { isStoredOffline } from "../offline/offlineState";
+import {
+  deleteLocalDrawing,
+  getLocalDrawing,
+  updateLocalDrawing,
+} from "../offline/localDrawings";
 import { api, isAxiosError } from "./client";
 
 // Per-file image upload capability. The endpoint below is served by newer
@@ -29,7 +35,8 @@ export const uploadDrawingFile = async (
   body: ArrayBuffer | Uint8Array | Blob,
   mimeType: string,
 ): Promise<UploadedFileRef | null> => {
-  if (!fileUploadSupported) return null;
+  // Offline copies keep their images inline; the sync engine uploads them.
+  if (!fileUploadSupported || isStoredOffline(drawingId)) return null;
   try {
     const response = await api.put<{ url?: string }>(
       `/drawings/${drawingId}/files/${fileId}`,
@@ -172,15 +179,23 @@ export async function getSharedDrawings(
   return { ...response.data, drawings: response.data.drawings.map(deserializeDrawingSummary) };
 }
 
-export const getDrawing = async (id: string) => {
+/** Always the server's copy, even for a drawing kept offline. */
+export const fetchRemoteDrawing = async (id: string) => {
   const response = await api.get<Drawing>(`/drawings/${id}`);
   return deserializeDrawing(response.data);
 };
+
+// A drawing kept offline is read from (and saved to) this browser's copy;
+// the sync engine in src/offline pushes it to the server when it can.
+export const getDrawing = async (id: string) =>
+  (await getLocalDrawing(id)) ?? fetchRemoteDrawing(id);
 
 // Previews are no longer inlined into list responses; fetch them per-drawing.
 // The endpoint is ETag-cacheable (revalidates on updatedAt), so repeated calls
 // are cheap once the browser has a copy.
 export const getDrawingPreview = async (id: string): Promise<string | null> => {
+  const local = await getLocalDrawing(id);
+  if (local) return typeof local.preview === "string" ? local.preview : null;
   const response = await api.get<{ preview: string | null }>(
     `/drawings/${id}/preview`,
   );
@@ -297,14 +312,47 @@ export const createDrawing = async (
   return response.data;
 };
 
-export const updateDrawing = async (id: string, data: Partial<Drawing>) => {
+/** Always writes to the server, even for a drawing kept offline. */
+export const putRemoteDrawing = async (id: string, data: Partial<Drawing>) => {
   const response = await api.put<Drawing>(`/drawings/${id}`, data);
   return deserializeDrawing(response.data);
 };
 
+// Moving between collections is server-side organisation, not content, so it
+// goes straight to the server even for a drawing kept offline.
+export const updateDrawing = async (id: string, data: Partial<Drawing>) =>
+  isStoredOffline(id) && data.collectionId === undefined
+    ? updateLocalDrawing(id, data)
+    : putRemoteDrawing(id, data);
+
 export const deleteDrawing = async (id: string) => {
   const response = await api.delete<{ success: true }>(`/drawings/${id}`);
+  if (isStoredOffline(id)) await deleteLocalDrawing(id);
   return response.data;
+};
+
+/** Owner-only: flag a drawing offline (others become read-only) or back. */
+export const setDrawingOffline = async (id: string, offline: boolean) => {
+  const response = await api.put<{ offlineAt: string | null }>(
+    `/drawings/${id}/offline`,
+    { offline },
+  );
+  return response.data;
+};
+
+export type OfflineCandidate = {
+  id: string;
+  name: string;
+  offlineAt: string | null;
+  isShared: boolean;
+};
+
+/** The caller's drawings (trash excluded), with whether each is shared. */
+export const getOfflineCandidates = async () => {
+  const response = await api.get<{ drawings: OfflineCandidate[] }>(
+    "/drawings/offline-candidates",
+  );
+  return response.data.drawings;
 };
 
 export const duplicateDrawing = async (id: string) => {

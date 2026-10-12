@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import * as api from "../api";
 import { useAuth } from "../context/AuthContext";
+import { useOffline } from "../context/OfflineContext";
 import { GeneralAccessSection } from "./share-modal/GeneralAccessSection";
 import { SharePeopleSection } from "./share-modal/SharePeopleSection";
 import {
@@ -31,6 +32,7 @@ export const ShareModal: React.FC<Props> = ({
   onClose,
 }) => {
   const { user } = useAuth();
+  const { isStoredOffline } = useOffline();
   const currentUserId = user?.id || null;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -309,6 +311,12 @@ export const ShareModal: React.FC<Props> = ({
             <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-3">
               <AlertTriangle size={16} strokeWidth={2} />
               {error}
+            </div>
+          )}
+          {isStoredOffline(drawingId) && (
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs font-semibold text-amber-800 dark:text-amber-200">
+              This board is in offline mode, so sharing is paused: people can view it but not edit it.
+              Their access comes back as it was when you bring the board back online.
             </div>
           )}
 

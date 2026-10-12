@@ -8,6 +8,8 @@ export interface DrawingSummary {
   preview?: string | null;
   accessLevel?: "none" | "view" | "edit" | "owner";
   creatorName?: string | null;
+  /** Set while the owner has the drawing in offline mode (others: read-only). */
+  offlineAt?: string | null;
 }
 export interface Drawing extends DrawingSummary {
   elements: any[];

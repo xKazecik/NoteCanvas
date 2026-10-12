@@ -7,6 +7,8 @@ import { filesNeedRehydration, rehydrateFilesFromUrls } from "../../utils/rehydr
 import { buildRemoteSceneUpdate } from "./shared";
 import { attachCanvasZoomForwarding } from "./canvasZoomForwarding";
 import { getSocketUrl } from "./socketUrl";
+import { isStoredOffline } from "../../offline/offlineState";
+import { useOwnerOfflineNotice } from "./useOwnerOfflineNotice";
 
 interface Peer extends UserIdentity {
   isActive: boolean;
@@ -25,6 +27,7 @@ type UseEditorCollaborationInput = {
   computeElementOrderSig: (elements: readonly any[]) => string;
   recordElementVersion: (element: any) => void;
   onAccessDenied: () => void;
+  accessLevel: "none" | "view" | "edit" | "owner";
 };
 
 export const useEditorCollaboration = ({
@@ -40,6 +43,7 @@ export const useEditorCollaboration = ({
   computeElementOrderSig,
   recordElementVersion,
   onAccessDenied,
+  accessLevel,
 }: UseEditorCollaborationInput) => {
   const [socketMe, setSocketMe] = useState<UserIdentity>(me);
   const socketMeRef = useRef<UserIdentity>(socketMe);
@@ -64,8 +68,14 @@ export const useEditorCollaboration = ({
     socketMeRef.current = socketMe;
   }, [socketMe]);
 
+  const { ownerOffline, handleOfflineChanged } = useOwnerOfflineNotice(
+    drawingId,
+    accessLevel,
+  );
+
   useEffect(() => {
-    if (!drawingId || !isReady) return;
+    // An offline copy is edited alone and synced over HTTP; no live room.
+    if (!drawingId || !isReady || isStoredOffline(drawingId)) return;
     const socket = io(getSocketUrl(), {
       path: "/socket.io",
       transports: ["websocket", "polling"],
@@ -297,6 +307,7 @@ export const useEditorCollaboration = ({
       toast.info("Drawing storage changed on the server. Reloading the editor.");
       window.location.reload();
     });
+    socket.on("drawing-offline-changed", handleOfflineChanged);
     const handleActivity = (isActive: boolean) => {
       socket.emit("user-activity", { drawingId, isActive });
     };
@@ -323,6 +334,7 @@ export const useEditorCollaboration = ({
       socket.off("cursor-move");
       socket.off("element-update");
       socket.off("drawing-server-update");
+      socket.off("drawing-offline-changed");
       socket.disconnect();
       if (remoteFlushRafIdRef.current !== null) {
         cancelAnimationFrame(remoteFlushRafIdRef.current);
@@ -347,6 +359,7 @@ export const useEditorCollaboration = ({
     computeElementOrderSig,
     recordElementVersion,
     onAccessDenied,
+    handleOfflineChanged,
   ]);
 
   const onPointerUpdate = useCallback(
@@ -378,5 +391,6 @@ export const useEditorCollaboration = ({
     socketRef,
     isSyncing,
     onPointerUpdate,
+    ownerOffline,
   };
 };

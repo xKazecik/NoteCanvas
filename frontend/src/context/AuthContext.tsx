@@ -10,6 +10,7 @@ import {
   authRegister,
   isAxiosError,
 } from '../api';
+import { isNetworkError, markServerReachable } from '../offline/offlineState';
 
 interface User {
   id: string;
@@ -44,6 +45,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const USER_KEY = 'excalidash-user';
 const AUTH_ENABLED_CACHE_KEY = "excalidash-auth-enabled";
+
+const readCachedUser = (): User | null => {
+  try {
+    const stored = localStorage.getItem(USER_KEY);
+    return stored ? (JSON.parse(stored) as User) : null;
+  } catch {
+    return null;
+  }
+};
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -98,8 +108,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setUser(null);
           return;
         }
-      } catch {
+      } catch (statusError) {
         const cachedAuthEnabled = localStorage.getItem(AUTH_ENABLED_CACHE_KEY);
+        // No connection: keep working as the last signed-in user so offline
+        // mode can open the boards stored in this browser. The server still
+        // checks the session on every request once it is reachable again.
+        const cachedUser = readCachedUser();
+        if (isNetworkError(statusError) && cachedUser && !isShareFlow) {
+          markServerReachable(false);
+          setAuthStatusError(null);
+          setAuthEnabled(true);
+          setUser(cachedUser);
+          return;
+        }
         if (cachedAuthEnabled === "false") {
           setAuthStatusError(null);
           setAuthEnabled(false);
@@ -152,12 +173,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const response = await authMe();
         setUser(response.user);
         localStorage.setItem(USER_KEY, JSON.stringify(response.user));
-      } catch {
+      } catch (meError) {
         if (isShareFlow) {
           localStorage.removeItem(USER_KEY);
           setUser(null);
           return;
         }
+        // Lost the connection mid-check: keep the cached user (see above).
+        if (isNetworkError(meError) && readCachedUser()) return;
         try {
           await authRefresh();
           const userResponse = await authMe();

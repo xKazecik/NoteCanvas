@@ -160,6 +160,7 @@ export const registerDrawingListRoutes = (
         version: true,
         createdAt: true,
         updatedAt: true,
+        offlineAt: true,
         user: { select: { id: true, name: true } },
       };
 
@@ -336,6 +337,7 @@ export const registerDrawingListRoutes = (
         version: true,
         createdAt: true,
         updatedAt: true,
+        offlineAt: true,
         userId: true,
         permissions: {
           where: { granteeUserId: req.user.id },
@@ -366,7 +368,7 @@ export const registerDrawingListRoutes = (
           ...rest,
           // Collections are owner-scoped; don't leak the owner's collection ids to viewers.
           collectionId: null,
-          accessLevel: perm,
+          accessLevel: d.offlineAt ? "view" : perm, // owner offline: read-only
         };
       };
 

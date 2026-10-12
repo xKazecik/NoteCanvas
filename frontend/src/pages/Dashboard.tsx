@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState, useRef } from "react";
 import { Layout } from "../components/Layout";
 import { Loader2 } from "lucide-react";
+import { Toaster } from "sonner";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useDebounce } from "../hooks/useDebounce";
 import { ConfirmModal } from "../components/ConfirmModal";
@@ -371,6 +372,7 @@ export const Dashboard: React.FC = () => {
           actions.setShowImportError({ isOpen: false, message: "" })
         }
       />{" "}
+      <Toaster position="bottom-center" />
     </Layout>
   );
 };
