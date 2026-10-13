@@ -4,12 +4,15 @@ import type {
   CollectionShareRow,
   CollectionShareUser,
 } from "../types";
+import { getConnectionTimeoutMs } from "../offline/offlineState";
 import { api } from "./client";
 
 export type { CollectionShareRole, CollectionShareRow, CollectionShareUser };
 
 export const getCollections = async () => {
-  const response = await api.get<Collection[]>("/collections");
+  const response = await api.get<Collection[]>("/collections", {
+    timeout: getConnectionTimeoutMs(),
+  });
   return response.data;
 };
 

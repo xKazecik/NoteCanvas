@@ -1,7 +1,7 @@
 import type { Drawing, DrawingSummary } from "../types";
 import { normalizePreviewSvg } from "../utils/previewSvg";
 import { sanitizePreviewSvg } from "../utils/sanitizePreviewSvg";
-import { isStoredOffline } from "../offline/offlineState";
+import { getConnectionTimeoutMs, isStoredOffline } from "../offline/offlineState";
 import {
   deleteLocalDrawing,
   getLocalDrawing,
@@ -167,7 +167,7 @@ export async function getDrawings(
     const response = await api.get<PaginatedDrawings<Drawing>>("/drawings", { params });
     return { ...response.data, drawings: response.data.drawings.map(deserializeDrawing) };
   }
-  const response = await api.get<PaginatedDrawings<DrawingSummary>>("/drawings", { params });
+  const response = await api.get<PaginatedDrawings<DrawingSummary>>("/drawings", { params, timeout: getConnectionTimeoutMs() });
   return { ...response.data, drawings: response.data.drawings.map(deserializeDrawingSummary) };
 }
 
@@ -176,7 +176,7 @@ export async function getSharedDrawings(
   options?: Omit<DrawingQueryOptions, "includeData">,
 ): Promise<PaginatedDrawings<DrawingSummary>> {
   const params = buildDrawingParams(search, undefined, options);
-  const response = await api.get<PaginatedDrawings<DrawingSummary>>("/drawings/shared", { params });
+  const response = await api.get<PaginatedDrawings<DrawingSummary>>("/drawings/shared", { params, timeout: getConnectionTimeoutMs() });
   return { ...response.data, drawings: response.data.drawings.map(deserializeDrawingSummary) };
 }
 

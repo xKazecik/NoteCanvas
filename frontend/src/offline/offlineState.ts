@@ -83,6 +83,21 @@ export const markServerReachable = (reachable: boolean) => {
   emit();
 };
 
+const DEFAULT_CONNECTION_TIMEOUT_MS = 10_000;
+
+/**
+ * How long the small requests that decide whether we're online (login check,
+ * dashboard lists, health check) may take before the server counts as
+ * unreachable. Set with OFFLINE_CONNECTION_TIMEOUT_MS in .env (written into
+ * window.__ENV__ by docker/entrypoint.sh); 0 means wait as long as the browser.
+ */
+export const getConnectionTimeoutMs = (): number => {
+  const raw = (window as { __ENV__?: Record<string, unknown> }).__ENV__
+    ?.OFFLINE_CONNECTION_TIMEOUT_MS;
+  const parsed = Number.parseInt(String(raw ?? ""), 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_CONNECTION_TIMEOUT_MS;
+};
+
 /**
  * A request that never reached the app server: no connection at all, or the
  * reverse proxy in front of it answered that the server is unreachable.

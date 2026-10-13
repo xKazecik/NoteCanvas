@@ -21,9 +21,12 @@ sed "s/__BACKEND_URL__/${ESCAPED_BACKEND_URL}/g" /etc/nginx/nginx.conf.template 
 # rebuilding the image. A key never contains a quote, a backslash or a newline,
 # and letting one through would break out of the JavaScript string below.
 giphy_key=$(printf %s "${GIPHY_API_KEY:-}" | tr -d '\"\\\n')
+# Milliseconds; digits only, so nothing but a number can reach the script.
+# Empty leaves the frontend's default.
+offline_timeout=$(printf %s "${OFFLINE_CONNECTION_TIMEOUT_MS:-}" | tr -cd '0-9')
 
-printf 'window.__ENV__ = { "VITE_APP_GIPHY_API_KEY": "%s" };\n' \
-    "$giphy_key" > /usr/share/nginx/html/env.js
+printf 'window.__ENV__ = { "VITE_APP_GIPHY_API_KEY": "%s", "OFFLINE_CONNECTION_TIMEOUT_MS": "%s" };\n' \
+    "$giphy_key" "$offline_timeout" > /usr/share/nginx/html/env.js
 
 if [ -n "$giphy_key" ]; then
     echo "GIPHY integration enabled"

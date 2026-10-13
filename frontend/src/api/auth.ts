@@ -1,4 +1,5 @@
 import { cachePasswordPolicy, type PasswordPolicyResponse } from "../utils/passwordPolicy";
+import { getConnectionTimeoutMs } from "../offline/offlineState";
 import { API_URL, api, axios } from "./client";
 import type { DrawingSortField, SortDirection } from "./drawings";
 
@@ -105,6 +106,7 @@ export const getCsrfHeader = (): { name: string; token: string } | null => {
 export const authStatus = async (): Promise<AuthStatusResponse> => {
   const response = await axios.get<AuthStatusResponse>(`${API_URL}/auth/status`, {
     withCredentials: true,
+    timeout: getConnectionTimeoutMs(),
   });
   cachePasswordPolicy(response.data.passwordPolicy);
   return response.data;
@@ -123,6 +125,7 @@ export const startOidcSignIn = (returnTo?: string): void => {
 export const authMe = async (): Promise<{ user: AuthUser }> => {
   const response = await axios.get<{ user: AuthUser }>(`${API_URL}/auth/me`, {
     withCredentials: true,
+    timeout: getConnectionTimeoutMs(),
   });
   return response.data;
 };
@@ -143,7 +146,7 @@ export const updateUserPreferences = async (
 };
 
 export const authRefresh = async (): Promise<void> => {
-  await api.post<{ ok?: boolean }>("/auth/refresh", {});
+  await api.post<{ ok?: boolean }>("/auth/refresh", {}, { timeout: getConnectionTimeoutMs() });
 };
 
 export const authLogout = async (): Promise<void> => {
