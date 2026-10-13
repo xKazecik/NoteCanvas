@@ -11,6 +11,7 @@ import {
 } from "./shared";
 import type { UploadedFileRefs } from "./shared";
 import { saveDrawingKeepalive } from "./keepaliveSave";
+import { isStoredOffline } from "../../offline/offlineState";
 
 type EditorCommandRefs = {
   currentDrawingVersion: MutableRefObject<number | null>;
@@ -148,6 +149,11 @@ export const useEditorCommands = ({
       }
       const appState = editor.getAppState();
       const files = editor.getFiles() || {};
+      // A board kept offline saves to this browser; it syncs on its own later.
+      if (isStoredOffline(drawingId)) {
+        void enqueueSceneSave(drawingId, safeElements, appState, files);
+        return;
+      }
       saveDrawingKeepalive(drawingId, {
         elements: Array.from(safeElements),
         appState: getPersistedAppState(appState),
@@ -159,7 +165,7 @@ export const useEditorCommands = ({
     };
     window.addEventListener("pagehide", handlePageHide);
     return () => window.removeEventListener("pagehide", handlePageHide);
-  }, [canEdit, drawingId, refs, resolveSafeSnapshot]);
+  }, [canEdit, drawingId, enqueueSceneSave, refs, resolveSafeSnapshot]);
 
   const handleRenameSubmit = useCallback(
     async (e: FormEvent) => {
