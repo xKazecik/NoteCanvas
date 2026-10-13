@@ -1,5 +1,6 @@
 import type { Drawing, DrawingSummary } from "../types";
 import { normalizePreviewSvg } from "../utils/previewSvg";
+import { sanitizePreviewSvg } from "../utils/sanitizePreviewSvg";
 import { isStoredOffline } from "../offline/offlineState";
 import {
   deleteLocalDrawing,
@@ -195,7 +196,8 @@ export const getDrawing = async (id: string) =>
 // are cheap once the browser has a copy.
 export const getDrawingPreview = async (id: string): Promise<string | null> => {
   const local = await getLocalDrawing(id);
-  if (local) return typeof local.preview === "string" ? local.preview : null;
+  // Generated in this browser, so it skipped the server's sanitizer.
+  if (local) return local.preview ? normalizePreviewSvg(sanitizePreviewSvg(local.preview)) : null;
   const response = await api.get<{ preview: string | null }>(
     `/drawings/${id}/preview`,
   );
