@@ -640,5 +640,3 @@ export const PenSettingsModal: React.FC<PenSettingsModalProps> = ({
     </Dialog>
   );
 };
-
-export default PenSettingsModal;

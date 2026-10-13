@@ -35,7 +35,6 @@ import {
   emojiToTwemojiUrl,
   EMOJI_GROUPS,
   type TwemojiItem,
-  type TwemojiGroup,
   type EmojiGroupSlug,
 } from "../twemojiApi";
 
@@ -113,8 +112,6 @@ export const StickersPanel: React.FC<StickersPanelProps> = ({
   const [insertingId, setInsertingId] = useState<string | null>(null);
 
   // Twemoji state - groups stored for potential future UI (group tabs)
-  const [_twemojiGroups, setTwemojiGroups] = useState<TwemojiGroup[]>([]);
-  void _twemojiGroups; // Reserved for future use
   const [twemojiItems, setTwemojiItems] = useState<TwemojiItem[]>([]);
   const [selectedEmojiGroup, setSelectedEmojiGroup] =
     useState<EmojiGroupSlug>("smileys_emotion");
@@ -161,7 +158,6 @@ export const StickersPanel: React.FC<StickersPanelProps> = ({
 
       try {
         const data = await fetchEmojiData();
-        setTwemojiGroups(data);
 
         if (query.trim()) {
           // Search across all emojis
