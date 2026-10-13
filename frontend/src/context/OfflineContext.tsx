@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { api, getOfflineCandidates } from "../api";
 import { useAuth } from "./AuthContext";
 import {
+  getConnectionTimeoutMs,
   getOfflineStateVersion,
   getStoredOfflineIds,
   isGlobalOffline,
@@ -75,7 +76,7 @@ export const OfflineProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (getStoredOfflineIds().length > 0) {
       await syncAllLocalChanges();
     } else if (!isOnline()) {
-      await api.get("/health", { timeout: 5000 }).catch(() => undefined);
+      await api.get("/health", { timeout: getConnectionTimeoutMs() }).catch(() => undefined);
     }
     if (isOnline() && (await getSnapshotAge()) > SNAPSHOT_MAX_AGE_MS) {
       await refreshDashboardSnapshot().catch(() => undefined);

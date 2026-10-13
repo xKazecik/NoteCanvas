@@ -133,8 +133,9 @@ and are invisible.
   name has to match `backend/src/server/socket.ts`.
 - **Runtime frontend config.** `docker/entrypoint.sh` writes
   `/usr/share/nginx/html/env.js` on every container start, and nginx serves it
-  with `no-store`. Currently carries `GIPHY_API_KEY`. Bear in mind anything put
-  there reaches the browser.
+  with `no-store`. Currently carries `GIPHY_API_KEY` and
+  `OFFLINE_CONNECTION_TIMEOUT_MS`. Bear in mind anything put there reaches the
+  browser.
 
 ## Re-vendoring the engine from AstraDraw
 
