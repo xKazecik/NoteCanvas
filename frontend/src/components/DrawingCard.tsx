@@ -198,7 +198,7 @@ export const DrawingCard: React.FC<DrawingCardProps> = ({
                 !hasEmbeddedImages &&
                   "dark:[&>svg]:invert dark:[&>svg_rect[fill='white']]:opacity-0 dark:[&>svg_rect[fill='#ffffff']]:opacity-0",
               )}
-              // nosemgrep -- previews are sanitized with DOMPurify on save (backend/src/security.ts sanitizeSvg)
+              // nosemgrep -- previews are sanitized with DOMPurify: on save by the server (backend/src/security.ts sanitizeSvg), and offline copies on read (utils/sanitizePreviewSvg.ts)
               dangerouslySetInnerHTML={{ __html: previewSvg }}
             />
           ) : (

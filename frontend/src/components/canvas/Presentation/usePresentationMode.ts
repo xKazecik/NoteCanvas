@@ -13,14 +13,6 @@ import { getSlideTransition, playSlideTransition } from "./slideTransitions";
 // The core presentation state is now in AppState.presentationMode
 export const slidesAtom = atom<ExcalidrawFrameLikeElement[]>([]);
 
-// Legacy atoms - kept for backward compatibility during transition
-// These sync with AppState.presentationMode
-export const presentationModeAtom = atom(false);
-export const currentSlideAtom = atom(0);
-
-// Atom for custom slide order (frame IDs in presentation order)
-export const slideOrderAtom = atom<string[]>([]);
-
 export interface UsePresentationModeOptions {
   excalidrawAPI: ExcalidrawImperativeAPI | null;
 }
