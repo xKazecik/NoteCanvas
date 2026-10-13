@@ -31,6 +31,7 @@ import {
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { UserIdentity } from "../../utils/identity";
 import { UIOptions } from "./shared";
+import { EditorAccessBadge } from "./EditorAccessBadge";
 
 interface Peer extends UserIdentity {
   isActive: boolean;
@@ -39,6 +40,8 @@ interface Peer extends UserIdentity {
 type EditorViewProps = {
   id?: string;
   accessLevel: "none" | "view" | "edit" | "owner";
+  /** The owner has this drawing in offline mode, so we are read-only. */
+  ownerOffline: boolean;
   autoHideEnabled: boolean;
   autosaveFailing: boolean;
   canEdit: boolean;
@@ -105,6 +108,7 @@ const UserAvatar = ({
 export const EditorView: React.FC<EditorViewProps> = ({
   id,
   accessLevel,
+  ownerOffline,
   autoHideEnabled,
   autosaveFailing,
   canEdit,
@@ -217,11 +221,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
             Unsaved changes
           </span>
         ) : null}
-        {!canEdit ? (
-          <span className="text-xs font-semibold px-2 py-1 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200 border border-amber-200 dark:border-amber-800">
-            Read-only
-          </span>
-        ) : null}
+        <EditorAccessBadge id={id} canEdit={canEdit} ownerOffline={ownerOffline} />
         {canEdit && id ? (
           <button
             onClick={onHistoryOpen}

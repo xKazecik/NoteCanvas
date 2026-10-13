@@ -1,2 +1,2 @@
-export { PENS, getDefaultPenPresets, getPenByType } from "./pens";
+export { PENS } from "./pens";
 export { PenToolbar } from "./PenToolbar";

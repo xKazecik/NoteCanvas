@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { PenTool, Check, Clock } from "lucide-react";
+import { PenTool, Check, Clock, CloudOff } from "lucide-react";
+import { toast } from "sonner";
 import type { DrawingSummary, Collection } from "../types";
 import { formatDistanceToNow } from "date-fns";
 import clsx from "clsx";
@@ -9,6 +10,7 @@ import { CollectionPicker } from "./drawing-card/CollectionPicker";
 import { DrawingCardContextMenu } from "./drawing-card/DrawingCardContextMenu";
 import { useDrawingPreview } from "./drawing-card/useDrawingPreview";
 import * as api from "../api";
+import { useOffline } from "../context/OfflineContext";
 
 interface DrawingCardProps {
   drawing: DrawingSummary;
@@ -61,6 +63,13 @@ export const DrawingCard: React.FC<DrawingCardProps> = ({
   const [exportError, setExportError] = useState<string | null>(null);
   const { previewSvg, hasEmbeddedImages, buildExportDrawing } =
     useDrawingPreview(drawing, onPreviewGenerated);
+  const offline = useOffline();
+  // Only the owner can take a drawing offline; shared views can't.
+  const isOwnerSide = !isShared && !isSharedCollection && !isTrash;
+  const storedOffline = offline.isStoredOffline(drawing.id);
+  // Without a connection only the copies kept in this browser can be opened.
+  const notSynced = !offline.isOnline && !storedOffline;
+  const pausedByOwner = !!drawing.offlineAt && !isOwnerSide;
 
   useEffect(() => {
     let cancelled = false;
@@ -165,7 +174,14 @@ export const DrawingCard: React.FC<DrawingCardProps> = ({
         </div>
 
         <div
-          onClick={(e) => !isTrash && onClick(drawing.id, e)}
+          onClick={(e) => {
+            if (isTrash) return;
+            if (notSynced) {
+              toast.info("This board isn't stored offline. Connect to the internet to open it.");
+              return;
+            }
+            onClick(drawing.id, e);
+          }}
           className={clsx(
             "aspect-[16/10] bg-slate-50 dark:bg-neutral-800/30 relative overflow-hidden flex items-center justify-center border-b-2 border-black dark:border-neutral-700 rounded-t-xl transition-colors",
             !isTrash &&
@@ -182,7 +198,7 @@ export const DrawingCard: React.FC<DrawingCardProps> = ({
                 !hasEmbeddedImages &&
                   "dark:[&>svg]:invert dark:[&>svg_rect[fill='white']]:opacity-0 dark:[&>svg_rect[fill='#ffffff']]:opacity-0",
               )}
-              // nosemgrep -- previews are sanitized with DOMPurify on save (backend/src/security.ts sanitizeSvg)
+              // nosemgrep -- previews are sanitized with DOMPurify: on save by the server (backend/src/security.ts sanitizeSvg), and offline copies on read (utils/sanitizePreviewSvg.ts)
               dangerouslySetInnerHTML={{ __html: previewSvg }}
             />
           ) : (
@@ -193,6 +209,23 @@ export const DrawingCard: React.FC<DrawingCardProps> = ({
                 className="sm:w-9 sm:h-9 lg:w-10 lg:h-10"
               />
             </div>
+          )}
+
+          {(notSynced || pausedByOwner) && (
+            <div
+              data-testid={`drawing-offline-tint-${drawing.id}`}
+              className="absolute inset-0 z-10 flex items-center justify-center p-3 bg-slate-500/40 dark:bg-neutral-950/60"
+            >
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/90 dark:bg-neutral-900/90 border border-black/10 dark:border-white/10 text-[11px] font-semibold text-slate-700 dark:text-neutral-200 text-center">
+                <CloudOff size={12} className="shrink-0" />
+                {notSynced ? "Not synced" : "Owner turned on offline mode"}
+              </span>
+            </div>
+          )}
+          {isOwnerSide && storedOffline && (
+            <span className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/90 dark:bg-neutral-900/90 border border-black/10 dark:border-white/10 text-[10px] font-semibold text-slate-600 dark:text-neutral-300">
+              <CloudOff size={10} /> Offline
+            </span>
           )}
         </div>
 
@@ -290,6 +323,18 @@ export const DrawingCard: React.FC<DrawingCardProps> = ({
             await handleExport();
             setContextMenu(null);
           }}
+          offlineToggle={
+            isOwnerSide
+              ? {
+                  storedOffline,
+                  disabled: offline.busy || !offline.isOnline,
+                  onToggle: () =>
+                    void (storedOffline
+                      ? offline.bringOnline(drawing.id)
+                      : offline.takeOffline(drawing.id)),
+                }
+              : undefined
+          }
         />
       )}
       <StorageManageModal

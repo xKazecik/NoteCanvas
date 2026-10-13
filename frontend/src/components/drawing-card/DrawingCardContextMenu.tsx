@@ -2,6 +2,8 @@ import React from "react";
 import { createPortal } from "react-dom";
 import {
   ArrowRight,
+  Cloud,
+  CloudOff,
   Copy,
   Download,
   EyeOff,
@@ -33,6 +35,8 @@ interface DrawingCardContextMenuProps {
   onHide?: (id: string) => void;
   onManageStorage: () => void;
   onExport: (e: React.MouseEvent) => Promise<void>;
+  /** Owner-only: take the drawing offline or bring it back online. */
+  offlineToggle?: { storedOffline: boolean; disabled: boolean; onToggle: () => void };
 }
 
 export const DrawingCardContextMenu: React.FC<DrawingCardContextMenuProps> = ({
@@ -54,6 +58,7 @@ export const DrawingCardContextMenu: React.FC<DrawingCardContextMenuProps> = ({
   onHide,
   onManageStorage,
   onExport,
+  offlineToggle,
 }) =>
   createPortal(
     <div
@@ -122,6 +127,26 @@ export const DrawingCardContextMenu: React.FC<DrawingCardContextMenuProps> = ({
               <Copy size={14} /> Duplicate
             </button>
           </>
+        ) : null}
+        {offlineToggle ? (
+          <button
+            onClick={() => {
+              offlineToggle.onToggle();
+              onClose();
+            }}
+            disabled={offlineToggle.disabled}
+            className="w-full px-3 py-2 text-sm text-left text-slate-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {offlineToggle.storedOffline ? (
+              <>
+                <Cloud size={14} /> Bring back online
+              </>
+            ) : (
+              <>
+                <CloudOff size={14} /> Make available offline
+              </>
+            )}
+          </button>
         ) : null}
         {!isShared && storageAvailable ? (
           <>

@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import * as api from "../../api";
 import type { DrawingSortField, SortDirection } from "../../api";
 import type { Collection, DrawingSummary } from "../../types";
 import { isLatestRequest, mergeUniqueDrawings } from "./pagination";
+import {
+  getOfflineStateVersion,
+  isNetworkError,
+  subscribeOffline,
+} from "../../offline/offlineState";
+import { listFromSnapshot } from "../../offline/offlineSnapshot";
 
 type SelectedCollectionId = string | null | undefined;
 
@@ -65,6 +71,28 @@ export const useDashboardData = ({
       ]);
       if (!isLatestRequest(requestVersion, listRequestVersionRef.current))
         return;
+
+      // No connection: show what this browser last saw, plus offline copies.
+      if (
+        drawingsResult.status === "rejected" &&
+        isNetworkError(drawingsResult.reason)
+      ) {
+        const cached = await listFromSnapshot({
+          search: debouncedSearch,
+          selectedCollectionId,
+          sortField,
+          sortDirection,
+        }).catch(() => null);
+        if (!isLatestRequest(requestVersion, listRequestVersionRef.current))
+          return;
+        if (cached) {
+          setDrawings(cached.drawings);
+          setTotalCount(cached.drawings.length);
+          nextOffsetRef.current = cached.drawings.length;
+          if (cached.collections) setCollections(cached.collections);
+          return;
+        }
+      }
 
       if (drawingsResult.status === "fulfilled") {
         setDrawings(drawingsResult.value.drawings);
@@ -138,9 +166,15 @@ export const useDashboardData = ({
     sortDirection,
   ]);
 
+  // Reload when the connection drops or returns, or a board goes offline or
+  // back online, so the list matches what can actually be opened.
+  const offlineStateVersion = useSyncExternalStore(
+    subscribeOffline,
+    getOfflineStateVersion,
+  );
   useEffect(() => {
     refreshData();
-  }, [refreshData]);
+  }, [refreshData, offlineStateVersion]);
 
   return {
     drawings,

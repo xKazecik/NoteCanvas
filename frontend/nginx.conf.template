@@ -115,6 +115,14 @@ http {
             try_files /env.js =404;
         }
 
+        # Offline-mode service worker. Unhashed like env.js, so keep it out of
+        # the year-long asset cache below or new releases would never install.
+        location = /sw.js {
+            add_header Cache-Control "no-cache" always;
+            expires -1;
+            try_files /sw.js =404;
+        }
+
         # Cache static assets
         location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
             expires 1y;

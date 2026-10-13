@@ -54,7 +54,9 @@ export const useEditorSceneApi = ({
 
   const emitFilesDeltaIfNeeded = useCallback(
     (nextFiles: Record<string, any>) => {
-      if (!socketRef.current || !drawingId) return false;
+      // Returns whether files changed (so the caller saves); the broadcast is
+      // skipped when there's no socket, e.g. a board kept offline.
+      if (!drawingId) return false;
       const filesDelta = getFilesDelta(
         lastSyncedFilesRef.current,
         nextFiles || {},
@@ -62,7 +64,7 @@ export const useEditorSceneApi = ({
       if (Object.keys(filesDelta).length === 0) return false;
       latestFilesRef.current = nextFiles;
       lastSyncedFilesRef.current = nextFiles;
-      socketRef.current.emit("element-update", {
+      socketRef.current?.emit("element-update", {
         drawingId,
         elements: [],
         files: applyUploadedFileRefs(filesDelta, uploadedRefs.current),

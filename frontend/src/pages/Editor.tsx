@@ -123,6 +123,7 @@ const ExcalidrawEditor: React.FC = () => {
     socketRef,
     isSyncing,
     onPointerUpdate,
+    ownerOffline,
   } = useEditorCollaboration({
     drawingId: id,
     me,
@@ -136,6 +137,7 @@ const ExcalidrawEditor: React.FC = () => {
     computeElementOrderSig,
     recordElementVersion,
     onAccessDenied: handleSocketAccessDenied,
+    accessLevel,
   });
   const emitLiveStroke = useEditorLiveStroke({
     drawingId: id,
@@ -345,6 +347,7 @@ const ExcalidrawEditor: React.FC = () => {
       <EditorView
         id={id}
         accessLevel={accessLevel}
+        ownerOffline={ownerOffline}
         autoHideEnabled={autoHideEnabled}
         autosaveFailing={autosaveFailing}
         canEdit={canEdit}

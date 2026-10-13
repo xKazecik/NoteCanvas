@@ -58,7 +58,9 @@ export const useEditorBroadcast = ({
 
   const emitChanges = useCallback(
     (elements: readonly any[], currentFiles?: Record<string, any>) => {
-      if (!socketRef.current || !drawingId) return;
+      // No socket for a board kept offline: skip the live broadcast but still
+      // track and save the change.
+      if (!drawingId) return;
       const changes: any[] = [];
       const nextFiles = currentFiles || excalidrawAPI.current?.getFiles() || {};
       const normalizedElements = normalizeImageElementStatus(
@@ -90,7 +92,7 @@ export const useEditorBroadcast = ({
         lastLocalChangeAtRef.current = new Date().getTime();
         // Peers receive refs for any uploaded image (KB, not MB over the
         // socket); their rehydrate path already fetches `/api/files/...` refs.
-        socketRef.current.emit("element-update", {
+        socketRef.current?.emit("element-update", {
           drawingId,
           elements: changes.length > 0 ? changes : [],
           files: shouldSyncFiles

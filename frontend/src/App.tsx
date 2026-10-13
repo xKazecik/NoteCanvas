@@ -4,6 +4,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { UploadProvider } from './context/UploadContext';
 import { AuthProvider } from './context/AuthContext';
 import { PreferencesProvider } from './context/PreferencesContext';
+import { OfflineProvider } from './context/OfflineContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Loader2 } from 'lucide-react';
 
@@ -28,6 +29,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+        <OfflineProvider>
         <PreferencesProvider>
           <ThemeProvider>
             <UploadProvider>
@@ -93,6 +95,7 @@ function App() {
             </UploadProvider>
           </ThemeProvider>
         </PreferencesProvider>
+        </OfflineProvider>
       </AuthProvider>
     </Router>
   );

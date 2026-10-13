@@ -97,7 +97,17 @@ export const getDrawingAccess = async (params: {
   });
   const linkAccess: DrawingAccess = linkPolicy ?? "none";
 
-  return maxAccess(baseAccess, linkAccess);
+  const access = maxAccess(baseAccess, linkAccess);
+  // While the owner has the drawing offline, everyone else is read-only. The
+  // share rows themselves are untouched, so edit access returns afterwards.
+  if (access === "edit") {
+    const drawing = await params.prisma.drawing.findUnique({
+      where: { id: params.drawingId },
+      select: { offlineAt: true },
+    });
+    if (drawing?.offlineAt) return "view";
+  }
+  return access;
 };
 
 export const canViewDrawing = (

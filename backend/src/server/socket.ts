@@ -252,6 +252,16 @@ export const registerSocketHandlers = ({
               },
             });
           }
+          // Tell collaborators up front that the owner has it offline (read-only).
+          if (access !== "owner") {
+            const drawing = await prisma.drawing.findUnique({
+              where: { id: drawingId },
+              select: { offlineAt: true },
+            });
+            if (drawing?.offlineAt) {
+              socket.emit("drawing-offline-changed", { drawingId, offlineAt: drawing.offlineAt });
+            }
+          }
         } catch (err) {
           console.error("Error in join-room handler:", err);
           socket.emit("error", { message: "Failed to join room" });

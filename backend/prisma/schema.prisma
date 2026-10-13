@@ -98,6 +98,9 @@ model Drawing {
   linkShares     DrawingLinkShare[]
   snapshots      DrawingSnapshot[]
   commentThreads CommentThread[]
+  // Set while the owner has the drawing in offline mode: everyone else is
+  // capped at view access until it is cleared. Share rows are left untouched.
+  offlineAt      DateTime?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 

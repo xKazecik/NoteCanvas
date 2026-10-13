@@ -224,16 +224,3 @@ export const PENS: Record<PenType, PenStyle> = {
   },
 };
 
-/**
- * Get default pen presets as an array
- */
-export const getDefaultPenPresets = (): PenStyle[] => {
-  return Object.values(PENS);
-};
-
-/**
- * Get pen by type
- */
-export const getPenByType = (type: PenType): PenStyle => {
-  return PENS[type];
-};

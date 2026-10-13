@@ -9,6 +9,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { getInitialsFromName } from "../../utils/user";
+import { OfflineModeToggle } from "./OfflineModeToggle";
 
 type UserLike =
   | {
@@ -90,6 +91,8 @@ export const SidebarFooter: React.FC<SidebarFooterProps> = ({
           <span className="min-w-0 flex-1 text-left">Admin</span>
         </button>
       )}
+
+      <OfflineModeToggle className={footerButtonClass(false)} />
 
       <button
         onClick={() => navigate("/settings")}
