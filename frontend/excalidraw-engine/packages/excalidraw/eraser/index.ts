@@ -1,6 +1,7 @@
 import {
   arrayToMap,
   easeOut,
+  ERASER_SIZE,
   getSizeFromPoints,
   randomId,
   randomInteger,
@@ -32,6 +33,8 @@ import {
   pointDistance,
   pointFrom,
   pointRotateRads,
+  polygon,
+  polygonIncludesPointNonZero,
 } from "@excalidraw/math";
 
 import { getElementsInGroup } from "@excalidraw/element";
@@ -99,7 +102,10 @@ export class EraserTrail extends AnimatedTrail {
   startPath(x: number, y: number): void {
     this.endPath();
     // the trail is drawn as wide as the eraser
-    this.options.size = this.app.state.eraserSize / 2;
+    this.options.size =
+      (this.app.state.eraserBrush
+        ? this.app.state.eraserSize
+        : ERASER_SIZE.DEFAULT) / 2;
     super.startPath(x, y);
     this.elementsToErase.clear();
     this.hasErasedStrokeSegments = false;
@@ -133,23 +139,30 @@ export class EraserTrail extends AnimatedTrail {
   }
 
   /**
-   * Erases what a click of the eraser at this point touches, the same way a
-   * drag does. Returns the elements to erase whole.
+   * Erases what a click of the brush eraser at this point touches, the same
+   * way a drag does. Returns the elements to erase whole.
    */
   eraseAt(point: GlobalPoint) {
     return this.updateElementsToBeErased(lineSegment(point, point));
   }
 
-  /** the eraser's radius in scene units; its size is set in screen px */
+  /**
+   * the brush eraser's radius in scene units, its size being set in screen
+   * px; the plain eraser only erases what its path crosses
+   */
   private getEraserRadius() {
-    return this.app.state.eraserSize / 2 / this.app.state.zoom.value;
+    return this.app.state.eraserBrush
+      ? this.app.state.eraserSize / 2 / this.app.state.zoom.value
+      : 0;
   }
 
   private updateElementsToBeErased(
     pathSegment: LineSegment<GlobalPoint>,
     restoreToErase?: boolean,
   ) {
-    if (!restoreToErase) {
+    const isBrush = this.app.state.eraserBrush;
+
+    if (isBrush && !restoreToErase) {
       this.eraseStrokeSegments(pathSegment);
     }
 
@@ -160,9 +173,9 @@ export class EraserTrail extends AnimatedTrail {
     const candidateElementsMap = arrayToMap(candidateElements);
 
     for (const element of candidateElements) {
-      // pencil and marker strokes are cut by eraseStrokeSegments() instead of
-      // being erased whole
-      if (isFreeDrawElement(element)) {
+      // the brush cuts pencil and marker strokes with eraseStrokeSegments()
+      // instead of erasing them whole
+      if (isBrush && isFreeDrawElement(element)) {
         continue;
       }
 
@@ -511,18 +524,19 @@ const eraserTest = (
   const threshold = element.strokeWidth / 2 + eraserRadius;
 
   // PERF: Do a quick bounds intersection test first because it's cheap
+  const boundsThreshold = isFreeDrawElement(element) ? 15 : threshold;
   const segmentBounds = [
-    Math.min(pathSegment[0][0], pathSegment[1][0]) - threshold,
-    Math.min(pathSegment[0][1], pathSegment[1][1]) - threshold,
-    Math.max(pathSegment[0][0], pathSegment[1][0]) + threshold,
-    Math.max(pathSegment[0][1], pathSegment[1][1]) + threshold,
+    Math.min(pathSegment[0][0], pathSegment[1][0]) - boundsThreshold,
+    Math.min(pathSegment[0][1], pathSegment[1][1]) - boundsThreshold,
+    Math.max(pathSegment[0][0], pathSegment[1][0]) + boundsThreshold,
+    Math.max(pathSegment[0][1], pathSegment[1][1]) + boundsThreshold,
   ] as Bounds;
   const origElementBounds = getElementBounds(element, elementsMap);
   const elementBounds: Bounds = [
-    origElementBounds[0] - threshold,
-    origElementBounds[1] - threshold,
-    origElementBounds[2] + threshold,
-    origElementBounds[3] + threshold,
+    origElementBounds[0] - boundsThreshold,
+    origElementBounds[1] - boundsThreshold,
+    origElementBounds[2] + boundsThreshold,
+    origElementBounds[3] + boundsThreshold,
   ];
 
   if (!doBoundsIntersect(segmentBounds, elementBounds)) {
@@ -540,6 +554,41 @@ const eraserTest = (
     isPointInElement(lastPoint, element, elementsMap)
   ) {
     return true;
+  }
+
+  // Freedraw elements (only erased whole when the eraser isn't a brush) are
+  // tested for erasure by measuring the distance of the eraser path and the
+  // freedraw shape outline lines to a tolerance which offers a good visual
+  // precision at various zoom levels
+  if (isFreeDrawElement(element)) {
+    const outlinePoints = getFreedrawOutlinePoints(element);
+    const strokeSegments = getFreedrawOutlineAsSegments(
+      element,
+      outlinePoints,
+      elementsMap,
+    );
+    const tolerance = Math.max(2.25, 5 / zoom); // NOTE: Visually fine-tuned approximation
+
+    for (const seg of strokeSegments) {
+      if (lineSegmentsDistance(seg, pathSegment) <= tolerance) {
+        return true;
+      }
+    }
+
+    const poly = polygon(
+      ...(outlinePoints.map(([x, y]) =>
+        pointFrom<GlobalPoint>(element.x + x, element.y + y),
+      ) as GlobalPoint[]),
+    );
+
+    // PERF: Check only one point of the eraser segment. If the eraser segment
+    // start is inside the closed freedraw shape, the other point is either also
+    // inside or the eraser segment will intersect the shape outline anyway
+    if (polygonIncludesPointNonZero(pathSegment[0], poly)) {
+      return true;
+    }
+
+    return false;
   }
 
   const boundTextElement = getBoundTextElement(element, elementsMap);
@@ -567,8 +616,9 @@ const eraserTest = (
   return (
     intersectElementWithLineSegment(element, elementsMap, pathSegment, 0, true)
       .length > 0 ||
-    // the eraser's edge touches the outline without its center crossing it
-    distanceToElement(element, elementsMap, lastPoint) <= threshold ||
+    // the brush's edge touches the outline without its center crossing it
+    (eraserRadius > 0 &&
+      distanceToElement(element, elementsMap, lastPoint) <= threshold) ||
     (!!boundTextElement &&
       intersectElementWithLineSegment(
         {

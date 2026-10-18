@@ -1,6 +1,11 @@
 import OpenColor from "open-color";
 
-import { CURSOR_TYPE, MIME_TYPES, THEME } from "@excalidraw/common";
+import {
+  CURSOR_TYPE,
+  ERASER_SIZE,
+  MIME_TYPES,
+  THEME,
+} from "@excalidraw/common";
 
 import { isHandToolActive, isEraserActive } from "./appState";
 
@@ -40,10 +45,15 @@ let eraserCanvasCache: any;
 let previewDataURL: string;
 export const setEraserCursor = (
   interactiveCanvas: HTMLCanvasElement | null,
-  theme: AppState["theme"],
-  eraserSize: AppState["eraserSize"],
+  {
+    theme,
+    eraserBrush,
+    eraserSize: brushSize,
+  }: Pick<AppState, "theme" | "eraserBrush" | "eraserSize">,
 ) => {
-  // the circle shows the eraser's size, with room for its border
+  // the circle shows the eraser's size, with room for its border; the size
+  // is only set for the brush
+  const eraserSize = eraserBrush ? brushSize : ERASER_SIZE.DEFAULT;
   const cursorImageSizePx = eraserSize + 10;
 
   const drawCanvas = () => {
@@ -87,7 +97,10 @@ export const setEraserCursor = (
 
 export const setCursorForShape = (
   interactiveCanvas: HTMLCanvasElement | null,
-  appState: Pick<AppState, "activeTool" | "theme" | "eraserSize">,
+  appState: Pick<
+    AppState,
+    "activeTool" | "theme" | "eraserBrush" | "eraserSize"
+  >,
 ) => {
   if (!interactiveCanvas) {
     return;
@@ -97,7 +110,7 @@ export const setCursorForShape = (
   } else if (isHandToolActive(appState)) {
     interactiveCanvas.style.cursor = CURSOR_TYPE.GRAB;
   } else if (isEraserActive(appState)) {
-    setEraserCursor(interactiveCanvas, appState.theme, appState.eraserSize);
+    setEraserCursor(interactiveCanvas, appState);
     // do nothing if image tool is selected which suggests there's
     // a image-preview set as the cursor
     // Ignore custom type as well and let host decide

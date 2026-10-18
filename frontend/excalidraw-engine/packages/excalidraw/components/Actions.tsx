@@ -1221,7 +1221,24 @@ export const ShapesSwitcher = ({
                 sideOffset={32 / 2 + 10}
                 collisionBoundary={container ?? undefined}
               >
-                <label className="control-label">
+                <button
+                  type="button"
+                  className={clsx("eraser-size-popover__brush", {
+                    active: app.state.eraserBrush,
+                  })}
+                  aria-pressed={app.state.eraserBrush}
+                  onClick={() =>
+                    setAppState({ eraserBrush: !app.state.eraserBrush })
+                  }
+                  data-testid="eraser-brush"
+                >
+                  {t("labels.eraserBrush")}
+                </button>
+                <label
+                  className={clsx("control-label", {
+                    disabled: !app.state.eraserBrush,
+                  })}
+                >
                   {t("labels.eraserSize")}
                   <div className="eraser-size-popover__row">
                     <input
@@ -1230,6 +1247,8 @@ export const ShapesSwitcher = ({
                       min={ERASER_SIZE.MIN}
                       max={ERASER_SIZE.MAX}
                       step={2}
+                      // the size only applies to the brush
+                      disabled={!app.state.eraserBrush}
                       value={app.state.eraserSize}
                       onChange={(event) =>
                         setAppState({ eraserSize: +event.target.value })

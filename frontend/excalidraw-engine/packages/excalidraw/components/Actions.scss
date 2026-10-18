@@ -212,12 +212,32 @@
 }
 
 .excalidraw .eraser-size-popover {
+  .eraser-size-popover__brush {
+    align-self: flex-start;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--default-border-color);
+    border-radius: var(--border-radius-md);
+    background: var(--button-bg);
+    color: var(--text-primary-color);
+    font-size: 0.75rem;
+    cursor: pointer;
+
+    &.active {
+      background: var(--color-primary-light);
+      border-color: var(--color-primary);
+    }
+  }
+
   .control-label {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     font-size: 0.75rem;
     color: var(--text-primary-color);
+
+    &.disabled {
+      opacity: 0.4;
+    }
   }
 
   .eraser-size-popover__row {
