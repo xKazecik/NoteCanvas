@@ -1221,43 +1221,55 @@ export const ShapesSwitcher = ({
                 sideOffset={32 / 2 + 10}
                 collisionBoundary={container ?? undefined}
               >
+                {/* a grid of labels over their controls, so the switch
+                    lines up with the slider */}
+                <span className="eraser-size-popover__label">
+                  {t("labels.eraserBrush")}
+                </span>
+                <span
+                  className={clsx("eraser-size-popover__label", {
+                    disabled: !app.state.eraserBrush,
+                  })}
+                >
+                  {t("labels.eraserSize")}
+                </span>
                 <button
                   type="button"
-                  className={clsx("eraser-size-popover__brush", {
-                    active: app.state.eraserBrush,
+                  role="switch"
+                  className={clsx("eraser-size-popover__switch", {
+                    on: app.state.eraserBrush,
                   })}
-                  aria-pressed={app.state.eraserBrush}
+                  aria-checked={app.state.eraserBrush}
+                  aria-label={t("labels.eraserBrush")}
                   onClick={() =>
                     setAppState({ eraserBrush: !app.state.eraserBrush })
                   }
                   data-testid="eraser-brush"
                 >
-                  {t("labels.eraserBrush")}
+                  <span className="eraser-size-popover__knob" />
                 </button>
-                <label
-                  className={clsx("control-label", {
+                <div
+                  className={clsx("eraser-size-popover__row", {
                     disabled: !app.state.eraserBrush,
                   })}
                 >
-                  {t("labels.eraserSize")}
-                  <div className="eraser-size-popover__row">
-                    <input
-                      type="range"
-                      className="range-input"
-                      min={ERASER_SIZE.MIN}
-                      max={ERASER_SIZE.MAX}
-                      step={2}
-                      // the size only applies to the brush
-                      disabled={!app.state.eraserBrush}
-                      value={app.state.eraserSize}
-                      onChange={(event) =>
-                        setAppState({ eraserSize: +event.target.value })
-                      }
-                      data-testid="eraser-size"
-                    />
-                    <span>{app.state.eraserSize}</span>
-                  </div>
-                </label>
+                  <input
+                    type="range"
+                    className="range-input"
+                    min={ERASER_SIZE.MIN}
+                    max={ERASER_SIZE.MAX}
+                    step={2}
+                    // the size only applies to the brush
+                    disabled={!app.state.eraserBrush}
+                    value={app.state.eraserSize}
+                    onChange={(event) =>
+                      setAppState({ eraserSize: +event.target.value })
+                    }
+                    aria-label={t("labels.eraserSize")}
+                    data-testid="eraser-size"
+                  />
+                  <span>{app.state.eraserSize}</span>
+                </div>
               </Popover.Content>
             </Popover.Root>
           );
