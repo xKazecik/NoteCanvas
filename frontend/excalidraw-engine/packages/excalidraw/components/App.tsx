@@ -7,6 +7,7 @@ import { nanoid } from "nanoid";
 
 import {
   clamp,
+  lineSegment,
   pointFrom,
   pointDistance,
   vector,
@@ -159,6 +160,7 @@ import {
   isBindingElementType,
   isBoundToContainer,
   isFrameLikeElement,
+  isFreeDrawElement,
   isImageElement,
   isEmbeddableElement,
   isInitializedImageElement,
@@ -10988,6 +10990,15 @@ class App extends React.Component<AppProps, AppState> {
             },
             this.state,
           );
+          // a click cuts a gap the size of the eraser into pencil and marker
+          // strokes, as dragging does
+          const clickPoint = pointFrom<GlobalPoint>(
+            scenePointer.x,
+            scenePointer.y,
+          );
+          this.eraserTrail.eraseStrokeSegments(
+            lineSegment(clickPoint, clickPoint),
+          );
           // as with the eraser trail, a filled shape or a table is only taken
           // from its border, so a click on a pencil stroke drawn over one
           // erases just the stroke
@@ -10999,12 +11010,13 @@ class App extends React.Component<AppProps, AppState> {
               isTextElement(element) ||
               isImageElement(element) ||
               isIframeLikeElement(element) ||
-              isPointOnElementOutline(
-                pointFrom(scenePointer.x, scenePointer.y),
-                element,
-                this.scene.getNonDeletedElementsMap(),
-                this.getElementHitThreshold(element),
-              ),
+              (!isFreeDrawElement(element) &&
+                isPointOnElementOutline(
+                  clickPoint,
+                  element,
+                  this.scene.getNonDeletedElementsMap(),
+                  this.getElementHitThreshold(element),
+                )),
           );
           hitElements.forEach((hitElement) =>
             this.elementsPendingErasure.add(hitElement.id),
@@ -11454,7 +11466,9 @@ class App extends React.Component<AppProps, AppState> {
 
     this.elementsPendingErasure = new Set();
 
-    if (didChange) {
+    // strokes cut by the eraser are already updated in the scene, but are
+    // only recorded for undo here, together with the erased elements
+    if (didChange || this.eraserTrail.hasErasedStrokeSegments) {
       this.store.scheduleCapture();
       this.scene.replaceAllElements(elements);
     }
