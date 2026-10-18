@@ -9,6 +9,7 @@ import {
 
 import {
   computeBoundTextPosition,
+  distanceToElement,
   doBoundsIntersect,
   getBoundTextElement,
   getElementAbsoluteCoords,
@@ -97,6 +98,8 @@ export class EraserTrail extends AnimatedTrail {
 
   startPath(x: number, y: number): void {
     this.endPath();
+    // the trail is drawn as wide as the eraser
+    this.options.size = this.app.state.eraserSize / 2;
     super.startPath(x, y);
     this.elementsToErase.clear();
     this.hasErasedStrokeSegments = false;
@@ -105,12 +108,6 @@ export class EraserTrail extends AnimatedTrail {
   addPointToPath(x: number, y: number, restore = false) {
     super.addPointToPath(x, y);
 
-    const elementsToEraser = this.updateElementsToBeErased(restore);
-
-    return elementsToEraser;
-  }
-
-  private updateElementsToBeErased(restoreToErase?: boolean) {
     const eraserPath: GlobalPoint[] =
       super
         .getCurrentTrail()
@@ -127,6 +124,31 @@ export class EraserTrail extends AnimatedTrail {
       eraserPath[eraserPath.length - 2],
     );
 
+    const elementsToEraser = this.updateElementsToBeErased(
+      pathSegment,
+      restore,
+    );
+
+    return elementsToEraser;
+  }
+
+  /**
+   * Erases what a click of the eraser at this point touches, the same way a
+   * drag does. Returns the elements to erase whole.
+   */
+  eraseAt(point: GlobalPoint) {
+    return this.updateElementsToBeErased(lineSegment(point, point));
+  }
+
+  /** the eraser's radius in scene units; its size is set in screen px */
+  private getEraserRadius() {
+    return this.app.state.eraserSize / 2 / this.app.state.zoom.value;
+  }
+
+  private updateElementsToBeErased(
+    pathSegment: LineSegment<GlobalPoint>,
+    restoreToErase?: boolean,
+  ) {
     if (!restoreToErase) {
       this.eraseStrokeSegments(pathSegment);
     }
@@ -151,6 +173,7 @@ export class EraserTrail extends AnimatedTrail {
           element,
           candidateElementsMap,
           this.app.state.zoom.value,
+          this.getEraserRadius(),
         );
 
         if (intersects) {
@@ -187,6 +210,7 @@ export class EraserTrail extends AnimatedTrail {
           element,
           candidateElementsMap,
           this.app.state.zoom.value,
+          this.getEraserRadius(),
         );
 
         if (intersects) {
@@ -230,9 +254,9 @@ export class EraserTrail extends AnimatedTrail {
    * middle. Unlike shapes, which are erased on pointer up, this is applied
    * to the scene right away so the stroke visibly disappears under the eraser.
    */
-  eraseStrokeSegments(eraserSegment: LineSegment<GlobalPoint>) {
+  private eraseStrokeSegments(eraserSegment: LineSegment<GlobalPoint>) {
     const elementsMap = this.app.scene.getNonDeletedElementsMap();
-    const tolerance = Math.max(2.25, 5 / this.app.state.zoom.value);
+    const tolerance = this.getEraserRadius();
     const replacements = new Map<
       ExcalidrawElement["id"],
       ExcalidrawElement[]
@@ -479,11 +503,14 @@ const eraserTest = (
   element: ExcalidrawElement,
   elementsMap: ElementsMap,
   zoom: number,
+  eraserRadius: number,
 ): boolean => {
   const lastPoint = pathSegment[1];
+  // how close the eraser's center gets to the element's outline when its
+  // edge touches the element's stroke
+  const threshold = element.strokeWidth / 2 + eraserRadius;
 
   // PERF: Do a quick bounds intersection test first because it's cheap
-  const threshold = element.strokeWidth / 2;
   const segmentBounds = [
     Math.min(pathSegment[0][0], pathSegment[1][0]) - threshold,
     Math.min(pathSegment[0][1], pathSegment[1][1]) - threshold,
@@ -521,6 +548,7 @@ const eraserTest = (
     const tolerance = Math.max(
       element.strokeWidth,
       (element.strokeWidth * 2) / zoom,
+      threshold,
     );
 
     // If the eraser movement is so fast that a large distance is covered
@@ -539,6 +567,8 @@ const eraserTest = (
   return (
     intersectElementWithLineSegment(element, elementsMap, pathSegment, 0, true)
       .length > 0 ||
+    // the eraser's edge touches the outline without its center crossing it
+    distanceToElement(element, elementsMap, lastPoint) <= threshold ||
     (!!boundTextElement &&
       intersectElementWithLineSegment(
         {

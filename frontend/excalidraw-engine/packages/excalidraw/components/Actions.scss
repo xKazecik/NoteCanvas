@@ -206,3 +206,32 @@
   --button-hover-bg: #363541;
   --button-bg: var(--color-surface-high);
 }
+
+.excalidraw .eraser-tool {
+  display: flex;
+}
+
+.excalidraw .eraser-size-popover {
+  .control-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-primary-color);
+  }
+
+  .eraser-size-popover__row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    .range-input {
+      width: 10rem;
+    }
+
+    span {
+      min-width: 2ch;
+      text-align: right;
+    }
+  }
+}

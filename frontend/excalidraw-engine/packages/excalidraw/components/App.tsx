@@ -7,7 +7,6 @@ import { nanoid } from "nanoid";
 
 import {
   clamp,
-  lineSegment,
   pointFrom,
   pointDistance,
   vector,
@@ -160,7 +159,6 @@ import {
   isBindingElementType,
   isBoundToContainer,
   isFrameLikeElement,
-  isFreeDrawElement,
   isImageElement,
   isEmbeddableElement,
   isInitializedImageElement,
@@ -214,7 +212,6 @@ import {
   hitElementBoundText,
   hitElementBoundingBoxOnly,
   hitElementItself,
-  isPointOnElementOutline,
   getVisibleSceneBounds,
   FlowChartCreator,
   FlowChartNavigator,
@@ -3286,9 +3283,14 @@ class App extends React.Component<AppProps, AppState> {
     }
     if (
       this.state.activeTool.type === "eraser" &&
-      prevState.theme !== this.state.theme
+      (prevState.theme !== this.state.theme ||
+        prevState.eraserSize !== this.state.eraserSize)
     ) {
-      setEraserCursor(this.interactiveCanvas, this.state.theme);
+      setEraserCursor(
+        this.interactiveCanvas,
+        this.state.theme,
+        this.state.eraserSize,
+      );
     }
     // Hide hyperlink popup if shown when element type is not selection
     if (
@@ -10990,37 +10992,12 @@ class App extends React.Component<AppProps, AppState> {
             },
             this.state,
           );
-          // a click cuts a gap the size of the eraser into pencil and marker
-          // strokes, as dragging does
-          const clickPoint = pointFrom<GlobalPoint>(
-            scenePointer.x,
-            scenePointer.y,
-          );
-          this.eraserTrail.eraseStrokeSegments(
-            lineSegment(clickPoint, clickPoint),
-          );
-          // as with the eraser trail, a filled shape or a table is only taken
-          // from its border, so a click on a pencil stroke drawn over one
-          // erases just the stroke
-          const hitElements = this.getElementsAtPosition(
-            scenePointer.x,
-            scenePointer.y,
-          ).filter(
-            (element) =>
-              isTextElement(element) ||
-              isImageElement(element) ||
-              isIframeLikeElement(element) ||
-              (!isFreeDrawElement(element) &&
-                isPointOnElementOutline(
-                  clickPoint,
-                  element,
-                  this.scene.getNonDeletedElementsMap(),
-                  this.getElementHitThreshold(element),
-                )),
-          );
-          hitElements.forEach((hitElement) =>
-            this.elementsPendingErasure.add(hitElement.id),
-          );
+          // a click erases what the eraser touches just as dragging does:
+          // it cuts a gap into pencil and marker strokes, and takes a filled
+          // shape or a table only from its border
+          this.eraserTrail
+            .eraseAt(pointFrom<GlobalPoint>(scenePointer.x, scenePointer.y))
+            .forEach((id) => this.elementsPendingErasure.add(id));
         }
         this.eraseElements();
         return;

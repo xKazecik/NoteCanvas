@@ -4,6 +4,7 @@ import * as Popover from "@radix-ui/react-popover";
 
 import {
   CLASSES,
+  ERASER_SIZE,
   KEYS,
   capitalizeString,
   isTransparent,
@@ -1068,6 +1069,7 @@ export const ShapesSwitcher = ({
   const stylesPanelMode = useStylesPanelMode();
   const isFullStylesPanel = stylesPanelMode === "full";
   const isCompactStylesPanel = stylesPanelMode === "compact";
+  const { container } = useExcalidrawContainer();
 
   const SELECTION_TOOLS = [
     {
@@ -1150,7 +1152,7 @@ export const ShapesSwitcher = ({
             );
           }
 
-          return (
+          const toolButton = (
             <ToolButton
               className={clsx("Shape", { fillable })}
               key={value}
@@ -1189,6 +1191,56 @@ export const ShapesSwitcher = ({
                 }
               }}
             />
+          );
+
+          if (value !== "eraser") {
+            return toolButton;
+          }
+
+          // double-clicking the eraser opens a slider for its size
+          return (
+            <Popover.Root
+              key={value}
+              open={app.state.openPopup === "eraserSize"}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setAppState({ openPopup: null });
+                }
+              }}
+            >
+              <Popover.Anchor asChild>
+                <div
+                  className="eraser-tool"
+                  onDoubleClick={() => setAppState({ openPopup: "eraserSize" })}
+                >
+                  {toolButton}
+                </div>
+              </Popover.Anchor>
+              <Popover.Content
+                className="tool-popover-content eraser-size-popover"
+                sideOffset={32 / 2 + 10}
+                collisionBoundary={container ?? undefined}
+              >
+                <label className="control-label">
+                  {t("labels.eraserSize")}
+                  <div className="eraser-size-popover__row">
+                    <input
+                      type="range"
+                      className="range-input"
+                      min={ERASER_SIZE.MIN}
+                      max={ERASER_SIZE.MAX}
+                      step={2}
+                      value={app.state.eraserSize}
+                      onChange={(event) =>
+                        setAppState({ eraserSize: +event.target.value })
+                      }
+                      data-testid="eraser-size"
+                    />
+                    <span>{app.state.eraserSize}</span>
+                  </div>
+                </label>
+              </Popover.Content>
+            </Popover.Root>
           );
         },
       )}

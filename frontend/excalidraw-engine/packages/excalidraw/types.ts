@@ -436,6 +436,7 @@ export interface AppState {
     | "compactStrokeStyles"
     | "compactOtherProperties"
     | "compactArrowProperties"
+    | "eraserSize"
     | null;
   openSidebar: { name: SidebarName; tab?: SidebarTabName } | null;
   openDialog:
@@ -539,6 +540,8 @@ export interface AppState {
   // and also remove groupId from this map
   lockedMultiSelections: { [groupId: string]: true };
   bindMode: BindMode;
+  /** eraser diameter in screen px, set from the eraser's toolbar popover */
+  eraserSize: number;
 
   // Custom Pen State
   /** Current stroke options for custom pens - overrides default freedraw settings */
