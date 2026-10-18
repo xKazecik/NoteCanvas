@@ -3284,9 +3284,11 @@ class App extends React.Component<AppProps, AppState> {
     }
     if (
       this.state.activeTool.type === "eraser" &&
-      prevState.theme !== this.state.theme
+      (prevState.theme !== this.state.theme ||
+        prevState.eraserBrush !== this.state.eraserBrush ||
+        prevState.eraserSize !== this.state.eraserSize)
     ) {
-      setEraserCursor(this.interactiveCanvas, this.state.theme);
+      setEraserCursor(this.interactiveCanvas, this.state);
     }
     // Hide hyperlink popup if shown when element type is not selection
     if (
@@ -10988,27 +10990,36 @@ class App extends React.Component<AppProps, AppState> {
             },
             this.state,
           );
-          // as with the eraser trail, a filled shape or a table is only taken
-          // from its border, so a click on a pencil stroke drawn over one
-          // erases just the stroke
-          const hitElements = this.getElementsAtPosition(
-            scenePointer.x,
-            scenePointer.y,
-          ).filter(
-            (element) =>
-              isTextElement(element) ||
-              isImageElement(element) ||
-              isIframeLikeElement(element) ||
-              isPointOnElementOutline(
-                pointFrom(scenePointer.x, scenePointer.y),
-                element,
-                this.scene.getNonDeletedElementsMap(),
-                this.getElementHitThreshold(element),
-              ),
-          );
-          hitElements.forEach((hitElement) =>
-            this.elementsPendingErasure.add(hitElement.id),
-          );
+          if (this.state.eraserBrush) {
+            // a click erases what the brush touches just as dragging does:
+            // it cuts a gap into pencil and marker strokes, and takes a
+            // filled shape or a table only from its border
+            this.eraserTrail
+              .eraseAt(pointFrom<GlobalPoint>(scenePointer.x, scenePointer.y))
+              .forEach((id) => this.elementsPendingErasure.add(id));
+          } else {
+            // as with the eraser trail, a filled shape or a table is only
+            // taken from its border, so a click on a pencil stroke drawn over
+            // one erases just the stroke
+            const hitElements = this.getElementsAtPosition(
+              scenePointer.x,
+              scenePointer.y,
+            ).filter(
+              (element) =>
+                isTextElement(element) ||
+                isImageElement(element) ||
+                isIframeLikeElement(element) ||
+                isPointOnElementOutline(
+                  pointFrom(scenePointer.x, scenePointer.y),
+                  element,
+                  this.scene.getNonDeletedElementsMap(),
+                  this.getElementHitThreshold(element),
+                ),
+            );
+            hitElements.forEach((hitElement) =>
+              this.elementsPendingErasure.add(hitElement.id),
+            );
+          }
         }
         this.eraseElements();
         return;
@@ -11454,7 +11465,9 @@ class App extends React.Component<AppProps, AppState> {
 
     this.elementsPendingErasure = new Set();
 
-    if (didChange) {
+    // strokes cut by the eraser are already updated in the scene, but are
+    // only recorded for undo here, together with the erased elements
+    if (didChange || this.eraserTrail.hasErasedStrokeSegments) {
       this.store.scheduleCapture();
       this.scene.replaceAllElements(elements);
     }

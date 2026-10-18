@@ -32,6 +32,8 @@
     "strokeStyle_dotted": "Dotted",
     "sloppiness": "Sloppiness",
     "opacity": "Opacity",
+    "eraserSize": "Eraser size",
+    "eraserBrush": "Brush",
     "textAlign": "Text align",
     "edges": "Edges",
     "sharp": "Sharp",

@@ -38,7 +38,7 @@ export class AnimatedTrail implements Trail {
   constructor(
     private animationFrameHandler: AnimationFrameHandler,
     protected app: App,
-    private options: Partial<LaserPointerOptions> &
+    protected options: Partial<LaserPointerOptions> &
       Partial<AnimatedTrailOptions>,
   ) {
     this.animationFrameHandler.register(this, this.onFrame.bind(this));

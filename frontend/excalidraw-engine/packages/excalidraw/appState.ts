@@ -10,6 +10,7 @@ import {
   STATS_PANELS,
   THEME,
   DEFAULT_GRID_STEP,
+  ERASER_SIZE,
   isTestEnv,
 } from "@excalidraw/common";
 
@@ -131,6 +132,8 @@ export const getDefaultAppState = (): Omit<
     lockedMultiSelections: {},
     activeLockedId: null,
     bindMode: "orbit",
+    eraserBrush: false,
+    eraserSize: ERASER_SIZE.DEFAULT,
     // Custom Pen State
     currentStrokeOptions: null,
     currentPenType: null,
@@ -267,6 +270,8 @@ const APP_STATE_STORAGE_CONF = (<
   lockedMultiSelections: { browser: true, export: true, server: true },
   activeLockedId: { browser: false, export: false, server: false },
   bindMode: { browser: true, export: false, server: false },
+  eraserBrush: { browser: true, export: false, server: false },
+  eraserSize: { browser: true, export: false, server: false },
   // Custom Pen State
   currentStrokeOptions: { browser: true, export: false, server: false },
   currentPenType: { browser: true, export: false, server: false },
