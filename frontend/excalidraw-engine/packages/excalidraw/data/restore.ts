@@ -486,6 +486,9 @@ export const restoreElement = (
         cells,
         headerRow: element.headerRow ?? false,
         bandedRows: element.bandedRows ?? false,
+        ...(typeof element.stylePreset === "string"
+          ? { stylePreset: element.stylePreset }
+          : {}),
       });
       // the outer box is always derived from the tracks, never from stored w/h
       return { ...restored, width, height };

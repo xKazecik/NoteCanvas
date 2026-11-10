@@ -184,7 +184,12 @@ export const resolveCellStyle = (
   element: ExcalidrawTableElement,
   row: number,
   col: number,
-  options: { bandingColor: string; headerColor: string },
+  options: {
+    bandingColor: string;
+    headerColor: string;
+    /** Text colour of the header row, when its fill needs a contrasting one. */
+    headerTextColor?: string | null;
+  },
 ): ResolvedCellStyle => {
   const style = getCell(element, row, col)?.style ?? {};
   const isHeader = element.headerRow && row === 0;
@@ -204,7 +209,11 @@ export const resolveCellStyle = (
   return {
     backgroundColor:
       backgroundColor === "transparent" ? null : backgroundColor,
-    textColor: style.textColor ?? element.strokeColor,
+    textColor:
+      style.textColor ??
+      (isHeader && options.headerTextColor
+        ? options.headerTextColor
+        : element.strokeColor),
     fontSize: style.fontSize ?? DEFAULT_FONT_SIZE,
     fontFamily: style.fontFamily ?? DEFAULT_FONT_FAMILY,
     bold: style.bold ?? isHeader,

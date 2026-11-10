@@ -3,6 +3,8 @@ import {
   CaptureUpdateAction,
   Dialog,
   FilledButton,
+  TABLE_STYLE_PRESETS,
+  TableStylePicker,
   newTableElement,
   syncInvalidIndices,
   tableFromRows,
@@ -30,6 +32,7 @@ const insertTable = (
   api: ExcalidrawImperativeAPI,
   rows: TableRows,
   headerRow: boolean,
+  stylePreset: string,
 ) => {
   const appState = api.getAppState();
   const layout = tableFromRows(rows);
@@ -43,6 +46,10 @@ const insertTable = (
     y: -appState.scrollY + (viewHeight - height) / 2,
     ...layout,
     headerRow,
+    stylePreset,
+    bandedRows:
+      TABLE_STYLE_PRESETS.find((preset) => preset.id === stylePreset)?.banded ??
+      false,
     strokeColor: appState.currentItemStrokeColor,
     backgroundColor: "transparent",
     fillStyle: appState.currentItemFillStyle,
@@ -89,6 +96,7 @@ const ImportForm = ({
   const [fileName, setFileName] = useState<string | null>(null);
   const [pasted, setPasted] = useState("");
   const [headerRow, setHeaderRow] = useState(true);
+  const [stylePreset, setStylePreset] = useState(TABLE_STYLE_PRESETS[0].id);
   const [error, setError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -214,6 +222,11 @@ const ImportForm = ({
         The first row is a header
       </label>
 
+      <div className="notecanvas-table-import__field">
+        Style
+        <TableStylePicker value={stylePreset} onChange={setStylePreset} />
+      </div>
+
       {error && (
         <p className="notecanvas-table-import__error" role="alert">
           {error}
@@ -267,7 +280,7 @@ const ImportForm = ({
           label="Import table"
           onClick={() => {
             if (rows.length) {
-              insertTable(excalidrawAPI, rows, headerRow);
+              insertTable(excalidrawAPI, rows, headerRow, stylePreset);
             } else {
               setError("Choose a file or paste some data first.");
             }

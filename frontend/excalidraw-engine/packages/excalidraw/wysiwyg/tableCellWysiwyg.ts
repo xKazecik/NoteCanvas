@@ -5,7 +5,8 @@ import {
   getCellBox,
   resolveAnchorCell,
   resolveCellStyle,
-  getTableTints,
+  getTableCellColors,
+  getTableStylePreset,
   tableColumnCount,
   tableRowCount,
 } from "@excalidraw/element";
@@ -115,10 +116,18 @@ export const tableCellWysiwyg = ({
     return null;
   }
 
-  const style = resolveCellStyle(element, cell.row, cell.col, {
-    headerColor: getTableTints(theme).header,
-    bandingColor: getTableTints(theme).banding,
-  });
+  const style = resolveCellStyle(
+    element,
+    cell.row,
+    cell.col,
+    getTableCellColors(element, theme),
+  );
+  // a preset header's text colour is chosen for its fill, so edit on that fill
+  const preset = getTableStylePreset(element);
+  const editorBackground =
+    element.headerRow && cell.row === 0 && preset.headerText && preset.headerFill
+      ? preset.headerFill
+      : "var(--island-bg-color)";
 
   const editable = document.createElement("textarea");
   editable.dir = "auto";
@@ -159,7 +168,7 @@ export const tableCellWysiwyg = ({
       resize: "none",
       overflow: "hidden",
       boxSizing: "border-box",
-      background: "var(--island-bg-color)",
+      background: editorBackground,
       color: style.textColor,
       fontFamily: getFontFamilyString(style),
       fontSize: `${style.fontSize * zoom}px`,

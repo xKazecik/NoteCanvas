@@ -9,7 +9,9 @@ import {
   TABLE_DEFAULTS,
   columnOffsets,
   getCellBoxes,
-  getTableTints,
+  getTableCellColors,
+  getTableLines,
+  getTableStylePreset,
   resolveCellStyle,
   rowOffsets,
   wrapText,
@@ -33,13 +35,11 @@ export const renderTableToSvg = (
 ): SVGGElement => {
   const group = svg("g") as SVGGElement;
   const boxes = getCellBoxes(element);
-  const tints = getTableTints(theme);
+  const colors = getTableCellColors(element, theme);
+  const preset = getTableStylePreset(element);
 
   for (const box of boxes) {
-    const style = resolveCellStyle(element, box.row, box.col, {
-      headerColor: tints.header,
-      bandingColor: tints.banding,
-    });
+    const style = resolveCellStyle(element, box.row, box.col, colors);
     if (style.backgroundColor) {
       const rect = svg("rect");
       rect.setAttribute("x", `${box.x}`);
@@ -53,30 +53,41 @@ export const renderTableToSvg = (
 
   const xs = columnOffsets(element);
   const ys = rowOffsets(element);
-  const segments: string[] = [
-    `M 0 0 H ${xs[xs.length - 1]}`,
-    `M 0 0 V ${ys[ys.length - 1]}`,
-  ];
-  for (const box of boxes) {
-    segments.push(`M ${box.x + box.width} ${box.y} V ${box.y + box.height}`);
-    segments.push(`M ${box.x} ${box.y + box.height} H ${box.x + box.width}`);
-  }
-  const grid = svg("path");
-  grid.setAttribute("d", segments.join(" "));
-  grid.setAttribute("stroke", element.strokeColor);
-  grid.setAttribute("stroke-width", `${element.strokeWidth}`);
-  grid.setAttribute("fill", "none");
-  group.appendChild(grid);
+  const lines = getTableLines(
+    boxes,
+    { width: xs[xs.length - 1], height: ys[ys.length - 1] },
+    preset,
+    element.headerRow,
+  );
+  const stroke = (heavy: boolean) => {
+    const segments = lines
+      .filter((line) => !!line.heavy === heavy)
+      .map((line) => `M ${line.x1} ${line.y1} L ${line.x2} ${line.y2}`);
+    if (!segments.length) {
+      return;
+    }
+    const path = svg("path");
+    path.setAttribute("d", segments.join(" "));
+    path.setAttribute(
+      "stroke",
+      heavy ? element.strokeColor : preset.lineColor ?? element.strokeColor,
+    );
+    path.setAttribute(
+      "stroke-width",
+      `${element.strokeWidth * (heavy ? 2 : 1)}`,
+    );
+    path.setAttribute("fill", "none");
+    group.appendChild(path);
+  };
+  stroke(false);
+  stroke(true);
 
   for (const box of boxes) {
     const cell = element.cells[box.row]?.[box.col];
     if (!cell?.text) {
       continue;
     }
-    const style = resolveCellStyle(element, box.row, box.col, {
-      headerColor: tints.header,
-      bandingColor: tints.banding,
-    });
+    const style = resolveCellStyle(element, box.row, box.col, colors);
     const padding = TABLE_DEFAULTS.cellPadding;
     const font = getFontString({
       fontSize: style.fontSize,

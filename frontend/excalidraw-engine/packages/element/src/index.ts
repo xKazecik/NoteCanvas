@@ -94,6 +94,7 @@ export * from "./store";
 export * from "./table";
 export * from "./tableOps";
 export * from "./tableData";
+export * from "./tableStyles";
 export * from "./textElement";
 export * from "./textMeasurements";
 export * from "./textWrapping";
