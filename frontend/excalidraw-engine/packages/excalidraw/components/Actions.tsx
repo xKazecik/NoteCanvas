@@ -76,6 +76,7 @@ import {
   frameToolIcon,
   mermaidLogoIcon,
   laserPointerToolIcon,
+  TableIcon,
   MagicIcon,
   LassoIcon,
   sharpArrowIcon,
@@ -1192,6 +1193,51 @@ export const ShapesSwitcher = ({
               }}
             />
           );
+
+          if (value === "table") {
+            // double-clicking the table tool offers importing one instead
+            return (
+              <Popover.Root
+                key={value}
+                open={app.state.openPopup === "tableTool"}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setAppState({ openPopup: null });
+                  }
+                }}
+              >
+                <Popover.Anchor asChild>
+                  <div
+                    className="eraser-tool"
+                    onDoubleClick={() => setAppState({ openPopup: "tableTool" })}
+                  >
+                    {toolButton}
+                  </div>
+                </Popover.Anchor>
+                <Popover.Content
+                  className="tool-popover-content table-tool-popover"
+                  sideOffset={32 / 2 + 10}
+                  collisionBoundary={container ?? undefined}
+                >
+                  <button
+                    type="button"
+                    className="table-tool-popover__item"
+                    data-testid="table-import"
+                    onClick={() => {
+                      app.setActiveTool({ type: "selection" });
+                      setAppState({
+                        openPopup: null,
+                        openDialog: { name: "tableImport" },
+                      });
+                    }}
+                  >
+                    {TableIcon}
+                    {t("labels.importTable")}
+                  </button>
+                </Popover.Content>
+              </Popover.Root>
+            );
+          }
 
           if (value !== "eraser") {
             return toolButton;
