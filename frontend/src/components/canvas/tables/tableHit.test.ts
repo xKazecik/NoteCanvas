@@ -72,13 +72,14 @@ describe("the add-row and add-column buttons", () => {
   });
 
   it("keep their on-screen size when zoomed out", () => {
-    // at 50% zoom the button is twice as far out in scene units
+    // at 50% zoom the button is twice as far out, and twice as big, in scene
+    // units
     expect(
-      getTableAddHandleAtLocalPoint(table, table.width + 44, table.height / 2, 0.5)
+      getTableAddHandleAtLocalPoint(table, table.width + 60, table.height / 2, 1),
+    ).toBeNull();
+    expect(
+      getTableAddHandleAtLocalPoint(table, table.width + 60, table.height / 2, 0.5)
         ?.kind,
     ).toBe("col");
-    expect(
-      getTableAddHandleAtLocalPoint(table, table.width + 22, table.height / 2, 0.5),
-    ).toBeNull();
   });
 });
