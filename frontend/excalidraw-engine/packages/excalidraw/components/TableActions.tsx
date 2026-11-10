@@ -12,6 +12,7 @@ import type { ExcalidrawElement } from "@excalidraw/element/types";
 import { t } from "../i18n";
 
 import { ColorPicker } from "./ColorPicker/ColorPicker";
+import { TableStylePicker } from "./TableStylePicker";
 import { ToolButton } from "./ToolButton";
 import { RadioSelection } from "./RadioSelection";
 import {
@@ -130,6 +131,10 @@ export const TableActions = ({
 
       <fieldset>
         <legend>{t("labels.tableStyle")}</legend>
+        <TableStylePicker
+          value={table.stylePreset}
+          onChange={(preset) => updateData({ op: "setStylePreset", preset })}
+        />
         <div className="buttonList">
           <ToolButton
             type="button"

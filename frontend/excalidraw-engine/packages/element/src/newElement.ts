@@ -197,6 +197,7 @@ export const newTableElement = (
     cells?: readonly (readonly TableCell[])[];
     headerRow?: boolean;
     bandedRows?: boolean;
+    stylePreset?: string;
   } & ElementConstructorOpts,
 ): NonDeleted<ExcalidrawTableElement> => {
   const rows = opts.rowHeights?.length ?? opts.rows ?? TABLE_DEFAULTS.rows;
@@ -216,6 +217,7 @@ export const newTableElement = (
     cells: opts.cells ?? buildCells(rows, cols),
     headerRow: opts.headerRow ?? true,
     bandedRows: opts.bandedRows ?? false,
+    ...(opts.stylePreset ? { stylePreset: opts.stylePreset } : {}),
     // the outer box is always the sum of the tracks
     width: tableWidth(colWidths),
     height: tableHeight(rowHeights),

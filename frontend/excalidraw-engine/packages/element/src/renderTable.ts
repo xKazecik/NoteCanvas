@@ -7,6 +7,7 @@ import {
   resolveCellStyle,
   rowOffsets,
 } from "./table";
+import { getTableLines, getTableStylePreset } from "./tableStyles";
 import { getLineHeightInPx } from "./textMeasurements";
 import { wrapText } from "./textWrapping";
 
@@ -33,6 +34,23 @@ export const CELL_LINE_HEIGHT = 1.25 as ExcalidrawTextElement["lineHeight"];
 export const getTableTints = (theme: Theme) =>
   TINTS[theme === THEME.DARK ? THEME.DARK : THEME.LIGHT];
 
+/**
+ * The colours `resolveCellStyle` needs for a table: its style preset's, with
+ * the theme's neutral tints wherever the preset does not set one.
+ */
+export const getTableCellColors = (
+  element: ExcalidrawTableElement,
+  theme: Theme,
+) => {
+  const tints = getTableTints(theme);
+  const preset = getTableStylePreset(element);
+  return {
+    headerColor: preset.headerFill ?? tints.header,
+    bandingColor: preset.bandFill ?? tints.banding,
+    headerTextColor: preset.headerText,
+  };
+};
+
 const paintCellText = (
   element: ExcalidrawTableElement,
   box: CellBox,
@@ -43,10 +61,12 @@ const paintCellText = (
   if (!cell?.text) {
     return;
   }
-  const style = resolveCellStyle(element, box.row, box.col, {
-    headerColor: getTableTints(theme).header,
-    bandingColor: getTableTints(theme).banding,
-  });
+  const style = resolveCellStyle(
+    element,
+    box.row,
+    box.col,
+    getTableCellColors(element, theme),
+  );
 
   const padding = TABLE_DEFAULTS.cellPadding;
   const innerWidth = Math.max(0, box.width - padding * 2);
@@ -108,46 +128,46 @@ export const renderTableElement = (
   theme: Theme,
 ) => {
   const boxes = getCellBoxes(element);
-  const tints = getTableTints(theme);
+  const colors = getTableCellColors(element, theme);
+  const preset = getTableStylePreset(element);
 
   context.save();
 
   for (const box of boxes) {
-    const style = resolveCellStyle(element, box.row, box.col, {
-      headerColor: tints.header,
-      bandingColor: tints.banding,
-    });
+    const style = resolveCellStyle(element, box.row, box.col, colors);
     if (style.backgroundColor) {
       context.fillStyle = style.backgroundColor;
       context.fillRect(box.x, box.y, box.width, box.height);
     }
   }
 
-  context.strokeStyle = element.strokeColor;
-  context.lineWidth = element.strokeWidth;
-  context.lineCap = "butt";
-  context.beginPath();
-
-  // Merged cells swallow their interior borders, so instead of stroking the
-  // full grid we stroke each surviving cell's right and bottom edge, plus the
-  // table's own top and left edge.
   const xs = columnOffsets(element);
   const ys = rowOffsets(element);
-  const right = xs[xs.length - 1];
-  const bottom = ys[ys.length - 1];
-
-  context.moveTo(0, 0);
-  context.lineTo(right, 0);
-  context.moveTo(0, 0);
-  context.lineTo(0, bottom);
-
-  for (const box of boxes) {
-    context.moveTo(box.x + box.width, box.y);
-    context.lineTo(box.x + box.width, box.y + box.height);
-    context.moveTo(box.x, box.y + box.height);
-    context.lineTo(box.x + box.width, box.y + box.height);
-  }
-  context.stroke();
+  const lines = getTableLines(
+    boxes,
+    { width: xs[xs.length - 1], height: ys[ys.length - 1] },
+    preset,
+    element.headerRow,
+  );
+  context.lineCap = "butt";
+  // the grid in one path so shared borders do not double-strike, then the
+  // heavier header rule over it in the element's own colour
+  const stroke = (heavy: boolean) => {
+    context.strokeStyle = heavy
+      ? element.strokeColor
+      : preset.lineColor ?? element.strokeColor;
+    context.lineWidth = element.strokeWidth * (heavy ? 2 : 1);
+    context.beginPath();
+    for (const line of lines) {
+      if (!!line.heavy === heavy) {
+        context.moveTo(line.x1, line.y1);
+        context.lineTo(line.x2, line.y2);
+      }
+    }
+    context.stroke();
+  };
+  stroke(false);
+  stroke(true);
 
   for (const box of boxes) {
     paintCellText(element, box, context, theme);

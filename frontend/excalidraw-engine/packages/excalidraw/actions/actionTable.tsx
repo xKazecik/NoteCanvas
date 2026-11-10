@@ -1,5 +1,6 @@
 import {
   CaptureUpdateAction,
+  TABLE_STYLE_PRESETS,
   clearCells,
   deleteColumn,
   deleteRow,
@@ -38,6 +39,7 @@ export type TableOperation =
   | { op: "unmerge" }
   | { op: "toggleHeaderRow" }
   | { op: "toggleBandedRows" }
+  | { op: "setStylePreset"; preset: string }
   | { op: "styleCells"; style: TableCellStyle }
   | { op: "clearCells" }
   | { op: "sort"; direction: "asc" | "desc" };
@@ -159,6 +161,18 @@ const applyOperation = (
       return withUpdate({ headerRow: !table.headerRow }, { keepRange: true });
     case "toggleBandedRows":
       return withUpdate({ bandedRows: !table.bandedRows }, { keepRange: true });
+    case "setStylePreset": {
+      const preset = TABLE_STYLE_PRESETS.find(
+        (candidate) => candidate.id === operation.preset,
+      );
+      // a preset brings its own idea of banding; the toggle can still undo it
+      return preset
+        ? withUpdate(
+            { stylePreset: preset.id, bandedRows: preset.banded },
+            { keepRange: true },
+          )
+        : null;
+    }
     case "styleCells":
       return selection
         ? withUpdate(

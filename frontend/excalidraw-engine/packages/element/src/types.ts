@@ -200,6 +200,8 @@ export type ExcalidrawTableElement = _ExcalidrawElementBase &
     headerRow: boolean;
     /** Tint every other body row. */
     bandedRows: boolean;
+    /** Id of a preset in TABLE_STYLE_PRESETS; absent means the default look. */
+    stylePreset?: string;
   }>;
 
 export type ExcalidrawFrameElement = _ExcalidrawElementBase & {

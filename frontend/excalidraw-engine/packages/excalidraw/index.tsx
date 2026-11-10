@@ -345,3 +345,5 @@ export {
   tableFromRows,
 } from "@excalidraw/element";
 export { FilledButton } from "./components/FilledButton";
+export { TABLE_STYLE_PRESETS } from "@excalidraw/element";
+export { TableStylePicker } from "./components/TableStylePicker";

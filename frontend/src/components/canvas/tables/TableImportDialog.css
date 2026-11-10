@@ -59,6 +59,11 @@
   white-space: pre;
 }
 
+/* the picker is sized for the narrow style panel; here it can run in one row */
+.notecanvas-table-import .table-style-picker {
+  grid-template-columns: repeat(8, 3rem);
+}
+
 .notecanvas-table-import__check {
   display: flex;
   align-items: center;
