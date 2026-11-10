@@ -78,8 +78,10 @@ too and where the editor's context is available.
 `PresentationPanel` and `StickersPanel` are written to fill a sidebar —
 `height: 100%`, no width of their own — because AstraDraw renders them inside
 its workspace sidebar. `frontend/src/components/canvas/CanvasSidebar.tsx` puts
-them in one of Excalidraw's own sidebars as two tabs, which supplies the width,
-docking and theming. Dropped straight into the editor they render at zero width
+them in Excalidraw's own sidebars, which supply the width, docking and theming:
+the presentation panel in a "Slides" sidebar of its own, and stickers (with
+comments) as extra tabs of Excalidraw's default library sidebar, which is
+labelled "Elements". Dropped straight into the editor they render at zero width
 and are invisible.
 
 ## Things that bite
