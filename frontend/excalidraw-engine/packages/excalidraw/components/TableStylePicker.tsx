@@ -53,12 +53,15 @@ const TableStyleSwatch = ({ preset }: { preset: TableStylePreset }) => {
       {preset.banded && (
         <rect y={rowHeight * 2} width={width} height={rowHeight} fill={bandFill} />
       )}
-      {lines.map((line, index) => (
+      {lines.map(({ heavy, x1, y1, x2, y2 }, index) => (
         <line
           key={index}
-          {...line}
-          stroke={line.heavy ? "#1e1e1e" : preset.lineColor ?? "#1e1e1e"}
-          strokeWidth={line.heavy ? 1.4 : 0.7}
+          x1={x1}
+          y1={y1}
+          x2={x2}
+          y2={y2}
+          stroke={heavy ? "#1e1e1e" : preset.lineColor ?? "#1e1e1e"}
+          strokeWidth={heavy ? 1.4 : 0.7}
         />
       ))}
       {Array.from({ length: cols }, (_, col) => (
