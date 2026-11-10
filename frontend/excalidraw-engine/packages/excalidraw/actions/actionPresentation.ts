@@ -10,8 +10,10 @@ import { register } from "./register";
 import type { AppState, PresentationModeState } from "../types";
 
 /**
- * Get frames sorted alphabetically by name for presentation order.
- * This is the default ordering when no custom order is specified.
+ * The slides of a presentation, in order. Mirrors what the host app's slides
+ * panel does (it keeps both on each frame's `customData`): frames marked
+ * hidden are skipped, frames with a stored position come first in that order,
+ * and the rest follow alphabetically by name.
  */
 const getFramesSortedForPresentation = (
   elements: readonly {
@@ -19,22 +21,30 @@ const getFramesSortedForPresentation = (
     isDeleted?: boolean;
     name?: string | null;
     id: string;
+    customData?: Record<string, any>;
   }[],
 ): string[] => {
-  const frames: { id: string; name: string }[] = [];
+  const frames: { id: string; name: string; order: number }[] = [];
 
   for (const el of elements) {
-    if (isFrameLikeElement(el as ExcalidrawFrameLikeElement) && !el.isDeleted) {
+    if (
+      isFrameLikeElement(el as ExcalidrawFrameLikeElement) &&
+      !el.isDeleted &&
+      el.customData?.slideHidden !== true
+    ) {
+      const order = el.customData?.slideOrder;
       frames.push({
         id: el.id,
         name: (el as ExcalidrawFrameLikeElement).name || `Frame ${el.id}`,
+        order: typeof order === "number" ? order : Infinity,
       });
     }
   }
 
-  // Sort frames alphabetically by name, with numeric sorting
   frames.sort((a, b) =>
-    a.name.localeCompare(b.name, undefined, { numeric: true }),
+    a.order !== b.order
+      ? a.order - b.order
+      : a.name.localeCompare(b.name, undefined, { numeric: true }),
   );
 
   return frames.map((f) => f.id);
@@ -50,7 +60,7 @@ export const actionStartPresentation = register({
   keywords: ["presentation", "slideshow", "present", "frames"],
   trackEvent: { category: "canvas" },
   viewMode: true,
-  perform: (elements, appState, _, app) => {
+  perform: (elements, appState) => {
     // Check if already in presentation mode
     if (appState.presentationMode?.active) {
       return {
@@ -77,21 +87,8 @@ export const actionStartPresentation = register({
       };
     }
 
-    // Find the first frame element to scroll to
-    const firstFrameId = slideIds[0];
-    const firstFrame = elements.find((el) => el.id === firstFrameId);
-
-    if (firstFrame) {
-      // Use setTimeout to allow state update before scrolling
-      setTimeout(() => {
-        app.scrollToContent(firstFrame, {
-          fitToViewport: true,
-          viewportZoomFactor: 1.0,
-          animate: true,
-          duration: 800,
-        });
-      }, 50);
-    }
+    // notecanvas: the host app moves the camera whenever the current slide
+    // changes, so each slide's own transition plays however the step was made
 
     const presentationState: PresentationModeState = {
       active: true,
@@ -139,7 +136,7 @@ export const actionNextSlide = register({
   keywords: ["next", "forward", "slide"],
   trackEvent: { category: "canvas" },
   viewMode: true,
-  perform: (elements, appState, _, app) => {
+  perform: (elements, appState) => {
     const presentationMode = appState.presentationMode;
     if (!presentationMode?.active) {
       return {
@@ -161,18 +158,6 @@ export const actionNextSlide = register({
     }
 
     const nextSlideIndex = currentSlide + 1;
-    const frameId = slides[nextSlideIndex];
-    const frame = elements.find((el) => el.id === frameId);
-
-    if (frame) {
-      app.scrollToContent(frame, {
-        fitToViewport: true,
-        viewportZoomFactor: 1.0,
-        animate: true,
-        duration: 800,
-      });
-    }
-
     return {
       elements,
       appState: {
@@ -210,7 +195,7 @@ export const actionPrevSlide = register({
   keywords: ["previous", "back", "slide"],
   trackEvent: { category: "canvas" },
   viewMode: true,
-  perform: (elements, appState, _, app) => {
+  perform: (elements, appState) => {
     const presentationMode = appState.presentationMode;
     if (!presentationMode?.active) {
       return {
@@ -232,18 +217,6 @@ export const actionPrevSlide = register({
     }
 
     const prevSlideIndex = currentSlide - 1;
-    const frameId = slides[prevSlideIndex];
-    const frame = elements.find((el) => el.id === frameId);
-
-    if (frame) {
-      app.scrollToContent(frame, {
-        fitToViewport: true,
-        viewportZoomFactor: 1.0,
-        animate: true,
-        duration: 800,
-      });
-    }
-
     return {
       elements,
       appState: {
@@ -385,7 +358,7 @@ export const actionGoToSlide = register({
   keywords: ["go", "slide", "jump"],
   trackEvent: { category: "canvas" },
   viewMode: true,
-  perform: (elements, appState, formData, app) => {
+  perform: (elements, appState, formData) => {
     const presentationMode = appState.presentationMode;
     const slideIndex = typeof formData === "number" ? formData : undefined;
 
@@ -399,18 +372,6 @@ export const actionGoToSlide = register({
 
     const { slides } = presentationMode;
     const targetIndex = Math.max(0, Math.min(slideIndex, slides.length - 1));
-    const frameId = slides[targetIndex];
-    const frame = elements.find((el) => el.id === frameId);
-
-    if (frame) {
-      app.scrollToContent(frame, {
-        fitToViewport: true,
-        viewportZoomFactor: 1.0,
-        animate: true,
-        duration: 800,
-      });
-    }
-
     return {
       elements,
       appState: {
