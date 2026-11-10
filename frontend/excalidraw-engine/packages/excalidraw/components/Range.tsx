@@ -1,5 +1,7 @@
 import React, { useEffect } from "react";
 
+import { STROKE_WIDTH_RANGE } from "@excalidraw/common";
+
 import { t } from "../i18n";
 
 import "./Range.scss";
@@ -71,5 +73,55 @@ export const Range = ({ updateData, app, testId }: RangeProps) => {
         <div className="zero-label">0</div>
       </div>
     </label>
+  );
+};
+
+/**
+ * notecanvas: fine control over stroke width, shown under the three presets.
+ * `value` is null when the selection mixes widths.
+ */
+export const StrokeWidthRange = ({
+  value,
+  onChange,
+}: {
+  value: number | null;
+  onChange: (value: number) => void;
+}) => {
+  const rangeRef = React.useRef<HTMLInputElement>(null);
+  const valueRef = React.useRef<HTMLDivElement>(null);
+  const { min, max, step } = STROKE_WIDTH_RANGE;
+  const shown = Math.min(max, Math.max(min, value ?? min));
+
+  useEffect(() => {
+    if (rangeRef.current && valueRef.current) {
+      const rangeElement = rangeRef.current;
+      const fraction = (shown - min) / (max - min);
+      const thumbWidth = 15;
+      valueRef.current.style.left = `${
+        fraction * (rangeElement.offsetWidth - thumbWidth) + thumbWidth / 2
+      }px`;
+      const percent = value === null ? 0 : fraction * 100;
+      rangeElement.style.background = `linear-gradient(to right, var(--color-slider-track) 0%, var(--color-slider-track) ${percent}%, var(--button-bg) ${percent}%, var(--button-bg) 100%)`;
+    }
+  }, [shown, value, min, max]);
+
+  return (
+    <div className="range-wrapper">
+      <input
+        ref={rangeRef}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        onChange={(event) => onChange(+event.target.value)}
+        value={shown}
+        className="range-input"
+        aria-label={t("labels.strokeWidth")}
+        data-testid="strokeWidth-range"
+      />
+      <div className="value-bubble" ref={valueRef}>
+        {value}
+      </div>
+    </div>
   );
 };
