@@ -537,3 +537,85 @@
   font-size: 13px;
   cursor: pointer;
 }
+
+// A slide left out of the presentation: still listed, visibly set aside
+.slideHidden {
+  opacity: 0.55;
+
+  .slidePreview {
+    filter: grayscale(1);
+  }
+}
+
+// Slide number (or "Skipped") in the corner of the preview
+.slideBadge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 1;
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+
+// The transition into a slide, set on the slide itself
+.slideTransition {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--default-border-color, #e5e5e5);
+  color: var(--text-secondary-color, #6b6b6b);
+  cursor: default;
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+.slideSelect {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 3px 4px;
+  border: 1px solid var(--default-border-color, #e5e5e5);
+  border-radius: 6px;
+  background: var(--island-bg-color, #fff);
+  color: var(--text-primary-color, #1b1b1f);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.slideSelectSpeed {
+  flex: 0 0 auto;
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.startButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.startFromButton {
+  padding: 8px 12px;
+  border: 1px solid var(--default-border-color, #e5e5e5);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary-color, #1b1b1f);
+  font-size: 13px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--button-hover-bg, rgba(0, 0, 0, 0.05));
+  }
+}

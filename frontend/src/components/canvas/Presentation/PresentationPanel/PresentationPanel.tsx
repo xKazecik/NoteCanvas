@@ -12,50 +12,58 @@ import type {
 } from "@excalidraw/excalidraw/types";
 
 import { usePresentationMode } from "../usePresentationMode";
-import { addSlideFromView } from "../slideTransitions";
-import { TransitionsPanel } from "../TransitionsPanel/TransitionsPanel";
+import {
+  SLIDE_SPEEDS,
+  SLIDE_TRANSITIONS,
+  addSlideFromView,
+  getSlideSpeed,
+  getSlideTransition,
+  isSlideHidden,
+  setSlideData,
+  setSlideOrder,
+} from "../slideTransitions";
 import { SlidesLayoutDialog, applyLayoutToFrames } from "../SlidesLayoutDialog";
 
 import styles from "./PresentationPanel.module.scss";
 
 import type { LayoutType } from "../SlidesLayoutDialog";
-
-// Helper to extract the order prefix from a frame name (e.g., "3. My Frame" -> 3)
-const extractOrderPrefix = (name: string | null): number | null => {
-  if (!name) {
-    return null;
-  }
-  const match = name.match(/^(\d+)\.\s*/);
-  return match ? parseInt(match[1], 10) : null;
-};
-
-// Helper to remove the order prefix from a frame name (e.g., "3. My Frame" -> "My Frame")
-const removeOrderPrefix = (name: string | null): string => {
-  if (!name) {
-    return "";
-  }
-  return name.replace(/^\d+\.\s*/, "");
-};
-
-// Helper to add/update order prefix to a frame name
-const setOrderPrefix = (name: string | null, order: number): string => {
-  const baseName = removeOrderPrefix(name) || `Frame`;
-  return `${order}. ${baseName}`;
-};
+import type { SlideSpeed, SlideTransition } from "../slideTransitions";
 
 interface PresentationPanelProps {
   excalidrawAPI: ExcalidrawImperativeAPI | null;
 }
 
+const Icon = ({ children }: { children: React.ReactNode }) => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {children}
+  </svg>
+);
+
 interface SlideThumbProps {
   frame: ExcalidrawFrameLikeElement;
   index: number;
+  /** Position among the slides that will be presented; null when skipped. */
+  number: number | null;
+  /** Whether a transition leads into this slide, i.e. it is not the first. */
+  hasTransition: boolean;
   isActive: boolean;
   isDragging: boolean;
   isDragOver: boolean;
   onClick: () => void;
   onRename: (newName: string) => void;
   onDelete: () => void;
+  onToggleHidden: () => void;
+  onTransitionChange: (transition: SlideTransition) => void;
+  onSpeedChange: (speed: SlideSpeed) => void;
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
@@ -68,12 +76,17 @@ interface SlideThumbProps {
 const SlideThumb: React.FC<SlideThumbProps> = ({
   frame,
   index,
+  number,
+  hasTransition,
   isActive,
   isDragging,
   isDragOver,
   onClick,
   onRename,
   onDelete,
+  onToggleHidden,
+  onTransitionChange,
+  onSpeedChange,
   onDragStart,
   onDragEnd,
   onDragOver,
@@ -83,6 +96,8 @@ const SlideThumb: React.FC<SlideThumbProps> = ({
   refreshKey,
 }) => {
   const frameName = frame.name || `Frame ${index + 1}`;
+  const isHidden = number === null;
+  const transition = getSlideTransition(frame);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [previewError, setPreviewError] = useState(false);
@@ -140,7 +155,6 @@ const SlideThumb: React.FC<SlideThumbProps> = ({
         const appState = excalidrawAPI.getAppState();
         const files = excalidrawAPI.getFiles();
 
-        // Export the frame content to canvas
         const exportedCanvas = await exportToCanvas({
           elements,
           appState: {
@@ -150,35 +164,26 @@ const SlideThumb: React.FC<SlideThumbProps> = ({
           },
           files: files as BinaryFiles,
           exportingFrame: frame,
-          maxWidthOrHeight: 300, // Larger preview for better quality
+          maxWidthOrHeight: 300,
         });
 
-        // Draw the exported canvas onto our preview canvas
         const ctx = canvasRef.current?.getContext("2d");
         if (ctx && canvasRef.current) {
           const previewWidth = canvasRef.current.width;
           const previewHeight = canvasRef.current.height;
-
-          // Clear canvas
           ctx.clearRect(0, 0, previewWidth, previewHeight);
 
-          // Calculate scaling to fit while maintaining aspect ratio
+          // fit while keeping the aspect ratio, centred
           const scale = Math.min(
             previewWidth / exportedCanvas.width,
             previewHeight / exportedCanvas.height,
           );
-
           const scaledWidth = exportedCanvas.width * scale;
           const scaledHeight = exportedCanvas.height * scale;
-
-          // Center the preview
-          const offsetX = (previewWidth - scaledWidth) / 2;
-          const offsetY = (previewHeight - scaledHeight) / 2;
-
           ctx.drawImage(
             exportedCanvas,
-            offsetX,
-            offsetY,
+            (previewWidth - scaledWidth) / 2,
+            (previewHeight - scaledHeight) / 2,
             scaledWidth,
             scaledHeight,
           );
@@ -195,21 +200,25 @@ const SlideThumb: React.FC<SlideThumbProps> = ({
     return () => clearTimeout(timeoutId);
   }, [frame, excalidrawAPI, refreshKey]);
 
+  const skipLabel = isHidden
+    ? t("presentation.unskipSlide")
+    : t("presentation.skipSlide");
+
   return (
     <div
       className={clsx(styles.slide, {
         [styles.slideActive]: isActive,
         [styles.slideDragging]: isDragging,
         [styles.slideDragOver]: isDragOver,
+        [styles.slideHidden]: isHidden,
       })}
-      draggable
+      draggable={!isEditing}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      {/* Drop indicator line */}
       {isDragOver && <div className={styles.dropIndicator} />}
 
       <div
@@ -235,24 +244,46 @@ const SlideThumb: React.FC<SlideThumbProps> = ({
           {previewError && (
             <span className={styles.slideNumber}>{index + 1}</span>
           )}
+          <span className={styles.slideBadge}>
+            {isHidden ? t("presentation.skipped") : number}
+          </span>
           {/* Hover overlay with actions */}
           <div className={styles.slideOverlay}>
             <button
               className={styles.overlayAction}
               onClick={handleStartEditing}
               title={t("presentation.renameFrame")}
+              aria-label={t("presentation.renameFrame")}
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
+              <Icon>
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-              </svg>
+              </Icon>
+            </button>
+            <button
+              className={styles.overlayAction}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleHidden();
+              }}
+              title={skipLabel}
+              aria-label={skipLabel}
+              aria-pressed={isHidden}
+            >
+              <Icon>
+                {isHidden ? (
+                  <>
+                    <path d="M3 3l18 18" />
+                    <path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c6 0 10 7 10 7a17.6 17.6 0 0 1-3.2 3.9M6.6 6.6C3.7 8.5 2 12 2 12s4 7 10 7a9.8 9.8 0 0 0 4.4-1.1" />
+                    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                  </>
+                ) : (
+                  <>
+                    <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </>
+                )}
+              </Icon>
             </button>
             <button
               className={clsx(styles.overlayAction, styles.overlayActionDanger)}
@@ -260,21 +291,14 @@ const SlideThumb: React.FC<SlideThumbProps> = ({
                 e.stopPropagation();
                 onDelete();
               }}
-              title="Delete frame"
-              aria-label="Delete frame"
+              title={t("presentation.deleteSlide")}
+              aria-label={t("presentation.deleteSlide")}
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
+              <Icon>
                 <path d="M3 6h18" />
                 <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
                 <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              </svg>
+              </Icon>
             </button>
             <div
               className={styles.overlayDragHandle}
@@ -298,7 +322,6 @@ const SlideThumb: React.FC<SlideThumbProps> = ({
         </div>
       </div>
 
-      {/* Frame name below preview */}
       {isEditing ? (
         <input
           ref={inputRef}
@@ -319,6 +342,58 @@ const SlideThumb: React.FC<SlideThumbProps> = ({
         >
           {frameName}
         </span>
+      )}
+
+      {/* How the presentation arrives on this slide. The first slide has
+          nothing to arrive from, and a skipped one is never arrived on. */}
+      {hasTransition && !isHidden && (
+        <div className={styles.slideTransition}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+          <select
+            className={styles.slideSelect}
+            value={transition}
+            title={t("presentation.transitionInto")}
+            aria-label={t("presentation.transitionInto")}
+            onChange={(event) =>
+              onTransitionChange(event.target.value as SlideTransition)
+            }
+          >
+            {SLIDE_TRANSITIONS.map((option) => (
+              <option key={option.id} value={option.id}>
+                {t(option.label)}
+              </option>
+            ))}
+          </select>
+          {transition !== "cut" && (
+            <select
+              className={clsx(styles.slideSelect, styles.slideSelectSpeed)}
+              value={getSlideSpeed(frame)}
+              title={t("presentation.transitionSpeed")}
+              aria-label={t("presentation.transitionSpeed")}
+              onChange={(event) =>
+                onSpeedChange(event.target.value as SlideSpeed)
+              }
+            >
+              {SLIDE_SPEEDS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {t(option.label)}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
       )}
     </div>
   );
@@ -374,17 +449,14 @@ const PresentationInstructions: React.FC<{
 export const PresentationPanel: React.FC<PresentationPanelProps> = ({
   excalidrawAPI,
 }) => {
-  // Local state for ordered frames (allows reordering)
+  // The slides in presentation order, as stored on the frames themselves
   const [orderedFrames, setOrderedFrames] = useState<
     ExcalidrawFrameLikeElement[]
   >([]);
-  const [selectedFrameIndex, setSelectedFrameIndex] = useState<number | null>(
-    null,
-  );
+  const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null);
   // Key to trigger preview refresh when scene changes
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
 
-  // Layout dialog state
   const [isLayoutDialogOpen, setIsLayoutDialogOpen] = useState(false);
 
   // Drag and drop state
@@ -393,61 +465,11 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
   const slidesContainerRef = useRef<HTMLDivElement>(null);
   const autoScrollIntervalRef = useRef<number | null>(null);
 
-  const { startPresentation, getFrames, isPresentationMode, setSlides } =
-    usePresentationMode({
-      excalidrawAPI,
-    });
+  const { startPresentation, getFrames, isPresentationMode } =
+    usePresentationMode({ excalidrawAPI });
 
-  // Refresh frames list - sort by order prefix if present
   const refreshFrames = useCallback(() => {
-    const currentFrames = getFrames();
-
-    // Sort frames by their order prefix (if any), then by name
-    const sortedFrames = [...currentFrames].sort((a, b) => {
-      const orderA = extractOrderPrefix(a.name);
-      const orderB = extractOrderPrefix(b.name);
-
-      // Both have order prefixes - sort by prefix
-      if (orderA !== null && orderB !== null) {
-        return orderA - orderB;
-      }
-      // Only one has prefix - prefixed comes first
-      if (orderA !== null) {
-        return -1;
-      }
-      if (orderB !== null) {
-        return 1;
-      }
-      // Neither has prefix - sort by name
-      const nameA = a.name || "";
-      const nameB = b.name || "";
-      return nameA.localeCompare(nameB);
-    });
-
-    setOrderedFrames((prevOrdered) => {
-      if (prevOrdered.length === 0) {
-        return sortedFrames;
-      }
-
-      // Keep existing order, add new frames at the end, remove deleted frames
-      const existingIds = new Set(currentFrames.map((f) => f.id));
-      const orderedIds = new Set(prevOrdered.map((f) => f.id));
-
-      // Keep frames that still exist in their current order
-      const kept = prevOrdered.filter((f) => existingIds.has(f.id));
-
-      // Add new frames at the end (sorted by their prefix if they have one)
-      const newFrames = sortedFrames.filter((f) => !orderedIds.has(f.id));
-
-      // Update references to current frame objects
-      const updatedKept = kept.map(
-        (f) => currentFrames.find((cf) => cf.id === f.id) || f,
-      );
-
-      return [...updatedKept, ...newFrames];
-    });
-
-    // Trigger preview refresh
+    setOrderedFrames(getFrames());
     setPreviewRefreshKey((prev) => prev + 1);
   }, [getFrames]);
 
@@ -459,15 +481,17 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
       return;
     }
 
-    // Subscribe to changes
-    const unsubscribe = excalidrawAPI.onChange(() => {
-      refreshFrames();
+    const unsubscribe = excalidrawAPI.onChange((_, appState) => {
+      // while presenting the panel is not shown and the camera changes on
+      // every animation frame, so there is nothing worth redrawing
+      if (!appState.presentationMode?.active) {
+        refreshFrames();
+      }
     });
 
     return () => unsubscribe();
   }, [excalidrawAPI, refreshFrames]);
 
-  // Handle create slide button
   const handleCreateSlide = useCallback(() => {
     if (!excalidrawAPI) {
       return;
@@ -481,46 +505,18 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
     });
   }, [excalidrawAPI]);
 
-  // Handle slide click - scroll to frame
+  // Clicking a slide selects it and brings its frame into view
   const handleSlideClick = useCallback(
-    (index: number) => {
-      if (!excalidrawAPI || !orderedFrames[index]) {
-        return;
-      }
-
-      setSelectedFrameIndex(index);
-      excalidrawAPI.scrollToContent(orderedFrames[index], {
-        fitToContent: true,
-        animate: true,
-        duration: 300,
-      });
-    },
-    [excalidrawAPI, orderedFrames],
-  );
-
-  // Helper to update frame names with order prefixes after reordering
-  const updateFrameOrderPrefixes = useCallback(
-    (frames: ExcalidrawFrameLikeElement[]) => {
+    (frame: ExcalidrawFrameLikeElement) => {
       if (!excalidrawAPI) {
         return;
       }
 
-      const elements = excalidrawAPI.getSceneElements();
-      const updatedElements = elements.map((el) => {
-        if (el.type === "frame" || el.type === "magicframe") {
-          const frameIndex = frames.findIndex((f) => f.id === el.id);
-          if (frameIndex !== -1) {
-            const newName = setOrderPrefix(el.name, frameIndex + 1);
-            if (newName !== el.name) {
-              return { ...el, name: newName };
-            }
-          }
-        }
-        return el;
-      });
-
-      excalidrawAPI.updateScene({
-        elements: updatedElements,
+      setSelectedFrameId(frame.id);
+      excalidrawAPI.scrollToContent(frame, {
+        fitToContent: true,
+        animate: true,
+        duration: 300,
       });
     },
     [excalidrawAPI],
@@ -550,6 +546,13 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
     [excalidrawAPI],
   );
 
+  const stopAutoScroll = () => {
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current);
+      autoScrollIntervalRef.current = null;
+    }
+  };
+
   // Drag and drop handlers
   const handleDragStart = useCallback(
     (index: number) => (e: React.DragEvent) => {
@@ -572,12 +575,7 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
       target.style.opacity = "";
       setDraggedIndex(null);
       setDragOverIndex(null);
-
-      // Clear auto-scroll interval
-      if (autoScrollIntervalRef.current) {
-        clearInterval(autoScrollIntervalRef.current);
-        autoScrollIntervalRef.current = null;
-      }
+      stopAutoScroll();
     },
     [],
   );
@@ -596,20 +594,13 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
       if (container) {
         const rect = container.getBoundingClientRect();
         const scrollZone = 60;
-
-        // Clear existing interval
-        if (autoScrollIntervalRef.current) {
-          clearInterval(autoScrollIntervalRef.current);
-          autoScrollIntervalRef.current = null;
-        }
+        stopAutoScroll();
 
         if (e.clientY < rect.top + scrollZone) {
-          // Scroll up
           autoScrollIntervalRef.current = window.setInterval(() => {
             container.scrollBy(0, -8);
           }, 16);
         } else if (e.clientY > rect.bottom - scrollZone) {
-          // Scroll down
           autoScrollIntervalRef.current = window.setInterval(() => {
             container.scrollBy(0, 8);
           }, 16);
@@ -634,42 +625,36 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
   const handleDrop = useCallback(
     (dropIndex: number) => (e: React.DragEvent) => {
       e.preventDefault();
-
-      if (draggedIndex === null || draggedIndex === dropIndex) {
-        setDraggedIndex(null);
-        setDragOverIndex(null);
-        return;
-      }
-
-      // Reorder the frames
-      setOrderedFrames((prev) => {
-        const newOrder = [...prev];
-        const [draggedItem] = newOrder.splice(draggedIndex, 1);
-
-        // Adjust drop index if dragging from before to after
-        const adjustedDropIndex =
-          draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
-        newOrder.splice(adjustedDropIndex, 0, draggedItem);
-
-        // Update frame names with new order prefixes
-        updateFrameOrderPrefixes(newOrder);
-
-        return newOrder;
-      });
-
+      stopAutoScroll();
       setDraggedIndex(null);
       setDragOverIndex(null);
 
-      // Clear auto-scroll interval
-      if (autoScrollIntervalRef.current) {
-        clearInterval(autoScrollIntervalRef.current);
-        autoScrollIntervalRef.current = null;
+      if (
+        !excalidrawAPI ||
+        draggedIndex === null ||
+        draggedIndex === dropIndex
+      ) {
+        return;
       }
+
+      const newOrder = [...orderedFrames];
+      const [draggedItem] = newOrder.splice(draggedIndex, 1);
+      // dropping lands above the target, which has shifted up by one if the
+      // dragged slide came from before it
+      newOrder.splice(
+        draggedIndex < dropIndex ? dropIndex - 1 : dropIndex,
+        0,
+        draggedItem,
+      );
+      // the order is stored on the frames; the change event redraws the list
+      setSlideOrder(
+        excalidrawAPI,
+        newOrder.map((frame) => frame.id),
+      );
     },
-    [draggedIndex, updateFrameOrderPrefixes],
+    [excalidrawAPI, draggedIndex, orderedFrames],
   );
 
-  // Handle rename frame
   const handleRenameFrame = useCallback(
     (frameId: string, newName: string) => {
       if (!excalidrawAPI) {
@@ -697,14 +682,6 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
     [excalidrawAPI],
   );
 
-  // Handle start presentation - use ordered frames
-  const handleStartPresentation = useCallback(() => {
-    // Set the ordered slides before starting
-    setSlides(orderedFrames);
-    startPresentation();
-  }, [startPresentation, setSlides, orderedFrames]);
-
-  // Handle layout apply
   const handleApplyLayout = useCallback(
     (layout: LayoutType, columnCount: number) => {
       if (!excalidrawAPI || orderedFrames.length === 0) {
@@ -716,13 +693,7 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
   );
 
   // Cleanup auto-scroll on unmount
-  useEffect(() => {
-    return () => {
-      if (autoScrollIntervalRef.current) {
-        clearInterval(autoScrollIntervalRef.current);
-      }
-    };
-  }, []);
+  useEffect(() => stopAutoScroll, []);
 
   // Don't render if in presentation mode
   if (isPresentationMode) {
@@ -730,6 +701,17 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
   }
 
   const hasFrames = orderedFrames.length > 0;
+  // slide numbers count only the slides that will be shown
+  let shownCount = 0;
+  const numbers = orderedFrames.map((frame) =>
+    isSlideHidden(frame) ? null : ++shownCount,
+  );
+  const selectedFrame = orderedFrames.find(
+    (frame) => frame.id === selectedFrameId && !isSlideHidden(frame),
+  );
+  const selectedNumber = selectedFrame
+    ? numbers[orderedFrames.indexOf(selectedFrame)]
+    : null;
 
   return (
     <div className={styles.panel} onWheel={(e) => e.stopPropagation()}>
@@ -737,12 +719,15 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
         <>
           {/* Header */}
           <div className={styles.header}>
-            <span className={styles.title}>{t("presentation.title")}</span>
+            <span className={styles.title}>
+              {shownCount} {t("presentation.title").toLowerCase()}
+            </span>
             <div className={styles.headerActions}>
               <button
                 className={styles.headerButton}
                 onClick={() => setIsLayoutDialogOpen(true)}
                 title={t("slidesLayout.title")}
+                aria-label={t("slidesLayout.title")}
               >
                 <svg
                   width="18"
@@ -762,6 +747,7 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
                 className={styles.headerButton}
                 onClick={() => excalidrawAPI && addSlideFromView(excalidrawAPI)}
                 title={t("presentation.addViewAsSlide")}
+                aria-label={t("presentation.addViewAsSlide")}
               >
                 <svg
                   width="18"
@@ -779,13 +765,13 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
                 className={styles.headerButton}
                 onClick={handleCreateSlide}
                 title={t("presentation.createSlide")}
+                aria-label={t("presentation.createSlide")}
               >
                 {PlusIcon}
               </button>
             </div>
           </div>
 
-          {/* Layout Dialog */}
           <SlidesLayoutDialog
             isOpen={isLayoutDialogOpen}
             onClose={() => setIsLayoutDialogOpen(false)}
@@ -803,12 +789,28 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
                 key={frame.id}
                 frame={frame}
                 index={index}
-                isActive={selectedFrameIndex === index}
+                number={numbers[index]}
+                hasTransition={(numbers[index] ?? 0) > 1}
+                isActive={selectedFrameId === frame.id}
                 isDragging={draggedIndex === index}
                 isDragOver={dragOverIndex === index}
-                onClick={() => handleSlideClick(index)}
+                onClick={() => handleSlideClick(frame)}
                 onRename={(newName) => handleRenameFrame(frame.id, newName)}
                 onDelete={() => handleDeleteFrame(frame.id)}
+                onToggleHidden={() =>
+                  excalidrawAPI &&
+                  setSlideData(excalidrawAPI, frame.id, {
+                    slideHidden: !isSlideHidden(frame),
+                  })
+                }
+                onTransitionChange={(slideTransition) =>
+                  excalidrawAPI &&
+                  setSlideData(excalidrawAPI, frame.id, { slideTransition })
+                }
+                onSpeedChange={(slideSpeed) =>
+                  excalidrawAPI &&
+                  setSlideData(excalidrawAPI, frame.id, { slideSpeed })
+                }
                 onDragStart={handleDragStart(index)}
                 onDragEnd={handleDragEnd()}
                 onDragOver={handleDragOver(index)}
@@ -820,18 +822,12 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
             ))}
           </div>
 
-          {excalidrawAPI && (
-            <TransitionsPanel
-              frames={orderedFrames}
-              excalidrawAPI={excalidrawAPI}
-            />
-          )}
-
-          {/* Start button */}
+          {/* Start buttons */}
           <div className={styles.footer}>
             <button
               className={styles.startButton}
-              onClick={handleStartPresentation}
+              onClick={() => startPresentation()}
+              disabled={shownCount === 0}
             >
               <svg
                 width="16"
@@ -843,6 +839,14 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
               </svg>
               <span>{t("presentation.startPresentation")}</span>
             </button>
+            {selectedFrame && selectedNumber !== null && selectedNumber > 1 && (
+              <button
+                className={styles.startFromButton}
+                onClick={() => startPresentation(selectedFrame.id)}
+              >
+                {t("presentation.presentFromHere")} ({selectedNumber})
+              </button>
+            )}
           </div>
         </>
       ) : (

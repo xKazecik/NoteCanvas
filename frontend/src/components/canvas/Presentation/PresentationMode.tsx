@@ -3,7 +3,10 @@ import { createPortal } from "react-dom";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import { PresentationControls } from "./PresentationControls";
-import { usePresentationMode } from "./usePresentationMode";
+import {
+  usePresentationCamera,
+  usePresentationMode,
+} from "./usePresentationMode";
 
 import "./presentationMode.css";
 
@@ -24,6 +27,10 @@ export const PresentationMode: React.FC<PresentationModeProps> = ({
     toggleFullscreen,
     endPresentation,
   } = usePresentationMode({ excalidrawAPI });
+
+  // this component is mounted once per editor, which makes it the place to
+  // drive the camera from
+  usePresentationCamera(excalidrawAPI, toggleFullscreen, endPresentation);
 
   if (!isPresentationMode || totalSlides === 0) {
     return null;

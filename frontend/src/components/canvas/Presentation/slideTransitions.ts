@@ -6,25 +6,64 @@ import {
 } from "@excalidraw/element";
 
 import type { t } from "@excalidraw/excalidraw";
-import type { ExcalidrawFrameLikeElement } from "@excalidraw/element/types";
+import type {
+  ExcalidrawElement,
+  ExcalidrawFrameLikeElement,
+} from "@excalidraw/element/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
-export type SlideTransition = "smooth" | "cut" | "fade" | "zoom";
+import {
+  animateCamera,
+  applyCamera,
+  cameraForBox,
+  cancelCameraAnimation,
+  unionBox,
+} from "./slideCamera";
 
-export const SLIDE_TRANSITIONS: {
-  id: SlideTransition;
-  label: Parameters<typeof t>[0];
-}[] = [
+type Label = Parameters<typeof t>[0];
+
+export type SlideTransition =
+  | "smooth"
+  | "cut"
+  | "fade"
+  | "fadeBlack"
+  | "dissolve"
+  | "slide"
+  | "zoom";
+
+export const SLIDE_TRANSITIONS: { id: SlideTransition; label: Label }[] = [
   { id: "smooth", label: "presentation.transitionSmooth" },
   { id: "cut", label: "presentation.transitionCut" },
+  { id: "dissolve", label: "presentation.transitionDissolve" },
   { id: "fade", label: "presentation.transitionFade" },
+  { id: "fadeBlack", label: "presentation.transitionFadeBlack" },
+  { id: "slide", label: "presentation.transitionSlide" },
   { id: "zoom", label: "presentation.transitionZoom" },
 ];
 
+export type SlideSpeed = "fast" | "normal" | "slow";
+
+export const SLIDE_SPEEDS: { id: SlideSpeed; label: Label; ms: number }[] = [
+  { id: "fast", label: "presentation.speedFast", ms: 400 },
+  { id: "normal", label: "presentation.speedNormal", ms: 800 },
+  { id: "slow", label: "presentation.speedSlow", ms: 1600 },
+];
+
 /**
- * How the presentation arrives on a slide, kept on the slide's frame so it
- * saves and syncs with the drawing. Slides without one glide, as before.
+ * Everything a slide remembers lives in its frame's `customData`, so it saves
+ * and syncs with the drawing and needs nothing from the backend.
  */
+export type SlideData = {
+  /** How the presentation arrives on this slide. */
+  slideTransition: SlideTransition;
+  slideSpeed: SlideSpeed;
+  /** Left out when presenting, but kept in the panel. */
+  slideHidden: boolean;
+  /** Position in the presentation; lower comes first. */
+  slideOrder: number;
+};
+
+/** Slides without a transition glide, as they did before there was a choice. */
 export const getSlideTransition = (
   frame: ExcalidrawFrameLikeElement,
 ): SlideTransition => {
@@ -34,99 +73,255 @@ export const getSlideTransition = (
     : "smooth";
 };
 
-export const setSlideTransition = (
+export const getSlideSpeed = (frame: ExcalidrawFrameLikeElement): SlideSpeed => {
+  const value = frame.customData?.slideSpeed;
+  return SLIDE_SPEEDS.some((speed) => speed.id === value) ? value : "normal";
+};
+
+export const getSlideDuration = (frame: ExcalidrawFrameLikeElement): number =>
+  SLIDE_SPEEDS.find((speed) => speed.id === getSlideSpeed(frame))!.ms;
+
+export const isSlideHidden = (frame: ExcalidrawFrameLikeElement): boolean =>
+  frame.customData?.slideHidden === true;
+
+/** "3. Intro" -> 3. Slide order used to be kept as a prefix on the name. */
+const legacyOrder = (name: string | null): number => {
+  const match = name?.match(/^(\d+)\.\s*/);
+  return match ? parseInt(match[1], 10) : Infinity;
+};
+
+const storedOrder = (frame: ExcalidrawFrameLikeElement): number => {
+  const value = frame.customData?.slideOrder;
+  return typeof value === "number" && Number.isFinite(value) ? value : Infinity;
+};
+
+/**
+ * Every frame of the scene as a slide, in presentation order: slides that
+ * were arranged in the panel first, in that order, then the rest by the number
+ * their name starts with, then by name.
+ */
+export const getOrderedSlides = (
+  elements: readonly ExcalidrawElement[],
+): ExcalidrawFrameLikeElement[] =>
+  (
+    elements.filter(
+      (element) => element.type === "frame" && !element.isDeleted,
+    ) as ExcalidrawFrameLikeElement[]
+  ).sort(
+    (a, b) =>
+      // `||` rather than subtraction alone: Infinity - Infinity is NaN
+      (storedOrder(a) === storedOrder(b) ? 0 : storedOrder(a) - storedOrder(b)) ||
+      (legacyOrder(a.name) === legacyOrder(b.name)
+        ? 0
+        : legacyOrder(a.name) - legacyOrder(b.name)) ||
+      (a.name || `Frame ${a.id}`).localeCompare(
+        b.name || `Frame ${b.id}`,
+        undefined,
+        { numeric: true },
+      ),
+  );
+
+const updateFrames = (
   api: ExcalidrawImperativeAPI,
-  frameId: string,
-  transition: SlideTransition,
+  patchFor: (frame: ExcalidrawElement) => Partial<SlideData> | null,
 ) => {
   api.updateScene({
-    elements: api
-      .getSceneElements()
-      .map((element) =>
-        element.id === frameId
-          ? newElementWith(element, {
-              customData: { ...element.customData, slideTransition: transition },
-            })
-          : element,
-      ),
+    elements: api.getSceneElementsIncludingDeleted().map((element) => {
+      const patch = element.type === "frame" ? patchFor(element) : null;
+      return patch
+        ? newElementWith(element, {
+            customData: { ...element.customData, ...patch },
+          })
+        : element;
+    }),
     captureUpdate: CaptureUpdateAction.IMMEDIATELY,
   });
 };
 
-/** Moves the camera onto one or more frames; supplied by the presentation. */
-type ShowFrames = (
-  target: ExcalidrawFrameLikeElement | ExcalidrawFrameLikeElement[],
-  animate: boolean,
-  duration?: number,
-) => void;
+export const setSlideData = (
+  api: ExcalidrawImperativeAPI,
+  frameId: string,
+  patch: Partial<SlideData>,
+) => updateFrames(api, (frame) => (frame.id === frameId ? patch : null));
 
-const FADE_MS = 220;
-const ZOOM_STEP_MS = 450;
+/** Store a new presentation order: the frame ids, first slide first. */
+export const setSlideOrder = (
+  api: ExcalidrawImperativeAPI,
+  orderedIds: readonly string[],
+) =>
+  updateFrames(api, (frame) => {
+    const slideOrder = orderedIds.indexOf(frame.id);
+    return slideOrder === -1 || frame.customData?.slideOrder === slideOrder
+      ? null
+      : { slideOrder };
+  });
 
-/** Cover the screen in `background`, swap slides unseen, then uncover. */
-const fadeThrough = (background: string, swap: () => void) => {
-  const veil = document.createElement("div");
-  Object.assign(veil.style, {
+// ---------------------------------------------------------------------------
+// Playing a transition
+// ---------------------------------------------------------------------------
+
+const OVERLAY_Z_INDEX = "9998"; // under the presentation controls (9999)
+
+let removeOverlay: (() => void) | null = null;
+
+/** An element covering exactly the canvas, removed by the next transition. */
+const addOverlay = <T extends HTMLElement>(node: T): T | null => {
+  const canvas = document.querySelector<HTMLCanvasElement>(
+    ".excalidraw canvas.static, .excalidraw__canvas-wrapper canvas",
+  );
+  const rect = canvas?.getBoundingClientRect();
+  if (!rect) {
+    return null;
+  }
+  Object.assign(node.style, {
     position: "fixed",
-    inset: "0",
-    background,
-    opacity: "0",
-    transition: `opacity ${FADE_MS}ms ease`,
+    left: `${rect.left}px`,
+    top: `${rect.top}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
     pointerEvents: "none",
-    zIndex: "9999",
+    zIndex: OVERLAY_Z_INDEX,
   });
-  document.body.appendChild(veil);
-  requestAnimationFrame(() => {
-    veil.style.opacity = "1";
-  });
-  window.setTimeout(() => {
-    swap();
-    veil.style.opacity = "0";
-    window.setTimeout(() => veil.remove(), FADE_MS);
-  }, FADE_MS);
+  document.body.appendChild(node);
+  removeOverlay = () => {
+    node.remove();
+    removeOverlay = null;
+  };
+  return node;
+};
+
+/** A still picture of what the canvas shows right now, laid over it. */
+const addSnapshot = (): HTMLCanvasElement | null => {
+  const source = document.querySelector<HTMLCanvasElement>(
+    ".excalidraw canvas.static, .excalidraw__canvas-wrapper canvas",
+  );
+  if (!source || !source.width || !source.height) {
+    return null;
+  }
+  const copy = document.createElement("canvas");
+  copy.width = source.width;
+  copy.height = source.height;
+  copy.getContext("2d")?.drawImage(source, 0, 0);
+  return addOverlay(copy);
+};
+
+/** Run `callback` once `node`'s CSS transition has finished. */
+const afterTransition = (duration: number, callback: () => void) =>
+  window.setTimeout(callback, duration + 30);
+
+/** Stop any transition that is still playing, leaving the camera where it is. */
+export const cancelSlideTransition = () => {
+  cancelCameraAnimation();
+  removeOverlay?.();
 };
 
 /**
- * Go from slide `from` to slide `to` with `transition`. Zoom out & in pulls
- * back until both slides are in view, then flies into the new one.
+ * Go from slide `from` to slide `to`.
+ *
+ * `direction` is 1 when moving forward through the presentation and -1 when
+ * going back, which is the way a sliding transition travels.
  */
 export const playSlideTransition = (
   api: ExcalidrawImperativeAPI,
   from: ExcalidrawFrameLikeElement | null,
   to: ExcalidrawFrameLikeElement,
-  transition: SlideTransition,
-  show: ShowFrames,
+  options: { transition: SlideTransition; duration: number; direction?: 1 | -1 },
 ) => {
+  cancelSlideTransition();
+
+  const { width, height, theme, viewBackgroundColor } = api.getAppState();
+  const viewport = { width, height };
+  const target = cameraForBox(to, viewport);
+  const { transition, duration, direction = 1 } = options;
+  const cut = () => applyCamera(api, target);
+
+  if (!from || from.id === to.id) {
+    // nothing to transition from: arriving on the first slide, or a resize
+    animateCamera(api, target, transition === "cut" ? 0 : duration);
+    return;
+  }
+
   switch (transition) {
     case "cut":
-      show(to, false);
+      cut();
       return;
-    case "fade": {
-      const { theme, viewBackgroundColor } = api.getAppState();
-      // the canvas is drawn inverted in dark mode, so its colour is not the
-      // one on screen; use the dark canvas colour there instead
-      fadeThrough(theme === "dark" ? "#121212" : viewBackgroundColor, () =>
-        show(to, false),
+
+    case "zoom":
+      animateCamera(
+        api,
+        target,
+        // further to travel than a plain glide, so it gets a little longer
+        duration * 1.5,
+        cameraForBox(unionBox([from, to]), viewport).zoom * 0.9,
       );
       return;
-    }
-    case "zoom":
-      if (from && from.id !== to.id) {
-        show([from, to], true, ZOOM_STEP_MS);
-        window.setTimeout(() => show(to, true, ZOOM_STEP_MS), ZOOM_STEP_MS);
+
+    case "fade":
+    case "fadeBlack": {
+      const veil = addOverlay(document.createElement("div"));
+      if (!veil) {
+        cut();
         return;
       }
-      show(to, true);
+      const half = duration / 2;
+      // the canvas is drawn inverted in dark mode, so its colour is not the
+      // one on screen; use the dark canvas colour there instead
+      const background = theme === "dark" ? "#121212" : viewBackgroundColor;
+      veil.style.background = transition === "fadeBlack" ? "#000" : background;
+      veil.style.opacity = "0";
+      veil.style.transition = `opacity ${half}ms ease`;
+      requestAnimationFrame(() => {
+        veil.style.opacity = "1";
+      });
+      afterTransition(half, () => {
+        if (!veil.isConnected) {
+          return;
+        }
+        cut();
+        veil.style.opacity = "0";
+        afterTransition(half, () => veil.remove());
+      });
       return;
+    }
+
+    case "dissolve":
+    case "slide": {
+      // the old slide stays on screen as a picture while the canvas beneath
+      // it has already moved on, then the picture fades or slides away
+      const snapshot = addSnapshot();
+      cut();
+      if (!snapshot) {
+        return;
+      }
+      snapshot.style.transition =
+        transition === "dissolve"
+          ? `opacity ${duration}ms ease`
+          : `transform ${duration}ms cubic-bezier(0.65, 0, 0.35, 1)`;
+      // two frames: one for the canvas to paint the new slide, one for the
+      // browser to register the picture's starting state
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (transition === "dissolve") {
+            snapshot.style.opacity = "0";
+          } else {
+            snapshot.style.transform = `translateX(${-100 * direction}%)`;
+          }
+        }),
+      );
+      afterTransition(duration + 40, () => snapshot.remove());
+      return;
+    }
+
     default:
-      show(to, true);
+      animateCamera(api, target, duration);
   }
 };
 
 /**
  * Turn what is on screen into a new slide: a 16:9 frame centred in the view,
- * as large as fits with a small margin. Slides do not cut off their content,
- * so anything poking out of the frame still shows when presenting.
+ * as large as fits with a small margin, added at the end of the presentation.
+ * Slides do not cut off their content, so anything poking out of the frame
+ * still shows when presenting.
  */
 export const addSlideFromView = (api: ExcalidrawImperativeAPI) => {
   const { scrollX, scrollY, zoom, width, height } = api.getAppState();
@@ -141,18 +336,30 @@ export const addSlideFromView = (api: ExcalidrawImperativeAPI) => {
   }
 
   const elements = api.getSceneElements();
-  const count = elements.filter((element) => element.type === "frame").length;
+  const slides = getOrderedSlides(elements);
   const frame = newFrameElement({
     x: -scrollX + (viewWidth - slideWidth) / 2,
     y: -scrollY + (viewHeight - slideHeight) / 2,
     width: slideWidth,
     height: slideHeight,
-    name: `Slide ${count + 1}`,
+    name: `Slide ${slides.length + 1}`,
+    customData: { slideOrder: slides.length },
+  });
+
+  // slides with a stored position come before those without, so the existing
+  // ones get theirs written down too, or the new slide would jump the queue
+  const ordered = elements.map((element) => {
+    const slideOrder = slides.findIndex((slide) => slide.id === element.id);
+    return slideOrder === -1 || element.customData?.slideOrder === slideOrder
+      ? element
+      : newElementWith(element, {
+          customData: { ...element.customData, slideOrder },
+        });
   });
 
   api.updateScene({
     // a new element has no z-order index yet; give it the next one
-    elements: syncInvalidIndices([...elements, frame]),
+    elements: syncInvalidIndices([...ordered, frame]),
     captureUpdate: CaptureUpdateAction.IMMEDIATELY,
   });
 };
