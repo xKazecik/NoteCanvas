@@ -7,7 +7,10 @@ import {
   unionBox,
 } from "./slideCamera";
 import {
+  cameraForSlide,
+  getFrameBox,
   getOrderedSlides,
+  getSlideAngle,
   getSlideDuration,
   getSlideSpeed,
   getSlideTransition,
@@ -126,5 +129,39 @@ describe("the presentation camera", () => {
     const to = { centerX: 1000, centerY: 0, zoom: 2 };
     expect(interpolateCamera(from, to, 0.5, 0.5).zoom).toBeCloseTo(0.5);
     expect(interpolateCamera(from, to, 1, 0.5).zoom).toBeCloseTo(2);
+  });
+});
+
+describe("rotated slides", () => {
+  const rotated = (degrees: number) =>
+    newFrameElement({
+      x: 0,
+      y: 0,
+      width: 400,
+      height: 200,
+      angle: ((degrees * Math.PI) / 180) as never,
+    });
+
+  it("tilts the view by the frame's own rotation", () => {
+    expect(getSlideAngle(rotated(0))).toBe(0);
+    expect(getSlideAngle(rotated(45))).toBe(45);
+    expect(getSlideAngle(rotated(-30))).toBe(330);
+  });
+
+  it("fits the frame itself, which the tilt shows level", () => {
+    // 800x600 fits a level 400x200 slide at 2x, rotated or not
+    expect(cameraForSlide(rotated(90), { width: 800, height: 600 })).toEqual({
+      centerX: 200,
+      centerY: 100,
+      zoom: 2,
+      angle: 90,
+    });
+  });
+
+  it("knows the box a rotated frame covers on the canvas", () => {
+    const box = getFrameBox(rotated(90));
+    expect(box.width).toBeCloseTo(200);
+    expect(box.height).toBeCloseTo(400);
+    expect(box.x + box.width / 2).toBeCloseTo(200);
   });
 });

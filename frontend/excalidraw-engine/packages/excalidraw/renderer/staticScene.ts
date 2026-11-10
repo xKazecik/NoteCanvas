@@ -3,6 +3,7 @@ import { isElementLink } from "@excalidraw/element";
 import { createPlaceholderEmbeddableLabel } from "@excalidraw/element";
 import { getBoundTextElement } from "@excalidraw/element";
 import {
+  rotateContextToFrame,
   isEmbeddableElement,
   isIframeLikeElement,
   isTextElement,
@@ -127,7 +128,10 @@ export const frameClip = (
   renderConfig: StaticCanvasRenderConfig,
   appState: StaticCanvasAppState,
 ) => {
+  // the clip stays once the transform is put back
+  const transform = context.getTransform();
   context.translate(frame.x + appState.scrollX, frame.y + appState.scrollY);
+  rotateContextToFrame(context, frame);
   context.beginPath();
   if (context.roundRect) {
     context.roundRect(
@@ -141,10 +145,7 @@ export const frameClip = (
     context.rect(0, 0, frame.width, frame.height);
   }
   context.clip();
-  context.translate(
-    -(frame.x + appState.scrollX),
-    -(frame.y + appState.scrollY),
-  );
+  context.setTransform(transform);
 };
 
 type LinkIconCanvas = HTMLCanvasElement & { zoom: number };

@@ -5,11 +5,11 @@ import { useUIAppState } from "@excalidraw/excalidraw";
 import type { ExcalidrawFrameLikeElement } from "@excalidraw/element/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
-import { applyCamera, cameraForBox } from "./slideCamera";
+import { applyCamera } from "./slideCamera";
 import {
   cancelSlideTransition,
   getOrderedSlides,
-  getSlideAngle,
+  cameraForSlide,
   getSlideDuration,
   getSlideTransition,
   isSlideHidden,
@@ -255,7 +255,7 @@ export const usePresentationCamera = (
         cancelSlideTransition();
         applyCamera(
           excalidrawAPI,
-          cameraForBox(to, { width, height }, getSlideAngle(to)),
+          cameraForSlide(to, { width, height }),
         );
       }
     } else {

@@ -89,6 +89,26 @@ describe("getSlideLinks", () => {
     ]);
   });
 
+  it("measures links along a rotated slide's own axes", () => {
+    // a 200x100 slide turned a quarter turn about its centre (150, 100)
+    const turned = { x: 50, y: 50, width: 200, height: 100, angle: Math.PI / 2 };
+    // a square at the slide's centre stays at its centre
+    const [link] = getSlideLinks(
+      turned,
+      [
+        {
+          ...rect(140, 90, "https://centre.example"),
+          width: 20,
+          height: 20,
+        },
+      ],
+      1,
+    );
+    expect(link.x).toBeCloseTo(90);
+    expect(link.y).toBeCloseTo(40);
+    expect(link.width).toBeCloseTo(20);
+  });
+
   it("ignores links that only work inside the app", () => {
     expect(
       getSlideLinks(frame, [rect(200, 150, "/editor/abc?element=1")], 1),

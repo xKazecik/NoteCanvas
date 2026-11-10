@@ -1,13 +1,8 @@
-import { exportToCanvas } from "@excalidraw/excalidraw";
-
-import type {
-  BinaryFiles,
-  ExcalidrawImperativeAPI,
-} from "@excalidraw/excalidraw/types";
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import { buildPdf } from "./pdfWriter";
-import { getSlideExportElements, slideExportAppState } from "./slideContent";
 import { getSlideLinks } from "./slideLinks";
+import { renderSlide } from "./slideRender";
 import { getOrderedSlides, isSlideHidden } from "./slideTransitions";
 
 import type { PdfPage } from "./pdfWriter";
@@ -46,24 +41,13 @@ export const exportSlidesToPdf = async (
     return null;
   }
 
-  const appState = api.getAppState();
   const pages: PdfPage[] = [];
   for (const slide of slides) {
     const scale = Math.min(
       RENDER_SCALE,
       MAX_RENDER_SIDE / Math.max(slide.width, slide.height),
     );
-    const canvas = await exportToCanvas({
-      elements: getSlideExportElements(elements, slide.id),
-      appState: slideExportAppState(appState),
-      files: api.getFiles() as BinaryFiles,
-      exportingFrame: slide,
-      getDimensions: (width: number, height: number) => ({
-        width: width * scale,
-        height: height * scale,
-        scale,
-      }),
-    });
+    const canvas = await renderSlide(api, slide, scale);
 
     const pageScale = PAGE_WIDTH / slide.width;
     pages.push({

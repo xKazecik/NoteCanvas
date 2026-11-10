@@ -1824,10 +1824,20 @@ class App extends React.Component<AppProps, AppState> {
         return null;
       }
 
+      // the name sits on the frame's top-left corner and turns with the
+      // frame and the view, so it always marks which side of a slide is up
+      const [cornerX, cornerY] = f.angle
+        ? pointRotateRads(
+            pointFrom(f.x, f.y),
+            pointFrom(f.x + f.width / 2, f.y + f.height / 2),
+            f.angle,
+          )
+        : [f.x, f.y];
       const { x: x1, y: y1 } = sceneCoordsToViewportCoords(
-        { sceneX: f.x, sceneY: f.y },
+        { sceneX: cornerX, sceneY: cornerY },
         this.state,
       );
+      const nameRotation = f.angle + getViewRotation(this.state.viewAngle);
 
       const FRAME_NAME_EDIT_PADDING = 6;
 
@@ -1905,6 +1915,12 @@ class App extends React.Component<AppProps, AppState> {
               this.state.offsetTop
             }px`,
             left: `${x1 - this.state.offsetLeft}px`,
+            ...(nameRotation
+              ? {
+                  transform: `rotate(${nameRotation}rad)`,
+                  transformOrigin: `left calc(100% + ${FRAME_STYLE.nameOffsetY}px)`,
+                }
+              : {}),
             zIndex: 2,
             fontSize: FRAME_STYLE.nameFontSize,
             color: isDarkTheme
@@ -11009,7 +11025,10 @@ class App extends React.Component<AppProps, AppState> {
             isFrameLikeElement(element),
           );
 
-        for (const frame of selectedFrames) {
+        // turning a frame takes its contents along; only resizing one can
+        // change what is in it
+        const isRotation = pointerDownState.resize.handleType === "rotation";
+        for (const frame of isRotation ? [] : selectedFrames) {
           nextElements = replaceAllElementsInFrame(
             nextElements,
             getElementsInResizingFrame(
@@ -12363,6 +12382,41 @@ class App extends React.Component<AppProps, AppState> {
         originOffset: this.state.originSnapOffset,
         informMutation,
       });
+
+      // notecanvas: in a tilted view a frame is drawn the way it looks on
+      // screen, so it comes out rotated by the tilt -- level on screen, and
+      // levelled again by the view when it is presented as a slide
+      if (isFrameLikeElement(newElement) && this.state.viewAngle) {
+        const angle = (((this.state.viewAngle % 360) + 360) % 360) *
+          (Math.PI / 180);
+        const { x: originX, y: originY } = pointerDownState.origin;
+        const dx = pointerCoords.x - originX;
+        const dy = pointerCoords.y - originY;
+        // the drag measured along the frame's own axes
+        const localX = dx * Math.cos(angle) + dy * Math.sin(angle);
+        const localY = -dx * Math.sin(angle) + dy * Math.cos(angle);
+        const centerX =
+          originX +
+          (localX / 2) * Math.cos(angle) -
+          (localY / 2) * Math.sin(angle);
+        const centerY =
+          originY +
+          (localX / 2) * Math.sin(angle) +
+          (localY / 2) * Math.cos(angle);
+        const width = Math.abs(localX);
+        const height = Math.abs(localY);
+        this.scene.mutateElement(
+          newElement,
+          {
+            x: centerX - width / 2,
+            y: centerY - height / 2,
+            width,
+            height,
+            angle: angle as Radians,
+          },
+          { informMutation, isDragging: false },
+        );
+      }
     }
 
     this.setState({
@@ -12490,8 +12544,7 @@ class App extends React.Component<AppProps, AppState> {
     const transformHandleType = pointerDownState.resize.handleType;
 
     if (
-      // Frames cannot be rotated.
-      (selectedFrames.length > 0 && transformHandleType === "rotation") ||
+      // notecanvas: frames can be rotated (they take their contents along)
       // Elbow arrows cannot be transformed (resized or rotated).
       (selectedElements.length === 1 && isElbowArrow(selectedElements[0])) ||
       // Do not resize when in crop mode

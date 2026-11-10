@@ -28,6 +28,7 @@ import {
   hasBoundingBox,
   isElbowArrow,
   isFrameLikeElement,
+  rotateContextToFrame,
   isImageElement,
   isLinearElement,
   isLineElement,
@@ -204,7 +205,9 @@ const renderBindingHighlightForBindableElement_simple = (
 ) => {
   const enclosingFrame = element.frameId && elementsMap.get(element.frameId);
   if (enclosingFrame && isFrameLikeElement(enclosingFrame)) {
+    const transform = context.getTransform();
     context.translate(enclosingFrame.x, enclosingFrame.y);
+    rotateContextToFrame(context, enclosingFrame);
 
     context.beginPath();
 
@@ -222,7 +225,7 @@ const renderBindingHighlightForBindableElement_simple = (
 
     context.clip();
 
-    context.translate(-enclosingFrame.x, -enclosingFrame.y);
+    context.setTransform(transform);
   }
 
   switch (element.type) {
@@ -231,6 +234,7 @@ const renderBindingHighlightForBindableElement_simple = (
       context.save();
 
       context.translate(element.x, element.y);
+      rotateContextToFrame(context, element);
 
       context.lineWidth = FRAME_STYLE.strokeWidth / appState.zoom.value;
       context.strokeStyle =
@@ -389,7 +393,9 @@ const renderBindingHighlightForBindableElement_complex = (
 
   const enclosingFrame = element.frameId && allElementsMap.get(element.frameId);
   if (enclosingFrame && isFrameLikeElement(enclosingFrame)) {
+    const transform = context.getTransform();
     context.translate(enclosingFrame.x, enclosingFrame.y);
+    rotateContextToFrame(context, enclosingFrame);
 
     context.beginPath();
 
@@ -407,7 +413,7 @@ const renderBindingHighlightForBindableElement_complex = (
 
     context.clip();
 
-    context.translate(-enclosingFrame.x, -enclosingFrame.y);
+    context.setTransform(transform);
   }
 
   switch (element.type) {
@@ -416,6 +422,7 @@ const renderBindingHighlightForBindableElement_complex = (
       context.save();
 
       context.translate(element.x, element.y);
+      rotateContextToFrame(context, element);
 
       context.lineWidth = FRAME_STYLE.strokeWidth / appState.zoom.value;
       context.strokeStyle =
@@ -1559,12 +1566,7 @@ const _renderInteractiveScene = ({
         0 as Radians,
         appState.zoom,
         "mouse",
-        isFrameSelected
-          ? {
-              ...getOmitSidesForEditorInterface(editorInterface),
-              rotation: true,
-            }
-          : getOmitSidesForEditorInterface(editorInterface),
+        getOmitSidesForEditorInterface(editorInterface),
       );
       if (selectedElements.some((element) => !element.locked)) {
         renderTransformHandles(
