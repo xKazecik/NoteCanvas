@@ -131,6 +131,20 @@ const getHints = ({
     });
   }
 
+  if (
+    selectedElements.length === 1 &&
+    selectedElements[0].type === "table" &&
+    !appState.viewModeEnabled
+  ) {
+    return appState.selectedTableCells?.elementId === selectedElements[0].id
+      ? t("hints.tableCell", {
+          shortcut_1: getTaggedShortcutKey("Enter"),
+          shortcut_2: getTaggedShortcutKey("Tab"),
+          shortcut_3: getTaggedShortcutKey(["Shift", "Enter"]),
+        })
+      : t("hints.tableSelected");
+  }
+
   if (selectedElements.length === 1 && isTextElement(selectedElements[0])) {
     return t("hints.text_selected", {
       shortcut: getTaggedShortcutKey("Enter"),

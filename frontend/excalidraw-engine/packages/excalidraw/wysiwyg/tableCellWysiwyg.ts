@@ -182,6 +182,18 @@ export const tableCellWysiwyg = ({
       whiteSpace: "pre-wrap",
       wordBreak: "break-word",
     });
+    fitHeight();
+  };
+
+  /**
+   * Let the box run past the cell while the text is taller than it, so what is
+   * being typed stays visible; the row itself grows to match on commit.
+   */
+  const fitHeight = () => {
+    editable.style.height = `${box.height * getZoom()}px`;
+    if (editable.scrollHeight > editable.clientHeight) {
+      editable.style.height = `${editable.scrollHeight}px`;
+    }
   };
 
   /** Detach and commit. Returns false if the editor was already torn down. */
@@ -223,7 +235,10 @@ export const tableCellWysiwyg = ({
     }
   };
 
-  editable.oninput = () => onChange(editable.value);
+  editable.oninput = () => {
+    fitHeight();
+    onChange(editable.value);
+  };
 
   editable.onkeydown = (event) => {
     event.stopPropagation();

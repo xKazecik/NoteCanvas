@@ -853,7 +853,7 @@ export const CompactShapeActions = ({
       />
       {/* Table */}
       {targetElements.length === 1 && isTableElement(targetElements[0]) && (
-        <div className="compact-action-item">
+        <div className="compact-action-item compact-table-actions">
           {renderAction("tableOperation")}
         </div>
       )}

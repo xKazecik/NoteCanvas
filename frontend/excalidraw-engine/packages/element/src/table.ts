@@ -307,3 +307,40 @@ export const toLocalPoint = (
     y: centerY + dx * sin + dy * cos - element.y,
   };
 };
+
+/** A "+" button beside a selected table that appends a row or a column. */
+export type TableAddHandle = {
+  kind: "row" | "col";
+  /** Centre, relative to the table's unrotated top-left corner. */
+  x: number;
+  y: number;
+  radius: number;
+};
+
+/**
+ * Where the add-row and add-column buttons sit: centred on the bottom and
+ * right edge, far enough out to clear the edge's own resize zone. Sized in
+ * screen pixels, so they stay easy to hit at any zoom.
+ */
+export const getTableAddHandles = (
+  element: ExcalidrawTableElement,
+  zoom: number,
+): TableAddHandle[] => {
+  const radius = 9 / zoom;
+  const gap = 22 / zoom;
+  return [
+    { kind: "col", x: element.width + gap, y: element.height / 2, radius },
+    { kind: "row", x: element.width / 2, y: element.height + gap, radius },
+  ];
+};
+
+export const getTableAddHandleAtLocalPoint = (
+  element: ExcalidrawTableElement,
+  x: number,
+  y: number,
+  zoom: number,
+): TableAddHandle | null =>
+  getTableAddHandles(element, zoom).find(
+    (handle) =>
+      Math.hypot(x - handle.x, y - handle.y) <= handle.radius * 1.35,
+  ) ?? null;

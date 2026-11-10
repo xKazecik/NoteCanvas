@@ -385,6 +385,8 @@
     "shapes": "Shapes"
   },
   "hints": {
+    "tableSelected": "Click a cell to pick it, double-click to edit. Drag a line between cells to resize, or use + to add a row or column",
+    "tableCell": "Type or press {{shortcut_1}} to edit, {{shortcut_2}} for the next cell, {{shortcut_3}} for a new line",
     "dismissSearch": "{{shortcut}} to dismiss search",
     "canvasPanning": "To move canvas, hold {{shortcut_1}} or {{shortcut_2}} while dragging, or use the hand tool",
     "linearElement": "Click to start multiple points, drag for single line",

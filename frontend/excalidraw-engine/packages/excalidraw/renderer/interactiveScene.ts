@@ -33,6 +33,7 @@ import {
   isLineElement,
   isTextElement,
   isTableElement,
+  getTableAddHandles,
   columnOffsets,
   rowOffsets,
   normalizeRange,
@@ -1317,6 +1318,39 @@ const _renderInteractiveScene = ({
       }
       context.restore();
     }
+  }
+
+  // The "+" buttons that append a row or a column to the selected table
+  if (
+    selectedElements.length === 1 &&
+    isTableElement(selectedElements[0]) &&
+    !selectedElements[0].locked &&
+    !appState.viewModeEnabled &&
+    !appState.isRotating
+  ) {
+    const table = selectedElements[0];
+    context.save();
+    context.translate(appState.scrollX, appState.scrollY);
+    context.translate(table.x + table.width / 2, table.y + table.height / 2);
+    context.rotate(table.angle);
+    context.translate(-table.width / 2, -table.height / 2);
+    context.lineWidth = 1.5 / appState.zoom.value;
+    context.lineCap = "round";
+    for (const handle of getTableAddHandles(table, appState.zoom.value)) {
+      context.fillStyle = renderConfig.selectionColor ?? "#6965db";
+      context.beginPath();
+      context.arc(handle.x, handle.y, handle.radius, 0, Math.PI * 2);
+      context.fill();
+      const arm = handle.radius * 0.5;
+      context.strokeStyle = "#ffffff";
+      context.beginPath();
+      context.moveTo(handle.x - arm, handle.y);
+      context.lineTo(handle.x + arm, handle.y);
+      context.moveTo(handle.x, handle.y - arm);
+      context.lineTo(handle.x, handle.y + arm);
+      context.stroke();
+    }
+    context.restore();
   }
 
   // Paint selected elements
