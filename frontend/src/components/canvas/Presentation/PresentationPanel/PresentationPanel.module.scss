@@ -619,3 +619,8 @@
     background: var(--button-hover-bg, rgba(0, 0, 0, 0.05));
   }
 }
+
+.startFromButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
