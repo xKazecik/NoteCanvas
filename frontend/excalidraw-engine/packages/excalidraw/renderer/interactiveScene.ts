@@ -1133,6 +1133,7 @@ const _renderInteractiveScene = ({
     scale,
     normalizedWidth,
     normalizedHeight,
+    viewAngle: appState.viewAngle,
   });
 
   // Apply zoom
@@ -1612,7 +1613,7 @@ const _renderInteractiveScene = ({
 
   // Paint scrollbars
   let scrollBars;
-  if (renderConfig.renderScrollbars) {
+  if (renderConfig.renderScrollbars && !appState.viewAngle) {
     scrollBars = getScrollBars(
       elementsMap,
       normalizedWidth,

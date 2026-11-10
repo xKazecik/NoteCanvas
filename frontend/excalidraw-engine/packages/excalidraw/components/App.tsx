@@ -19,6 +19,7 @@ import {
 } from "@excalidraw/math";
 
 import {
+  rotateViewportDelta,
   COLOR_PALETTE,
   CODES,
   shouldResizeFromCenter,
@@ -1601,7 +1602,7 @@ class App extends React.Component<AppProps, AppState> {
                 transform: isVisible
                   ? `translate(${x - this.state.offsetLeft}px, ${
                       y - this.state.offsetTop
-                    }px) scale(${scale})`
+                    }px) scale(${scale}) rotate(${this.state.viewAngle}deg)`
                   : "none",
                 display: isVisible ? "block" : "none",
                 opacity: getRenderOpacity(
@@ -1805,6 +1806,7 @@ class App extends React.Component<AppProps, AppState> {
             scrollX: this.state.scrollX,
             scrollY: this.state.scrollY,
             zoom: this.state.zoom,
+            viewAngle: this.state.viewAngle,
           },
           this.scene.getNonDeletedElementsMap(),
         )
@@ -1947,6 +1949,7 @@ class App extends React.Component<AppProps, AppState> {
       this.renderer.getRenderableElements({
         sceneNonce,
         zoom: this.state.zoom,
+        viewAngle: this.state.viewAngle,
         offsetLeft: this.state.offsetLeft,
         offsetTop: this.state.offsetTop,
         scrollX: this.state.scrollX,
@@ -4704,6 +4707,7 @@ class App extends React.Component<AppProps, AppState> {
                 scrollX: this.state.scrollX,
                 scrollY: this.state.scrollY,
                 zoom: this.state.zoom,
+                viewAngle: this.state.viewAngle,
               },
               this.scene.getNonDeletedElementsMap(),
               this.getEditorUIOffsets(),
@@ -4761,6 +4765,7 @@ class App extends React.Component<AppProps, AppState> {
                     scrollX: this.state.scrollX,
                     scrollY: this.state.scrollY,
                     zoom: this.state.zoom,
+                    viewAngle: this.state.viewAngle,
                   },
                   this.scene.getNonDeletedElementsMap(),
                   this.getEditorUIOffsets(),
@@ -5287,6 +5292,7 @@ class App extends React.Component<AppProps, AppState> {
                 scrollX: this.state.scrollX,
                 scrollY: this.state.scrollY,
                 zoom: this.state.zoom,
+                viewAngle: this.state.viewAngle,
               },
               this.scene.getNonDeletedElementsMap(),
               this.getEditorUIOffsets(),
@@ -6400,8 +6406,12 @@ class App extends React.Component<AppProps, AppState> {
           // 2x multiplier is just a magic number that makes this work correctly
           // on touchscreen devices (note: if we get report that panning is slower/faster
           // than actual movement, consider swapping with devicePixelRatio)
-          scrollX: zoomState.scrollX + 2 * (deltaX / nextZoom),
-          scrollY: zoomState.scrollY + 2 * (deltaY / nextZoom),
+          scrollX:
+            zoomState.scrollX +
+            2 * (rotateViewportDelta(deltaX, deltaY, state).deltaX / nextZoom),
+          scrollY:
+            zoomState.scrollY +
+            2 * (rotateViewportDelta(deltaX, deltaY, state).deltaY / nextZoom),
           shouldCacheIgnoreZoom: true,
         });
 
@@ -7747,9 +7757,10 @@ class App extends React.Component<AppProps, AppState> {
         window.addEventListener(EVENT.POINTER_UP, enableNextPaste);
       }
 
+      const pan = rotateViewportDelta(deltaX, deltaY, this.state);
       this.translateCanvas({
-        scrollX: this.state.scrollX - deltaX / this.state.zoom.value,
-        scrollY: this.state.scrollY - deltaY / this.state.zoom.value,
+        scrollX: this.state.scrollX - pan.deltaX / this.state.zoom.value,
+        scrollY: this.state.scrollY - pan.deltaY / this.state.zoom.value,
       });
     });
     const teardown = withBatchedUpdates(
@@ -9308,6 +9319,7 @@ class App extends React.Component<AppProps, AppState> {
           ];
         },
         getZoom: () => this.state.zoom.value,
+        getViewAngle: () => this.state.viewAngle,
         onChange: () => {},
         initialText,
         onSubmit: (text) => {
@@ -12700,17 +12712,24 @@ class App extends React.Component<AppProps, AppState> {
 
       // scroll horizontally when shift pressed
       if (event.shiftKey) {
-        this.translateCanvas(({ zoom, scrollX }) => ({
+        this.translateCanvas(({ zoom, scrollX, scrollY, viewAngle }) => {
           // on Mac, shift+wheel tends to result in deltaX
-          scrollX: scrollX - (deltaY || deltaX) / zoom.value,
-        }));
+          const pan = rotateViewportDelta(deltaY || deltaX, 0, { viewAngle });
+          return {
+            scrollX: scrollX - pan.deltaX / zoom.value,
+            scrollY: scrollY - pan.deltaY / zoom.value,
+          };
+        });
         return;
       }
 
-      this.translateCanvas(({ zoom, scrollX, scrollY }) => ({
-        scrollX: scrollX - deltaX / zoom.value,
-        scrollY: scrollY - deltaY / zoom.value,
-      }));
+      this.translateCanvas(({ zoom, scrollX, scrollY, viewAngle }) => {
+        const pan = rotateViewportDelta(deltaX, deltaY, { viewAngle });
+        return {
+          scrollX: scrollX - pan.deltaX / zoom.value,
+          scrollY: scrollY - pan.deltaY / zoom.value,
+        };
+      });
     },
   );
 

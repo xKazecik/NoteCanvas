@@ -9,6 +9,7 @@ import { applyCamera, cameraForBox } from "./slideCamera";
 import {
   cancelSlideTransition,
   getOrderedSlides,
+  getSlideAngle,
   getSlideDuration,
   getSlideTransition,
   isSlideHidden,
@@ -213,12 +214,17 @@ export const usePresentationCamera = (
   const shown = useRef<{ index: number; width: number; height: number } | null>(
     null,
   );
+  /** The view's tilt before presenting, put back when the presentation ends. */
+  const tiltBefore = useRef(0);
 
   useEffect(() => {
     if (!excalidrawAPI || !isActive || !slideIds) {
       if (shown.current) {
         cancelSlideTransition();
         shown.current = null;
+        excalidrawAPI?.updateScene({
+          appState: { viewAngle: tiltBefore.current },
+        });
       }
       return;
     }
@@ -237,6 +243,7 @@ export const usePresentationCamera = (
     shown.current = { index: currentSlide, width, height };
 
     if (!last) {
+      tiltBefore.current = excalidrawAPI.getAppState().viewAngle;
       playSlideTransition(excalidrawAPI, null, to, {
         transition: "smooth",
         duration: OPENING_DURATION,
@@ -246,7 +253,10 @@ export const usePresentationCamera = (
       // the header, and the window can be resized or go fullscreen
       if (last.width !== width || last.height !== height) {
         cancelSlideTransition();
-        applyCamera(excalidrawAPI, cameraForBox(to, { width, height }));
+        applyCamera(
+          excalidrawAPI,
+          cameraForBox(to, { width, height }, getSlideAngle(to)),
+        );
       }
     } else {
       const from = findFrame(last.index) ?? null;

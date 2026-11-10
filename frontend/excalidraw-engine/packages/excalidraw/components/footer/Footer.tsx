@@ -6,6 +6,7 @@ import { ExitZenModeButton, UndoRedoActions, ZoomActions } from "../Actions";
 import { HelpButton } from "../HelpButton";
 import { Section } from "../Section";
 import Stack from "../Stack";
+import { TiltControl } from "../TiltControl";
 
 import type { ActionManager } from "../../actions/manager";
 import type { UIAppState } from "../../types";
@@ -44,6 +45,7 @@ const Footer = ({
               renderAction={actionManager.renderAction}
               zoom={appState.zoom}
             />
+            <TiltControl viewAngle={appState.viewAngle} />
 
             {!appState.viewModeEnabled && (
               <UndoRedoActions

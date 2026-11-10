@@ -244,6 +244,7 @@ export type UserToFollow = {
 
 type _CommonCanvasAppState = {
   zoom: AppState["zoom"];
+  viewAngle: AppState["viewAngle"];
   scrollX: AppState["scrollX"];
   scrollY: AppState["scrollY"];
   width: AppState["width"];
@@ -426,6 +427,11 @@ export interface AppState {
   isResizing: boolean;
   isRotating: boolean;
   zoom: Zoom;
+  /**
+   * notecanvas: degrees the view is tilted by, clockwise, about the centre of
+   * the canvas. Purely a way of looking at the scene; elements are untouched.
+   */
+  viewAngle: number;
   openMenu: "canvas" | null;
   openPopup:
     | "canvasBackground"

@@ -27,6 +27,7 @@ export class Renderer {
     const getVisibleCanvasElements = ({
       elementsMap,
       zoom,
+      viewAngle,
       offsetLeft,
       offsetTop,
       scrollX,
@@ -36,6 +37,7 @@ export class Renderer {
     }: {
       elementsMap: NonDeletedElementsMap;
       zoom: AppState["zoom"];
+      viewAngle: AppState["viewAngle"];
       offsetLeft: AppState["offsetLeft"];
       offsetTop: AppState["offsetTop"];
       scrollX: AppState["scrollX"];
@@ -52,6 +54,7 @@ export class Renderer {
             height,
             {
               zoom,
+              viewAngle,
               offsetLeft,
               offsetTop,
               scrollX,
@@ -98,6 +101,7 @@ export class Renderer {
     return memoize(
       ({
         zoom,
+        viewAngle,
         offsetLeft,
         offsetTop,
         scrollX,
@@ -110,6 +114,7 @@ export class Renderer {
         sceneNonce: _sceneNonce,
       }: {
         zoom: AppState["zoom"];
+        viewAngle: AppState["viewAngle"];
         offsetLeft: AppState["offsetLeft"];
         offsetTop: AppState["offsetTop"];
         scrollX: AppState["scrollX"];
@@ -133,6 +138,7 @@ export class Renderer {
         const visibleElements = getVisibleCanvasElements({
           elementsMap,
           zoom,
+          viewAngle,
           offsetLeft,
           offsetTop,
           scrollX,

@@ -474,13 +474,8 @@ export const StickersPanel: React.FC<StickersPanelProps> = ({
 
           const { x: sceneX, y: sceneY } = viewportCoordsToSceneCoords(
             { clientX: e.clientX, clientY: e.clientY },
-            {
-              zoom: appState.zoom,
-              offsetLeft: appState.offsetLeft,
-              offsetTop: appState.offsetTop,
-              scrollX: appState.scrollX,
-              scrollY: appState.scrollY,
-            },
+            // the whole state, so a tilted view is accounted for
+            appState,
           );
 
           await insertItemToCanvas(dragData.item, sceneX, sceneY);
@@ -504,13 +499,8 @@ export const StickersPanel: React.FC<StickersPanelProps> = ({
 
           const { x: sceneX, y: sceneY } = viewportCoordsToSceneCoords(
             { clientX: e.clientX, clientY: e.clientY },
-            {
-              zoom: appState.zoom,
-              offsetLeft: appState.offsetLeft,
-              offsetTop: appState.offsetTop,
-              scrollX: appState.scrollX,
-              scrollY: appState.scrollY,
-            },
+            // the whole state, so a tilted view is accounted for
+            appState,
           );
 
           await insertStaticEmoji(dragData.emoji, sceneX, sceneY);

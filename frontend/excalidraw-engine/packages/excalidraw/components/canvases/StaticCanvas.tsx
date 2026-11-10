@@ -77,6 +77,7 @@ const StaticCanvas = (props: StaticCanvasProps) => {
 const getRelevantAppStateProps = (appState: AppState): StaticCanvasAppState => {
   const relevantAppStateProps = {
     zoom: appState.zoom,
+    viewAngle: appState.viewAngle,
     scrollX: appState.scrollX,
     scrollY: appState.scrollY,
     width: appState.width,
