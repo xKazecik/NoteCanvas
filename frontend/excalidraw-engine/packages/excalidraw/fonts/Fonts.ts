@@ -4,6 +4,7 @@ import {
   CJK_HAND_DRAWN_FALLBACK_FONT,
   WINDOWS_EMOJI_FALLBACK_FONT,
   getFontFamilyFallbacks,
+  SYSTEM_FONT_FAMILIES,
 } from "@excalidraw/common";
 import { getContainerElement } from "@excalidraw/element";
 import { charWidth } from "@excalidraw/element";
@@ -39,6 +40,7 @@ import { HelveticaFontFaces } from "./Helvetica";
 import { LiberationFontFaces } from "./Liberation";
 import { LilitaFontFaces } from "./Lilita";
 import { NunitoFontFaces } from "./Nunito";
+import { SystemFontFaces } from "./System";
 import { VirgilFontFaces } from "./Virgil";
 import { XiaolaiFontFaces } from "./Xiaolai";
 
@@ -391,6 +393,9 @@ export class Fonts {
     init("Lilita One", ...LilitaFontFaces);
     init("Nunito", ...NunitoFontFaces);
     init("Virgil", ...VirgilFontFaces);
+    for (const family of SYSTEM_FONT_FAMILIES) {
+      init(family, ...SystemFontFaces);
+    }
 
     // fallback font faces
     init(CJK_HAND_DRAWN_FALLBACK_FONT, ...XiaolaiFontFaces);

@@ -133,14 +133,35 @@ export const FONT_FAMILY = {
   "Comic Shanns": 8,
   "Liberation Sans": 9,
   Assistant: 10,
+  // notecanvas: system document fonts (see fonts/System)
+  Arial: 11,
+  "Times New Roman": 12,
+  Georgia: 13,
+  Verdana: 14,
+  Tahoma: 15,
+  "Trebuchet MS": 16,
+  "Courier New": 17,
 };
+
+/** notecanvas: the system fonts, in the order the font picker lists them. */
+export const SYSTEM_FONT_FAMILIES = [
+  "Arial",
+  "Times New Roman",
+  "Georgia",
+  "Verdana",
+  "Tahoma",
+  "Trebuchet MS",
+  "Courier New",
+] as const;
 
 // Segoe UI Emoji fails to properly fallback for some glyphs: ∞, ∫, ≠
 // so we need to have generic font fallback before it
 export const SANS_SERIF_GENERIC_FONT = "sans-serif";
 export const MONOSPACE_GENERIC_FONT = "monospace";
+export const SERIF_GENERIC_FONT = "serif";
 
 export const FONT_FAMILY_GENERIC_FALLBACKS = {
+  [SERIF_GENERIC_FONT]: 997,
   [SANS_SERIF_GENERIC_FONT]: 998,
   [MONOSPACE_GENERIC_FONT]: 999,
 };
@@ -157,7 +178,12 @@ export function getGenericFontFamilyFallback(
   switch (fontFamily) {
     case FONT_FAMILY.Cascadia:
     case FONT_FAMILY["Comic Shanns"]:
+    case FONT_FAMILY["Courier New"]:
       return MONOSPACE_GENERIC_FONT;
+
+    case FONT_FAMILY["Times New Roman"]:
+    case FONT_FAMILY.Georgia:
+      return SERIF_GENERIC_FONT;
 
     default:
       return SANS_SERIF_GENERIC_FONT;
