@@ -8,6 +8,7 @@ import {
   markLocalDrawingPushed,
   storeLocalDrawing,
 } from "./localDrawings";
+import type { LocalDrawingRecord } from "./localDrawings";
 import { getStoredOfflineIds, setStoredOffline } from "./offlineState";
 
 /**
@@ -18,6 +19,7 @@ import { getStoredOfflineIds, setStoredOffline } from "./offlineState";
  */
 export const pushLocalChanges = async (id: string): Promise<void> => {
   const record = await getLocalRecord(id);
+  if (record?.pendingCreate) return pushLocalCreate(record);
   if (!record || record.pending.length === 0) return;
   const pending = new Set(record.pending);
   const local = record.drawing;
@@ -49,6 +51,41 @@ export const pushLocalChanges = async (id: string): Promise<void> => {
   });
 };
 
+/**
+ * Create on the server a drawing that was made offline, under the id it has
+ * had here all along, then flag it offline there like every other copy this
+ * browser keeps. Edits that land while this is in flight stay pending and go
+ * out with the next push as ordinary updates.
+ */
+const pushLocalCreate = async (record: LocalDrawingRecord): Promise<void> => {
+  const { drawing } = record;
+  const create = (collectionId: string | null) =>
+    api.createRemoteDrawing({
+      id: drawing.id,
+      name: drawing.name,
+      collectionId,
+      elements: drawing.elements ?? [],
+      appState: drawing.appState ?? {},
+      files: drawing.files ?? {},
+      preview: drawing.preview ?? null,
+    });
+
+  let created: Drawing;
+  try {
+    created = await create(drawing.collectionId ?? null);
+  } catch (err) {
+    // The collection it was made in was deleted or unshared in the meantime;
+    // the drawing matters more than where it was filed.
+    const status = api.isAxiosError(err) ? err.response?.status : undefined;
+    if (!drawing.collectionId || (status !== 403 && status !== 404)) throw err;
+    created = await create(null);
+  }
+  await api.setDrawingOffline(drawing.id, true);
+  await markLocalDrawingPushed(drawing.id, record.rev, {
+    version: created.version,
+  });
+};
+
 let syncRun: Promise<{ failed: number }> | null = null;
 
 /** Push every offline drawing that has pending edits; one run at a time. */
@@ -62,7 +99,13 @@ export const syncAllLocalChanges = (): Promise<{ failed: number }> => {
         } catch (err) {
           failed += 1;
           // Gone from the server (deleted elsewhere): drop the stale copy.
-          if (api.isAxiosError(err) && err.response?.status === 404) {
+          // Never one that has yet to be created there: this browser holds
+          // the only copy of it.
+          if (
+            api.isAxiosError(err) &&
+            err.response?.status === 404 &&
+            !(await getLocalRecord(id))?.pendingCreate
+          ) {
             await deleteLocalDrawing(id);
             setStoredOffline(id, false);
           }
