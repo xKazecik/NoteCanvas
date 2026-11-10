@@ -53,9 +53,17 @@ const strokeGrid = (
   zoom: Zoom,
   width: number,
   height: number,
+  /**
+   * notecanvas: how far past each edge to keep drawing, so that a tilted
+   * view's corners, which reach outside the untilted area, still have a grid
+   */
+  overscan = 0,
 ) => {
-  const offsetX = (scrollX % gridSize) - gridSize;
-  const offsetY = (scrollY % gridSize) - gridSize;
+  const pad = Math.ceil(overscan / gridSize) * gridSize;
+  width += pad * 2;
+  height += pad * 2;
+  const offsetX = (scrollX % gridSize) - gridSize - pad;
+  const offsetY = (scrollY % gridSize) - gridSize - pad;
 
   const actualGridSize = gridSize * zoom.value;
 
@@ -246,6 +254,7 @@ const _renderStaticScene = ({
     viewBackgroundColor: isHighlighterPenDrawing
       ? "transparent"
       : appState.viewBackgroundColor,
+    viewAngle: appState.viewAngle,
   });
 
   // Apply zoom
@@ -262,6 +271,13 @@ const _renderStaticScene = ({
       appState.zoom,
       normalizedWidth / appState.zoom.value,
       normalizedHeight / appState.zoom.value,
+      // a tilted view reaches out to its diagonal
+      appState.viewAngle && !isExporting
+        ? (Math.hypot(normalizedWidth, normalizedHeight) -
+            Math.min(normalizedWidth, normalizedHeight)) /
+            2 /
+            appState.zoom.value
+        : 0,
     );
   }
 

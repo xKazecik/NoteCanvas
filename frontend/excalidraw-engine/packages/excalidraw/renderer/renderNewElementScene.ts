@@ -40,6 +40,7 @@ const _renderNewElementScene = ({
       viewBackgroundColor: isHighlighterPenDrawing
         ? appState.viewBackgroundColor
         : "transparent",
+      viewAngle: appState.viewAngle,
     });
 
     context.save();

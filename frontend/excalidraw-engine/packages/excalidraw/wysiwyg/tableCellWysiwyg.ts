@@ -88,6 +88,7 @@ export const tableCellWysiwyg = ({
   excalidrawContainer,
   getViewportCoords,
   getZoom,
+  getViewAngle,
   onChange,
   onSubmit,
   onMove,
@@ -100,6 +101,8 @@ export const tableCellWysiwyg = ({
   excalidrawContainer: HTMLDivElement | null;
   getViewportCoords: (x: number, y: number) => [number, number];
   getZoom: () => number;
+  /** Degrees the view is tilted by, which the editor has to follow. */
+  getViewAngle?: () => number;
   onChange: (text: string) => void;
   onSubmit: (text: string) => void;
   onMove: (next: CellPosition) => void;
@@ -176,7 +179,9 @@ export const tableCellWysiwyg = ({
       fontStyle: style.italic ? "italic" : "normal",
       lineHeight: "1.25",
       textAlign: style.textAlign,
-      transform: `rotate(${element.angle}rad)`,
+      transform: `rotate(${element.angle}rad) rotate(${
+        getViewAngle?.() ?? 0
+      }deg)`,
       transformOrigin: "top left",
       zIndex: "var(--zIndex-wysiwyg)",
       whiteSpace: "pre-wrap",

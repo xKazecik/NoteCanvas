@@ -1,3 +1,5 @@
+import { rotateViewportPoint } from "@excalidraw/common";
+
 import type { AppState, NormalizedZoomValue } from "../types";
 
 export const getStateForZoom = (
@@ -12,8 +14,14 @@ export const getStateForZoom = (
   },
   appState: AppState,
 ) => {
-  const appLayerX = viewportX - appState.offsetLeft;
-  const appLayerY = viewportY - appState.offsetTop;
+  // notecanvas: scroll and zoom live in the untilted space, so the point to
+  // zoom about is taken there first; it then stays put on screen as well
+  const { x: appLayerX, y: appLayerY } = rotateViewportPoint(
+    viewportX - appState.offsetLeft,
+    viewportY - appState.offsetTop,
+    appState,
+    -1,
+  );
 
   const currentZoom = appState.zoom.value;
 

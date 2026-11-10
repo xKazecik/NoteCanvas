@@ -423,47 +423,106 @@ export const allowFullScreen = () =>
 
 export const exitFullScreen = () => document.exitFullscreen();
 
+/**
+ * notecanvas: the view can be tilted. `viewAngle` is in degrees, clockwise on
+ * screen, and the tilt is about the centre of the canvas, which is why the
+ * canvas size is needed alongside it. A state without the three behaves as
+ * untilted, so callers that never heard of tilting keep working.
+ */
+type ViewTilt = { viewAngle?: number; width?: number; height?: number };
+
+const getTilt = ({ viewAngle, width, height }: ViewTilt) =>
+  viewAngle && width && height
+    ? { angle: (viewAngle * Math.PI) / 180, cx: width / 2, cy: height / 2 }
+    : null;
+
+/**
+ * Turn a canvas-relative point from how it appears on the tilted screen into
+ * the untilted space scroll and zoom are expressed in (`direction` -1), or
+ * back (`direction` 1).
+ */
+export const rotateViewportPoint = (
+  x: number,
+  y: number,
+  state: ViewTilt,
+  direction: 1 | -1,
+) => {
+  const tilt = getTilt(state);
+  if (!tilt) {
+    return { x, y };
+  }
+  const cos = Math.cos(direction * tilt.angle);
+  const sin = Math.sin(direction * tilt.angle);
+  const dx = x - tilt.cx;
+  const dy = y - tilt.cy;
+  return {
+    x: tilt.cx + dx * cos - dy * sin,
+    y: tilt.cy + dx * sin + dy * cos,
+  };
+};
+
+/**
+ * A movement measured on screen (a drag, a wheel delta) as the movement it is
+ * in the untilted space, which is what scrollX / scrollY change by.
+ */
+export const rotateViewportDelta = (
+  deltaX: number,
+  deltaY: number,
+  state: Pick<ViewTilt, "viewAngle">,
+) => {
+  if (!state.viewAngle) {
+    return { deltaX, deltaY };
+  }
+  const angle = (-state.viewAngle * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return {
+    deltaX: deltaX * cos - deltaY * sin,
+    deltaY: deltaX * sin + deltaY * cos,
+  };
+};
+
 export const viewportCoordsToSceneCoords = (
   { clientX, clientY }: { clientX: number; clientY: number },
-  {
-    zoom,
-    offsetLeft,
-    offsetTop,
-    scrollX,
-    scrollY,
-  }: {
+  state: {
     zoom: Zoom;
     offsetLeft: number;
     offsetTop: number;
     scrollX: number;
     scrollY: number;
-  },
+  } & ViewTilt,
 ) => {
-  const x = (clientX - offsetLeft) / zoom.value - scrollX;
-  const y = (clientY - offsetTop) / zoom.value - scrollY;
+  const { zoom, offsetLeft, offsetTop, scrollX, scrollY } = state;
+  const point = rotateViewportPoint(
+    clientX - offsetLeft,
+    clientY - offsetTop,
+    state,
+    -1,
+  );
+  const x = point.x / zoom.value - scrollX;
+  const y = point.y / zoom.value - scrollY;
 
   return { x, y };
 };
 
 export const sceneCoordsToViewportCoords = (
   { sceneX, sceneY }: { sceneX: number; sceneY: number },
-  {
-    zoom,
-    offsetLeft,
-    offsetTop,
-    scrollX,
-    scrollY,
-  }: {
+  state: {
     zoom: Zoom;
     offsetLeft: number;
     offsetTop: number;
     scrollX: number;
     scrollY: number;
-  },
+  } & ViewTilt,
 ) => {
-  const x = (sceneX + scrollX) * zoom.value + offsetLeft;
-  const y = (sceneY + scrollY) * zoom.value + offsetTop;
-  return { x, y };
+  const { zoom, offsetLeft, offsetTop, scrollX, scrollY } = state;
+  const point = rotateViewportPoint(
+    (sceneX + scrollX) * zoom.value,
+    (sceneY + scrollY) * zoom.value,
+    state,
+    1,
+  );
+  return { x: point.x + offsetLeft, y: point.y + offsetTop };
 };
 
 export const getGlobalCSSVariable = (name: string) =>

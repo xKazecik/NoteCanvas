@@ -37,6 +37,7 @@ export const bootstrapCanvas = ({
   theme,
   isExporting,
   viewBackgroundColor,
+  viewAngle,
 }: {
   canvas: HTMLCanvasElement;
   scale: number;
@@ -45,6 +46,8 @@ export const bootstrapCanvas = ({
   theme?: AppState["theme"];
   isExporting?: StaticCanvasRenderConfig["isExporting"];
   viewBackgroundColor?: StaticCanvasAppState["viewBackgroundColor"];
+  /** notecanvas: degrees to tilt everything drawn after the background by. */
+  viewAngle?: number;
 }): CanvasRenderingContext2D => {
   const context = canvas.getContext("2d")!;
 
@@ -71,6 +74,14 @@ export const bootstrapCanvas = ({
     context.restore();
   } else {
     context.clearRect(0, 0, normalizedWidth, normalizedHeight);
+  }
+
+  // The background above covers the canvas whatever the tilt; everything
+  // drawn from here on turns about the centre of the canvas.
+  if (viewAngle && !isExporting) {
+    context.translate(normalizedWidth / 2, normalizedHeight / 2);
+    context.rotate((viewAngle * Math.PI) / 180);
+    context.translate(-normalizedWidth / 2, -normalizedHeight / 2);
   }
 
   return context;

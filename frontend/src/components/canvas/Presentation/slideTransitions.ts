@@ -61,6 +61,8 @@ export type SlideData = {
   slideHidden: boolean;
   /** Position in the presentation; lower comes first. */
   slideOrder: number;
+  /** Degrees the view is tilted by while this slide is shown. */
+  slideAngle: number;
 };
 
 /** Slides without a transition glide, as they did before there was a choice. */
@@ -80,6 +82,12 @@ export const getSlideSpeed = (frame: ExcalidrawFrameLikeElement): SlideSpeed => 
 
 export const getSlideDuration = (frame: ExcalidrawFrameLikeElement): number =>
   SLIDE_SPEEDS.find((speed) => speed.id === getSlideSpeed(frame))!.ms;
+
+/** The tilt a slide is shown at; slides are level unless they say otherwise. */
+export const getSlideAngle = (frame: ExcalidrawFrameLikeElement): number => {
+  const value = frame.customData?.slideAngle;
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+};
 
 export const isSlideHidden = (frame: ExcalidrawFrameLikeElement): boolean =>
   frame.customData?.slideHidden === true;
@@ -231,7 +239,7 @@ export const playSlideTransition = (
 
   const { width, height, theme, viewBackgroundColor } = api.getAppState();
   const viewport = { width, height };
-  const target = cameraForBox(to, viewport);
+  const target = cameraForBox(to, viewport, getSlideAngle(to));
   const { transition, duration, direction = 1 } = options;
   const cut = () => applyCamera(api, target);
 
@@ -252,7 +260,8 @@ export const playSlideTransition = (
         target,
         // further to travel than a plain glide, so it gets a little longer
         duration * 1.5,
-        cameraForBox(unionBox([from, to]), viewport).zoom * 0.9,
+        cameraForBox(unionBox([from, to]), viewport, getSlideAngle(to)).zoom *
+          0.9,
       );
       return;
 
@@ -324,7 +333,8 @@ export const playSlideTransition = (
  * still shows when presenting.
  */
 export const addSlideFromView = (api: ExcalidrawImperativeAPI) => {
-  const { scrollX, scrollY, zoom, width, height } = api.getAppState();
+  const { scrollX, scrollY, zoom, width, height, viewAngle } =
+    api.getAppState();
   const viewWidth = width / zoom.value;
   const viewHeight = height / zoom.value;
 
@@ -343,7 +353,11 @@ export const addSlideFromView = (api: ExcalidrawImperativeAPI) => {
     width: slideWidth,
     height: slideHeight,
     name: `Slide ${slides.length + 1}`,
-    customData: { slideOrder: slides.length },
+    // a tilted view becomes a slide shown at that tilt
+    customData: {
+      slideOrder: slides.length,
+      ...(viewAngle ? { slideAngle: viewAngle } : {}),
+    },
   });
 
   // slides with a stored position come before those without, so the existing

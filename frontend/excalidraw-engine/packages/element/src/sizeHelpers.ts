@@ -46,79 +46,91 @@ export const isInvisiblySmallElement = (
   return element.width === 0 && element.height === 0;
 };
 
+type ViewTransformations = {
+  zoom: Zoom;
+  offsetLeft: number;
+  offsetTop: number;
+  scrollX: number;
+  scrollY: number;
+  /** notecanvas: degrees the view is tilted by; absent means untilted. */
+  viewAngle?: number;
+};
+
+/**
+ * The scene rectangle the viewport shows, inset by `padding`. With a tilted
+ * view that is the box around the tilted viewport, so anything the box holds
+ * may be on screen and anything outside it is not.
+ */
+const getViewportSceneBox = (
+  width: number,
+  height: number,
+  viewTransformations: ViewTransformations,
+  padding?: Offsets,
+): [number, number, number, number] => {
+  const state = { ...viewTransformations, width, height };
+  const left = viewTransformations.offsetLeft + (padding?.left || 0);
+  const top = viewTransformations.offsetTop + (padding?.top || 0);
+  const right =
+    viewTransformations.offsetLeft + width - (padding?.right || 0);
+  const bottom =
+    viewTransformations.offsetTop + height - (padding?.bottom || 0);
+  const corners = (
+    viewTransformations.viewAngle
+      ? [
+          [left, top],
+          [right, top],
+          [right, bottom],
+          [left, bottom],
+        ]
+      : [
+          [left, top],
+          [right, bottom],
+        ]
+  ).map(([clientX, clientY]) =>
+    viewportCoordsToSceneCoords({ clientX, clientY }, state),
+  );
+  return [
+    Math.min(...corners.map((corner) => corner.x)),
+    Math.min(...corners.map((corner) => corner.y)),
+    Math.max(...corners.map((corner) => corner.x)),
+    Math.max(...corners.map((corner) => corner.y)),
+  ];
+};
+
 export const isElementInViewport = (
   element: ExcalidrawElement,
   width: number,
   height: number,
-  viewTransformations: {
-    zoom: Zoom;
-    offsetLeft: number;
-    offsetTop: number;
-    scrollX: number;
-    scrollY: number;
-  },
+  viewTransformations: ViewTransformations,
   elementsMap: ElementsMap,
 ) => {
   const [x1, y1, x2, y2] = getElementBounds(element, elementsMap); // scene coordinates
-  const topLeftSceneCoords = viewportCoordsToSceneCoords(
-    {
-      clientX: viewTransformations.offsetLeft,
-      clientY: viewTransformations.offsetTop,
-    },
-    viewTransformations,
-  );
-  const bottomRightSceneCoords = viewportCoordsToSceneCoords(
-    {
-      clientX: viewTransformations.offsetLeft + width,
-      clientY: viewTransformations.offsetTop + height,
-    },
+  const [left, top, right, bottom] = getViewportSceneBox(
+    width,
+    height,
     viewTransformations,
   );
 
-  return (
-    topLeftSceneCoords.x <= x2 &&
-    topLeftSceneCoords.y <= y2 &&
-    bottomRightSceneCoords.x >= x1 &&
-    bottomRightSceneCoords.y >= y1
-  );
+  return left <= x2 && top <= y2 && right >= x1 && bottom >= y1;
 };
 
 export const isElementCompletelyInViewport = (
   elements: ExcalidrawElement[],
   width: number,
   height: number,
-  viewTransformations: {
-    zoom: Zoom;
-    offsetLeft: number;
-    offsetTop: number;
-    scrollX: number;
-    scrollY: number;
-  },
+  viewTransformations: ViewTransformations,
   elementsMap: ElementsMap,
   padding?: Offsets,
 ) => {
   const [x1, y1, x2, y2] = getCommonBounds(elements, elementsMap); // scene coordinates
-  const topLeftSceneCoords = viewportCoordsToSceneCoords(
-    {
-      clientX: viewTransformations.offsetLeft + (padding?.left || 0),
-      clientY: viewTransformations.offsetTop + (padding?.top || 0),
-    },
+  const [left, top, right, bottom] = getViewportSceneBox(
+    width,
+    height,
     viewTransformations,
-  );
-  const bottomRightSceneCoords = viewportCoordsToSceneCoords(
-    {
-      clientX: viewTransformations.offsetLeft + width - (padding?.right || 0),
-      clientY: viewTransformations.offsetTop + height - (padding?.bottom || 0),
-    },
-    viewTransformations,
+    padding,
   );
 
-  return (
-    x1 >= topLeftSceneCoords.x &&
-    y1 >= topLeftSceneCoords.y &&
-    x2 <= bottomRightSceneCoords.x &&
-    y2 <= bottomRightSceneCoords.y
-  );
+  return x1 >= left && y1 >= top && x2 <= right && y2 <= bottom;
 };
 
 /**

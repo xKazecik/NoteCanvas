@@ -69,7 +69,7 @@ const getTransform = (
   maxHeight: number,
 ) => {
   const { zoom } = appState;
-  const degree = (180 * angle) / Math.PI;
+  const degree = (180 * angle) / Math.PI + appState.viewAngle;
   let translateX = (width * (zoom.value - 1)) / 2;
   let translateY = (height * (zoom.value - 1)) / 2;
   if (width > maxWidth && zoom.value !== 1) {
@@ -225,7 +225,18 @@ export const textWysiwyg = ({
           coordY = y;
         }
       }
-      const [viewportX, viewportY] = getViewportCoords(coordX, coordY);
+      let [viewportX, viewportY] = getViewportCoords(coordX, coordY);
+      if (appState.viewAngle) {
+        // The box turns about its centre, so with a tilted view it is the
+        // centre that has to land where the canvas draws it; the corner then
+        // follows from the box's on-screen size.
+        const [centerX, centerY] = getViewportCoords(
+          coordX + width / 2,
+          coordY + height / 2,
+        );
+        viewportX = centerX - (width * appState.zoom.value) / 2;
+        viewportY = centerY - (height * appState.zoom.value) / 2;
+      }
 
       if (!container) {
         maxWidth = (appState.width - 8 - viewportX) / appState.zoom.value;

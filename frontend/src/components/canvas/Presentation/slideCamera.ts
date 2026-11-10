@@ -1,7 +1,15 @@
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
-/** What part of the scene is on screen: its centre and the zoom level. */
-export type Camera = { centerX: number; centerY: number; zoom: number };
+/**
+ * What part of the scene is on screen: its centre, the zoom level, and how
+ * far the view is tilted (degrees; absent means level).
+ */
+export type Camera = {
+  centerX: number;
+  centerY: number;
+  zoom: number;
+  angle?: number;
+};
 
 type Box = { x: number; y: number; width: number; height: number };
 type Viewport = { width: number; height: number };
@@ -21,21 +29,42 @@ export const unionBox = (boxes: readonly Box[]): Box => {
   return { x: left, y: top, width: right - left, height: bottom - top };
 };
 
-/** The camera that shows `box` as large as fits, centred. */
-export const cameraForBox = (box: Box, viewport: Viewport): Camera => ({
-  centerX: box.x + box.width / 2,
-  centerY: box.y + box.height / 2,
-  zoom: clampZoom(
-    Math.min(viewport.width / box.width, viewport.height / box.height),
-  ),
-});
+/**
+ * The camera that shows `box` as large as fits, centred, with the view tilted
+ * by `angle` degrees. A tilted box takes up more room on screen, so it is its
+ * tilted outline that has to fit.
+ */
+export const cameraForBox = (
+  box: Box,
+  viewport: Viewport,
+  angle = 0,
+): Camera => {
+  const radians = (angle * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(radians));
+  const sin = Math.abs(Math.sin(radians));
+  return {
+    centerX: box.x + box.width / 2,
+    centerY: box.y + box.height / 2,
+    zoom: clampZoom(
+      Math.min(
+        viewport.width / (box.width * cos + box.height * sin),
+        viewport.height / (box.width * sin + box.height * cos),
+      ),
+    ),
+    angle,
+  };
+};
 
 export const readCamera = (api: ExcalidrawImperativeAPI): Camera => {
-  const { scrollX, scrollY, zoom, width, height } = api.getAppState();
+  const { scrollX, scrollY, zoom, width, height, viewAngle } =
+    api.getAppState();
+  // the view tilts about the centre of the canvas, so the scene point there
+  // is the same whatever the tilt
   return {
     centerX: width / 2 / zoom.value - scrollX,
     centerY: height / 2 / zoom.value - scrollY,
     zoom: zoom.value,
+    angle: viewAngle,
   };
 };
 
@@ -50,6 +79,9 @@ export const applyCamera = (
       scrollX: width / 2 / camera.zoom - camera.centerX,
       scrollY: height / 2 / camera.zoom - camera.centerY,
       zoom: { value: camera.zoom },
+      ...(camera.angle === undefined
+        ? {}
+        : { viewAngle: ((camera.angle % 360) + 360) % 360 }),
       ...extraAppState,
     } as Parameters<ExcalidrawImperativeAPI["updateScene"]>[0]["appState"],
   });
@@ -81,10 +113,14 @@ export const interpolateCamera = (
     const dip = Math.min(1, overview / direct);
     zoom *= Math.pow(dip, Math.sin(Math.PI * t));
   }
+  // turn the short way round: 350 to 10 degrees is 20 degrees, not 340
+  const fromAngle = from.angle ?? 0;
+  const turn = ((((to.angle ?? 0) - fromAngle) % 360) + 540) % 360 - 180;
   return {
     centerX: from.centerX + (to.centerX - from.centerX) * t,
     centerY: from.centerY + (to.centerY - from.centerY) * t,
     zoom: clampZoom(zoom),
+    angle: fromAngle + turn * t,
   };
 };
 

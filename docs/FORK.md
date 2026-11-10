@@ -149,3 +149,13 @@ and are invisible.
    `woff2-esbuild-plugins`.
 3. Re-apply the engine changes listed under "Changes to the vendored engine".
 4. `npm install && npm run build` in `frontend/`.
+
+- **Tilting the view.** `appState.viewAngle` (degrees) turns the whole view
+  about the centre of the canvas, set with the slider beside the zoom buttons.
+  Scroll and zoom keep their meaning in the untilted space; the tilt is applied
+  last when drawing (`bootstrapCanvas`) and first when reading the pointer
+  (`viewportCoordsToSceneCoords` / `sceneCoordsToViewportCoords`, which take it
+  from the state they are given). Code that builds its own cut-down state for
+  those two must include `viewAngle`, `width` and `height`, or it will be off
+  whenever the view is tilted. Screen-space deltas (drag and wheel panning) go
+  through `rotateViewportDelta`.

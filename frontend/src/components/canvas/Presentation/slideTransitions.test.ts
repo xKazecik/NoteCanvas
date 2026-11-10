@@ -81,7 +81,24 @@ describe("the presentation camera", () => {
   it("fits a slide to the viewport, centred", () => {
     expect(
       cameraForBox({ x: 100, y: 100, width: 400, height: 200 }, viewport),
-    ).toEqual({ centerX: 300, centerY: 200, zoom: 2 });
+    ).toEqual({ centerX: 300, centerY: 200, zoom: 2, angle: 0 });
+  });
+
+  it("fits a tilted slide by its tilted outline", () => {
+    // on its side, the 400x200 slide is 200 wide and 400 tall on screen
+    const camera = cameraForBox(
+      { x: 0, y: 0, width: 400, height: 200 },
+      viewport,
+      90,
+    );
+    expect(camera.zoom).toBeCloseTo(1.5);
+    expect(camera.angle).toBe(90);
+  });
+
+  it("turns the short way between two tilts", () => {
+    const at = (angle: number) => ({ centerX: 0, centerY: 0, zoom: 1, angle });
+    expect(interpolateCamera(at(350), at(10), 0.5).angle).toBeCloseTo(360);
+    expect(interpolateCamera(at(10), at(350), 0.5).angle).toBeCloseTo(0);
   });
 
   it("spans every box in a union", () => {
@@ -96,8 +113,8 @@ describe("the presentation camera", () => {
   it("starts and ends exactly on the two cameras", () => {
     const from = { centerX: 0, centerY: 0, zoom: 1 };
     const to = { centerX: 100, centerY: 50, zoom: 4 };
-    expect(interpolateCamera(from, to, 0)).toEqual(from);
-    expect(interpolateCamera(from, to, 1)).toEqual(to);
+    expect(interpolateCamera(from, to, 0)).toMatchObject(from);
+    expect(interpolateCamera(from, to, 1)).toMatchObject(to);
     // halfway: the centre is midway, the zoom is the geometric mean
     const mid = interpolateCamera(from, to, 0.5);
     expect(mid.centerX).toBeCloseTo(50);

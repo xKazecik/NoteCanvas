@@ -20,7 +20,7 @@ import { ThreadPopup } from "./ThreadPopup";
  */
 type Viewport = Pick<
   AppState,
-  "scrollX" | "scrollY" | "zoom" | "offsetLeft" | "offsetTop"
+  "scrollX" | "scrollY" | "zoom" | "offsetLeft" | "offsetTop" | "viewAngle" | "width" | "height"
 >;
 
 type CommentLayerProps = {
@@ -90,6 +90,10 @@ export const CommentLayer: React.FC<CommentLayerProps> = ({
         zoom: state.zoom,
         offsetLeft: state.offsetLeft,
         offsetTop: state.offsetTop,
+        // the view can be tilted about the centre of the canvas
+        viewAngle: state.viewAngle,
+        width: state.width,
+        height: state.height,
       });
     };
     readViewport();

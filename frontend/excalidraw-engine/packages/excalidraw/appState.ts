@@ -114,6 +114,7 @@ export const getDefaultAppState = (): Omit<
     zoom: {
       value: 1 as NormalizedZoomValue,
     },
+    viewAngle: 0,
     viewModeEnabled: false,
     showHyperlinkPopup: false,
     selectedLinearElement: null,
@@ -255,6 +256,7 @@ const APP_STATE_STORAGE_CONF = (<
   width: { browser: false, export: false, server: false },
   zenModeEnabled: { browser: true, export: false, server: false },
   zoom: { browser: true, export: false, server: false },
+  viewAngle: { browser: true, export: false, server: false },
   viewModeEnabled: { browser: false, export: false, server: false },
   showHyperlinkPopup: { browser: false, export: false, server: false },
   selectedLinearElement: { browser: true, export: false, server: false },
