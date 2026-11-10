@@ -27,6 +27,7 @@ import { useAuth } from "../../context/AuthContext";
 import {
   CanvasSidebar,
   CanvasSidebarTrigger,
+  ElementsSidebar,
 } from "../../components/canvas/CanvasSidebar";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { UserIdentity } from "../../utils/identity";
@@ -331,6 +332,28 @@ export const EditorView: React.FC<EditorViewProps> = ({
               <LanguageSelector langCode={langCode} onChange={onSetLangCode} />
             </MainMenu.ItemCustom>
           </MainMenu>
+          {/* Not gated on canvasApi like the panels below: Excalidraw only
+              drops its own library sidebar for one present on first render. */}
+          {canEdit && (
+            <ElementsSidebar
+              excalidrawAPI={canvasApi}
+              comments={
+                canUseComments
+                  ? {
+                      threads: comments.threads,
+                      isLoading: comments.isLoading,
+                      error: comments.error,
+                      selectedThreadId,
+                      onSelectThread: setSelectedThreadId,
+                      onStartPlacing: () => {
+                        setSelectedThreadId(null);
+                        setIsPlacingComment(true);
+                      },
+                    }
+                  : undefined
+              }
+            />
+          )}
           {/* Ported from AstraDraw. These sit inside <Excalidraw> because they
               read the editor's React context, the same way MainMenu does. */}
           {canvasApi && (
@@ -339,24 +362,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
               {canEdit && (
                 <>
                   <PenToolbar excalidrawAPI={canvasApi} />
-                  <CanvasSidebar
-                    excalidrawAPI={canvasApi}
-                    comments={
-                      canUseComments
-                        ? {
-                            threads: comments.threads,
-                            isLoading: comments.isLoading,
-                            error: comments.error,
-                            selectedThreadId,
-                            onSelectThread: setSelectedThreadId,
-                            onStartPlacing: () => {
-                              setSelectedThreadId(null);
-                              setIsPlacingComment(true);
-                            },
-                          }
-                        : undefined
-                    }
-                  />
+                  <CanvasSidebar excalidrawAPI={canvasApi} />
                 </>
               )}
             </>
