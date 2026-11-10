@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import type { NavigateFunction } from "react-router-dom";
+import { toast } from "sonner";
 import * as api from "../../api";
 import type { Collection, DrawingSummary } from "../../types";
 
@@ -68,7 +69,15 @@ export const useDashboardDrawingActions = ({
     try {
       const targetCollectionId =
         selectedCollectionId === undefined ? null : selectedCollectionId;
-      const { id } = await api.createDrawing("Untitled Drawing", targetCollectionId);
+      const { id, offline } = await api.createDrawing(
+        "Untitled Drawing",
+        targetCollectionId,
+      );
+      if (offline) {
+        toast.info(
+          "You're offline. This board is saved on this device and will sync when you're connected again.",
+        );
+      }
       navigate(`/editor/${id}`);
     } catch (err) {
       console.error(err);

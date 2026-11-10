@@ -1,9 +1,11 @@
 import type { Drawing } from "../types";
+import { uuidv4 } from "../utils/uuid";
 import { idbDelete, idbGet, idbGetAll, idbPut } from "./offlineDb";
 import {
   getCurrentUserId,
   isStoredOffline,
   notifyLocalChange,
+  setStoredOffline,
 } from "./offlineState";
 
 /** Parts of a drawing edited locally and not yet pushed to the server. */
@@ -18,6 +20,11 @@ export type LocalDrawingRecord = {
   /** Bumped on every local edit, so a sync can tell if it raced one. */
   rev: number;
   syncedAt: number | null;
+  /**
+   * Made in this browser while the server could not be reached, and not on
+   * the server yet. The sync engine creates it there, under the same id.
+   */
+  pendingCreate?: boolean;
 };
 
 // Every read-modify-write goes through this queue: an autosave and a preview
@@ -51,6 +58,44 @@ export const storeLocalDrawing = (drawing: Drawing) =>
       syncedAt: Date.now(),
     } satisfies LocalDrawingRecord),
   );
+
+/**
+ * Start a drawing that exists only in this browser for now. It behaves like
+ * any other offline copy; the first sync creates it on the server.
+ */
+export const createLocalDrawing = (name: string, collectionId: string | null) =>
+  serialize(async (): Promise<Drawing> => {
+    const now = Date.now();
+    const drawing: Drawing = {
+      id: uuidv4(),
+      name,
+      collectionId,
+      createdAt: now,
+      updatedAt: now,
+      version: 1,
+      preview: null,
+      elements: [],
+      appState: {},
+      files: {},
+      accessLevel: "owner",
+    };
+    await idbPut("drawings", {
+      id: drawing.id,
+      userId: getCurrentUserId(),
+      drawing,
+      pending: [],
+      rev: 0,
+      syncedAt: null,
+      pendingCreate: true,
+    } satisfies LocalDrawingRecord);
+    setStoredOffline(drawing.id, true);
+    notifyLocalChange();
+    return drawing;
+  });
+
+/** Whether the drawing was made offline and has not reached the server yet. */
+export const isPendingCreate = async (id: string) =>
+  isStoredOffline(id) && !!(await getLocalRecord(id))?.pendingCreate;
 
 export const deleteLocalDrawing = (id: string) =>
   serialize(() => idbDelete("drawings", id));
@@ -86,6 +131,11 @@ export const updateLocalDrawing = (id: string, data: Partial<Drawing>) =>
       drawing.preview = data.preview;
       pending.add("preview");
     }
+    // Where a drawing sits is normally the server's business; one that is not
+    // there yet carries it along until it is created.
+    if (data.collectionId !== undefined && record.pendingCreate) {
+      drawing.collectionId = data.collectionId;
+    }
     await idbPut("drawings", {
       ...record,
       drawing,
@@ -119,5 +169,6 @@ export const markLocalDrawingPushed = (
       },
       pending: clean ? [] : record.pending,
       syncedAt: Date.now(),
+      pendingCreate: false,
     } satisfies LocalDrawingRecord);
   });

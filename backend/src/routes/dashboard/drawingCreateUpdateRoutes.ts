@@ -103,6 +103,7 @@ export const registerDrawingCreateUpdateRoutes = (
       }
 
       const payload = parsed.data as {
+        id?: string;
         name?: string;
         collectionId?: string | null;
         elements: unknown;
@@ -145,7 +146,36 @@ export const registerDrawingCreateUpdateRoutes = (
         await ensureTrashCollection(prisma, req.user.id);
       }
 
-      const newDrawingId = uuidv4();
+      // A drawing made while its owner was offline already has an id: the
+      // browser has been saving it, and linking to it, under that id. Creating
+      // it here under the same one is what lets those keep working. The
+      // request may be retried after a lost response, so a repeat is answered
+      // with the drawing rather than refused.
+      if (payload.id) {
+        const existing = await prisma.drawing.findUnique({
+          where: { id: payload.id },
+        });
+        if (existing && existing.userId !== req.user.id) {
+          return res.status(409).json({
+            error: "Conflict",
+            message: "A drawing with this id already exists",
+          });
+        }
+        if (existing) {
+          return res.json({
+            ...existing,
+            collectionId: toPublicTrashCollectionId(
+              existing.collectionId,
+              req.user.id,
+            ),
+            elements: parseJsonField(existing.elements, []),
+            appState: parseJsonField(existing.appState, {}),
+            files: parseJsonField(existing.files, {}),
+          });
+        }
+      }
+
+      const newDrawingId = payload.id ?? uuidv4();
       const originalFiles = payload.files ?? {};
       const knownFileIdsBefore = await listDrawingFileIds(newDrawingId);
       const processedFiles = await internDrawingFiles(

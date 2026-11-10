@@ -84,6 +84,22 @@ export const listFromSnapshot = async (query: SnapshotQuery) => {
     const local = localById.get(d.id);
     return local ? { ...d, name: local.name, updatedAt: local.updatedAt } : d;
   });
+  // Drawings made offline are in no snapshot: the server has never seen them.
+  for (const record of records) {
+    if (record.pendingCreate) {
+      const { id, name, collectionId, createdAt, updatedAt, version } =
+        record.drawing;
+      owned.push({
+        id,
+        name,
+        collectionId,
+        createdAt,
+        updatedAt,
+        version,
+        accessLevel: "owner",
+      });
+    }
+  }
   const ownedIds = new Set(owned.map((d) => d.id));
   const { selectedCollectionId: selected } = query;
   let drawings: DrawingSummary[];

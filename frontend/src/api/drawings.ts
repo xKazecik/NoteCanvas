@@ -1,10 +1,18 @@
 import type { Drawing, DrawingSummary } from "../types";
 import { normalizePreviewSvg } from "../utils/previewSvg";
 import { sanitizePreviewSvg } from "../utils/sanitizePreviewSvg";
-import { getConnectionTimeoutMs, isStoredOffline } from "../offline/offlineState";
 import {
+  getConnectionTimeoutMs,
+  isNetworkError,
+  isOnline,
+  isStoredOffline,
+  setStoredOffline,
+} from "../offline/offlineState";
+import {
+  createLocalDrawing,
   deleteLocalDrawing,
   getLocalDrawing,
+  isPendingCreate,
   updateLocalDrawing,
 } from "../offline/localDrawings";
 import { api, isAxiosError } from "./client";
@@ -301,17 +309,52 @@ export const revokeLinkShare = async (
   return response.data;
 };
 
+/**
+ * Create a drawing. When the server cannot be reached the drawing is started
+ * in this browser instead (`offline: true`) and created on the server by the
+ * sync engine once the connection is back.
+ */
 export const createDrawing = async (
   name?: string,
   collectionId?: string | null,
-) => {
-  const response = await api.post<{ id: string }>("/drawings", {
-    name: name || "Untitled Drawing",
-    collectionId: collectionId ?? null,
-    appState: {},
-    elements: [],
+): Promise<{ id: string; offline?: boolean }> => {
+  const drawingName = name || "Untitled Drawing";
+  const createOffline = async () => ({
+    id: (await createLocalDrawing(drawingName, collectionId ?? null)).id,
+    offline: true,
   });
-  return response.data;
+  // already known to be unreachable: don't make the user wait for a timeout
+  if (!isOnline()) return createOffline();
+  try {
+    const response = await api.post<{ id: string }>(
+      "/drawings",
+      {
+        name: drawingName,
+        collectionId: collectionId ?? null,
+        appState: {},
+        elements: [],
+      },
+      { timeout: getConnectionTimeoutMs() },
+    );
+    return response.data;
+  } catch (err) {
+    if (isNetworkError(err)) return createOffline();
+    throw err;
+  }
+};
+
+/** Create on the server a drawing that was made offline, keeping its id. */
+export const createRemoteDrawing = async (data: {
+  id: string;
+  name: string;
+  collectionId: string | null;
+  elements: any[];
+  appState: any;
+  files: Record<string, any>;
+  preview: string | null;
+}) => {
+  const response = await api.post<Drawing>("/drawings", data);
+  return deserializeDrawing(response.data);
 };
 
 /** Always writes to the server, even for a drawing kept offline. */
@@ -322,14 +365,26 @@ export const putRemoteDrawing = async (id: string, data: Partial<Drawing>) => {
 
 // Moving between collections is server-side organisation, not content, so it
 // goes straight to the server even for a drawing kept offline.
+// A drawing made offline is not on the server yet, so there even a move stays
+// with the copy here until it has been created.
 export const updateDrawing = async (id: string, data: Partial<Drawing>) =>
-  isStoredOffline(id) && data.collectionId === undefined
+  isStoredOffline(id) &&
+  (data.collectionId === undefined || (await isPendingCreate(id)))
     ? updateLocalDrawing(id, data)
     : putRemoteDrawing(id, data);
 
 export const deleteDrawing = async (id: string) => {
+  // made offline and never synced: this browser's copy is all there is
+  if (await isPendingCreate(id)) {
+    await deleteLocalDrawing(id);
+    setStoredOffline(id, false);
+    return { success: true as const };
+  }
   const response = await api.delete<{ success: true }>(`/drawings/${id}`);
-  if (isStoredOffline(id)) await deleteLocalDrawing(id);
+  if (isStoredOffline(id)) {
+    await deleteLocalDrawing(id);
+    setStoredOffline(id, false);
+  }
   return response.data;
 };
 
