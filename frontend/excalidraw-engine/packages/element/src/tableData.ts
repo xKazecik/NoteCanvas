@@ -1,4 +1,11 @@
 import {
+  DEFAULT_FONT_FAMILY,
+  DEFAULT_FONT_SIZE,
+  getFontString,
+} from "@excalidraw/common";
+
+import { CELL_LINE_HEIGHT } from "./renderTable";
+import {
   TABLE_DEFAULTS,
   emptyCell,
   getCell,
@@ -9,6 +16,8 @@ import {
 } from "./table";
 
 import { normalizeRange } from "./tableOps";
+import { getLineHeightInPx, measureText } from "./textMeasurements";
+import { wrapText } from "./textWrapping";
 
 import type { TablePatch } from "./tableOps";
 import type { CellPosition } from "./table";
@@ -236,5 +245,69 @@ export const sortRowsByColumn = (
       ...element.rowHeights.slice(0, first),
       ...order.map((row) => element.rowHeights[row.index + first]),
     ],
+  };
+};
+
+/** Widest a column is sized to fit its text before the text wraps instead. */
+const IMPORT_MAX_COL_WIDTH = 320;
+const IMPORT_MIN_COL_WIDTH = 60;
+
+/**
+ * The tracks and cells for a table holding `rows`, as when importing a
+ * spreadsheet: each column is as wide as its longest cell up to a limit, past
+ * which text wraps and the row grows taller instead. Short rows are padded so
+ * the grid is rectangular.
+ */
+export const tableFromRows = (
+  rows: readonly (readonly string[])[],
+): Pick<ExcalidrawTableElement, "colWidths" | "rowHeights" | "cells"> => {
+  const cols = Math.max(1, ...rows.map((row) => row.length));
+  const grid = (rows.length ? rows : [[]]).map((row) =>
+    Array.from({ length: cols }, (_, col) => row[col] ?? ""),
+  );
+
+  const font = getFontString({
+    fontSize: DEFAULT_FONT_SIZE,
+    fontFamily: DEFAULT_FONT_FAMILY,
+  });
+  const padding = TABLE_DEFAULTS.cellPadding * 2;
+  // a header row is drawn bold, which runs a little wider than measured
+  const slack = 1.1;
+
+  const colWidths = Array.from({ length: cols }, (_, col) => {
+    const widest = Math.max(
+      0,
+      ...grid.map((row) =>
+        row[col] ? measureText(row[col], font, CELL_LINE_HEIGHT).width : 0,
+      ),
+    );
+    return Math.round(
+      Math.min(
+        IMPORT_MAX_COL_WIDTH,
+        Math.max(IMPORT_MIN_COL_WIDTH, widest * slack + padding),
+      ),
+    );
+  });
+
+  const lineHeight = getLineHeightInPx(DEFAULT_FONT_SIZE, CELL_LINE_HEIGHT);
+  const rowHeights = grid.map((row) => {
+    const lines = Math.max(
+      1,
+      ...row.map((text, col) =>
+        text
+          ? wrapText(text, font, colWidths[col] - padding).split("\n").length
+          : 1,
+      ),
+    );
+    return Math.max(
+      TABLE_DEFAULTS.rowHeight,
+      Math.ceil(lines * lineHeight + padding),
+    );
+  });
+
+  return {
+    colWidths,
+    rowHeights,
+    cells: grid.map((row) => row.map((text) => ({ text }))),
   };
 };

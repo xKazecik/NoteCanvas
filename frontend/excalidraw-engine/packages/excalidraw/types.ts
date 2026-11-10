@@ -437,6 +437,7 @@ export interface AppState {
     | "compactOtherProperties"
     | "compactArrowProperties"
     | "eraserSize"
+    | "tableTool"
     | null;
   openSidebar: { name: SidebarName; tab?: SidebarTabName } | null;
   openDialog:
@@ -445,6 +446,8 @@ export interface AppState {
     | { name: "ttd"; tab: "text-to-diagram" | "mermaid" }
     | { name: "commandPalette" }
     | { name: "settings" }
+    // notecanvas: rendered by the host app, which owns the file parsing
+    | { name: "tableImport" }
     | { name: "elementLinkSelector"; sourceElementId: ExcalidrawElement["id"] };
   /**
    * Reflects user preference for whether the default sidebar should be docked.

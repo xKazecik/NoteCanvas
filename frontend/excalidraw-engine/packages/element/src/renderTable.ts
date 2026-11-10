@@ -28,7 +28,7 @@ const TINTS = {
 } as const;
 
 /** Unitless line height used for cell text. Matches the engine's text default. */
-const CELL_LINE_HEIGHT = 1.25 as ExcalidrawTextElement["lineHeight"];
+export const CELL_LINE_HEIGHT = 1.25 as ExcalidrawTextElement["lineHeight"];
 
 export const getTableTints = (theme: Theme) =>
   TINTS[theme === THEME.DARK ? THEME.DARK : THEME.LIGHT];

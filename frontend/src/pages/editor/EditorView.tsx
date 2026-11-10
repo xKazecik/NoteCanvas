@@ -19,6 +19,7 @@ import { GridStepSelector } from "../../components/GridStepSelector";
 import type { Socket } from "socket.io-client";
 import { PresentationMode } from "../../components/canvas/Presentation";
 import { PenToolbar } from "../../components/canvas/pens";
+import { TableImportDialog } from "../../components/canvas/tables/TableImportDialog";
 import {
   CommentLayer,
   useCommentThreads,
@@ -362,6 +363,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
               {canEdit && (
                 <>
                   <PenToolbar excalidrawAPI={canvasApi} />
+                  <TableImportDialog excalidrawAPI={canvasApi} />
                   <CanvasSidebar excalidrawAPI={canvasApi} />
                 </>
               )}

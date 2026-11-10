@@ -338,3 +338,10 @@ export {
 // @excalidraw/element in the app would pull a second, separate copy.
 export { randomId } from "@excalidraw/common";
 export { newEmbeddableElement, newImageElement } from "@excalidraw/element";
+// notecanvas: the table import dialog lives in the app
+export {
+  newTableElement,
+  syncInvalidIndices,
+  tableFromRows,
+} from "@excalidraw/element";
+export { FilledButton } from "./components/FilledButton";
