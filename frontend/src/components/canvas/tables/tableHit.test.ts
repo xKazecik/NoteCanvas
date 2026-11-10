@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getTableAddHandleAtLocalPoint,
   hitElementItself,
   isFilledShape,
   newElement,
@@ -47,5 +48,38 @@ describe("isFilledShape", () => {
     expect(
       isFilledShape(newTableElement({ x: 0, y: 0, backgroundColor: "#fff" })),
     ).toBe(false);
+  });
+});
+
+describe("the add-row and add-column buttons", () => {
+  const table = newTableElement({ x: 0, y: 0, rows: 2, cols: 2 });
+
+  it("sit just outside the right and bottom edge", () => {
+    expect(
+      getTableAddHandleAtLocalPoint(table, table.width + 22, table.height / 2, 1)
+        ?.kind,
+    ).toBe("col");
+    expect(
+      getTableAddHandleAtLocalPoint(table, table.width / 2, table.height + 22, 1)
+        ?.kind,
+    ).toBe("row");
+  });
+
+  it("are not hit from inside the table", () => {
+    expect(
+      getTableAddHandleAtLocalPoint(table, table.width - 5, table.height / 2, 1),
+    ).toBeNull();
+  });
+
+  it("keep their on-screen size when zoomed out", () => {
+    // at 50% zoom the button is twice as far out, and twice as big, in scene
+    // units
+    expect(
+      getTableAddHandleAtLocalPoint(table, table.width + 60, table.height / 2, 1),
+    ).toBeNull();
+    expect(
+      getTableAddHandleAtLocalPoint(table, table.width + 60, table.height / 2, 0.5)
+        ?.kind,
+    ).toBe("col");
   });
 });

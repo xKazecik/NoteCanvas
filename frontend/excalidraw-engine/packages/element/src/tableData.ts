@@ -9,6 +9,8 @@ import {
   TABLE_DEFAULTS,
   emptyCell,
   getCell,
+  getCellBox,
+  resolveCellStyle,
   tableColumnCount,
   tableHeight,
   tableRowCount,
@@ -310,4 +312,54 @@ export const tableFromRows = (
     rowHeights,
     cells: grid.map((row) => row.map((text) => ({ text }))),
   };
+};
+
+/**
+ * Taller rows wherever a cell's wrapped text no longer fits, so text is never
+ * clipped by its own cell. Rows are only ever grown: a height the user chose
+ * is kept. Returns null when every row already fits.
+ */
+export const growRowsToFitText = (
+  element: ExcalidrawTableElement,
+): Pick<ExcalidrawTableElement, "rowHeights" | "height"> | null => {
+  const padding = TABLE_DEFAULTS.cellPadding * 2;
+  let grew = false;
+
+  const rowHeights = element.rowHeights.map((height, row) => {
+    let needed = height;
+    (element.cells[row] ?? []).forEach((cell, col) => {
+      // a cell merged down several rows has those rows' combined height
+      if (!cell.text || cell.spannedBy || (cell.rowSpan ?? 1) > 1) {
+        return;
+      }
+      const box = getCellBox(element, row, col);
+      if (!box) {
+        return;
+      }
+      // only the font matters here, so the colours are left blank
+      const style = resolveCellStyle(element, row, col, {
+        headerColor: "",
+        bandingColor: "",
+      });
+      const font = getFontString({
+        fontSize: style.fontSize,
+        fontFamily: style.fontFamily,
+      });
+      const lines = wrapText(
+        cell.text,
+        font,
+        Math.max(0, box.width - padding),
+      ).split("\n").length;
+      needed = Math.max(
+        needed,
+        Math.ceil(
+          lines * getLineHeightInPx(style.fontSize, CELL_LINE_HEIGHT) + padding,
+        ),
+      );
+    });
+    grew ||= needed > height;
+    return needed;
+  });
+
+  return grew ? { rowHeights, height: tableHeight(rowHeights) } : null;
 };

@@ -4,6 +4,7 @@ import {
   clearCells,
   deleteColumn,
   deleteRow,
+  growRowsToFitText,
   insertColumn,
   insertRow,
   isTableElement,
@@ -235,7 +236,11 @@ export const performTableOperation = (
       captureUpdate: CaptureUpdateAction.EVENTUALLY,
     };
   }
-  const { update } = result;
+  // a bigger font or a restyle can outgrow its row, so rows grow to keep up
+  const update = {
+    ...result.update,
+    ...growRowsToFitText({ ...target.table, ...result.update }),
+  };
 
   const next = elements.map((element) =>
     element.id === target.table.id

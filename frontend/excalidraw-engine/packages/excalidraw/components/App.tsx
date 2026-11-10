@@ -131,6 +131,9 @@ import {
   newTableElement,
   getCellAtLocalPoint,
   getTrackHandleAtLocalPoint,
+  getTableAddHandleAtLocalPoint,
+  growRowsToFitText,
+  insertColumn,
   isTableElement,
   isFilledShape,
   moveAllLeft,
@@ -6840,6 +6843,10 @@ class App extends React.Component<AppProps, AppState> {
       scenePointer.x,
       scenePointer.y,
     );
+    const tableAddHandle = this.getTableAddHandleAtSceneCoords(
+      scenePointer.x,
+      scenePointer.y,
+    );
     if (isEraserActive(this.state)) {
       return;
     }
@@ -6869,6 +6876,8 @@ class App extends React.Component<AppProps, AppState> {
           this.interactiveCanvas,
           isTextElement(hitElement) ? CURSOR_TYPE.TEXT : CURSOR_TYPE.CROSSHAIR,
         );
+      } else if (tableAddHandle) {
+        setCursor(this.interactiveCanvas, CURSOR_TYPE.POINTER);
       } else if (tableTrackHandle) {
         // signal that this border can be dragged, the way a spreadsheet does
         setCursor(
@@ -7314,6 +7323,9 @@ class App extends React.Component<AppProps, AppState> {
     this.clearSelectionIfNotUsingSelection();
     this.updateBindingEnabledOnPointerMove(event);
 
+    if (this.maybeAddTableTrack(event)) {
+      return;
+    }
     if (this.maybeStartTableTrackResize(event)) {
       return;
     }
@@ -9006,6 +9018,12 @@ class App extends React.Component<AppProps, AppState> {
         { [table.id]: true },
         prevState,
       ),
+      // the first cell is picked, so typing right away starts filling it in
+      selectedTableCells: {
+        elementId: table.id,
+        anchor: { row: 0, col: 0 },
+        focus: { row: 0, col: 0 },
+      },
       activeTool: updateActiveTool(this.state, { type: "selection" }),
     }));
   };
@@ -9050,6 +9068,60 @@ class App extends React.Component<AppProps, AppState> {
       TABLE_TRACK_HANDLE_THRESHOLD / this.state.zoom.value,
     );
     return handle ? { table, handle } : null;
+  };
+
+  /**
+   * The "+" button under the pointer, beside the one selected table. They
+   * append a row below or a column on the right.
+   */
+  private getTableAddHandleAtSceneCoords = (sceneX: number, sceneY: number) => {
+    if (
+      this.state.viewModeEnabled ||
+      this.state.activeTool.type !== this.state.preferredSelectionTool.type
+    ) {
+      return null;
+    }
+    const selected = this.scene.getSelectedElements(this.state);
+    const table = selected.length === 1 ? selected[0] : null;
+    if (!isTableElement(table) || table.locked) {
+      return null;
+    }
+    const local = toLocalPoint(table, sceneX, sceneY);
+    const handle = getTableAddHandleAtLocalPoint(
+      table,
+      local.x,
+      local.y,
+      this.state.zoom.value,
+    );
+    return handle ? { table, handle } : null;
+  };
+
+  private maybeAddTableTrack = (
+    event: React.PointerEvent<HTMLElement>,
+  ): boolean => {
+    const origin = viewportCoordsToSceneCoords(event, this.state);
+    const target = this.getTableAddHandleAtSceneCoords(origin.x, origin.y);
+    if (!target) {
+      return false;
+    }
+    const { table, handle } = target;
+    this.scene.mutateElement(
+      table,
+      handle.kind === "row"
+        ? insertRow(table, table.rowHeights.length)
+        : insertColumn(table, table.colWidths.length),
+    );
+    this.store.scheduleCapture();
+    return true;
+  };
+
+  /** Grow any rows of a table whose text has outgrown them. */
+  private growTableRows = (tableId: string) => {
+    const table = this.scene.getElement(tableId);
+    const grown = isTableElement(table) ? growRowsToFitText(table) : null;
+    if (grown) {
+      this.scene.mutateElement(table!, grown);
+    }
   };
 
   /**
@@ -9249,6 +9321,7 @@ class App extends React.Component<AppProps, AppState> {
     const values = parseTSV(text);
     const start = { row: range.top, col: range.left };
     this.scene.mutateElement(table, fillCells(table, start, values));
+    this.growTableRows(table.id);
     this.store.scheduleCapture();
     this.setState({
       selectedTableCells: {
@@ -9289,6 +9362,7 @@ class App extends React.Component<AppProps, AppState> {
         ),
       );
       this.scene.mutateElement(latest, { cells });
+      this.growTableRows(latest.id);
     };
 
     this.tableCellEditor =
