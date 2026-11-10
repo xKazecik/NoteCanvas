@@ -136,6 +136,11 @@ import {
   getTableAddHandleAtLocalPoint,
   growRowsToFitText,
   insertColumn,
+  fillCellsFromPaste,
+  parseHTMLTable,
+  pastedCellCount,
+  rangeToHTML,
+  tableLayoutFromPaste,
   isTableElement,
   isFilledShape,
   moveAllLeft,
@@ -305,7 +310,7 @@ import type {
   ExcalidrawTableElement,
 } from "@excalidraw/element/types";
 
-import type { CellPosition } from "@excalidraw/element";
+import type { CellPosition, PastedTable } from "@excalidraw/element";
 
 import type { Mutable, ValueOf } from "@excalidraw/common/utility-types";
 
@@ -3710,15 +3715,36 @@ class App extends React.Component<AppProps, AppState> {
         return;
       }
 
-      // text pasted while cells are picked goes into the table; read it before
-      // any await, for the same reason as below
+      // A table copied from a spreadsheet comes with its formatting as HTML.
+      // Text pasted while cells are picked goes into the table; read it
+      // before any await, for the same reason as below.
+      const pastedTable =
+        event && !isPlainPaste
+          ? parseHTMLTable(event.clipboardData?.getData("text/html") ?? "")
+          : null;
       if (
         event &&
         this.pasteIntoTableCells(
           event.clipboardData?.getData("text/plain") ?? "",
+          pastedTable,
         )
       ) {
         event.preventDefault();
+        return;
+      }
+      // anywhere else on the canvas, a copied table becomes a table, formatted
+      // the way it was; a single cell is still just text
+      if (
+        event &&
+        pastedTable &&
+        pastedCellCount(pastedTable) > 1 &&
+        !this.state.viewModeEnabled &&
+        !this.isCanvasClipboardText(
+          event.clipboardData?.getData("text/plain") ?? "",
+        )
+      ) {
+        event.preventDefault();
+        this.insertPastedTable(pastedTable);
         return;
       }
 
@@ -9301,6 +9327,11 @@ class App extends React.Component<AppProps, AppState> {
       "text/plain",
       rangeToTSV(target.table, target.range),
     );
+    // with the formatting, for spreadsheets and for pasting back in here
+    event.clipboardData.setData(
+      "text/html",
+      rangeToHTML(target.table, target.range),
+    );
     if (cut && !this.state.viewModeEnabled) {
       this.actionManager.executeAction(actionTableClearCells, "keyboard");
     }
@@ -9312,29 +9343,45 @@ class App extends React.Component<AppProps, AppState> {
    * Tab- and newline-separated text (what spreadsheets copy) spreads across
    * cells and grows the table as needed.
    */
-  private pasteIntoTableCells = (text: string): boolean => {
+  /** Whether pasted text is canvas elements copied in Excalidraw's format. */
+  private isCanvasClipboardText = (text: string) => {
+    try {
+      const { type } = JSON.parse(text) ?? {};
+      return (
+        type === EXPORT_DATA_TYPES.excalidrawClipboard ||
+        type === EXPORT_DATA_TYPES.excalidrawClipboardWithAPI
+      );
+    } catch {
+      return false;
+    }
+  };
+
+  private pasteIntoTableCells = (
+    text: string,
+    /** The same cells with their formatting, when the clipboard had them. */
+    pastedTable: PastedTable | null = null,
+  ): boolean => {
     const target = this.state.viewModeEnabled
       ? null
       : this.getEditableTableSelection();
-    if (!target || !text) {
+    if (!target || (!text && !pastedTable)) {
       return false;
     }
-    try {
-      // copied canvas elements still paste as elements
-      const { type } = JSON.parse(text) ?? {};
-      if (
-        type === EXPORT_DATA_TYPES.excalidrawClipboard ||
-        type === EXPORT_DATA_TYPES.excalidrawClipboardWithAPI
-      ) {
-        return false;
-      }
-    } catch {
-      // not JSON, so plain text for the cells
+    // copied canvas elements still paste as elements
+    if (this.isCanvasClipboardText(text)) {
+      return false;
     }
     const { table, range } = target;
-    const values = parseTSV(text);
+    const values = pastedTable
+      ? pastedTable.cells.map((row) => row.map((cell) => cell.text))
+      : parseTSV(text);
     const start = { row: range.top, col: range.left };
-    this.scene.mutateElement(table, fillCells(table, start, values));
+    this.scene.mutateElement(
+      table,
+      pastedTable
+        ? fillCellsFromPaste(table, start, pastedTable)
+        : fillCells(table, start, values),
+    );
     this.growTableRows(table.id);
     this.store.scheduleCapture();
     this.setState({
@@ -9348,6 +9395,33 @@ class App extends React.Component<AppProps, AppState> {
       },
     });
     return true;
+  };
+
+  /** A table copied from a spreadsheet, as a new table under the cursor. */
+  private insertPastedTable = (pastedTable: PastedTable) => {
+    const table = newTableElement({
+      x: 0,
+      y: 0,
+      ...tableLayoutFromPaste(pastedTable),
+      // the source's own formatting shows which row is the header
+      headerRow: false,
+      bandedRows: false,
+      strokeColor: this.state.currentItemStrokeColor,
+      backgroundColor: "transparent",
+      fillStyle: this.state.currentItemFillStyle,
+      strokeWidth: this.state.currentItemStrokeWidth,
+      strokeStyle: this.state.currentItemStrokeStyle,
+      roughness: this.state.currentItemRoughness,
+      opacity: this.state.currentItemOpacity,
+      roundness: null,
+      locked: false,
+    });
+    const grown = growRowsToFitText(table);
+    this.addElementsFromPasteOrLibrary({
+      elements: [grown ? { ...table, ...grown } : table],
+      files: null,
+      position: "cursor",
+    });
   };
 
   private startTableCellEditing = (
