@@ -6,6 +6,7 @@ import type {
 } from "@excalidraw/excalidraw/types";
 
 import { buildPdf } from "./pdfWriter";
+import { getSlideExportElements, slideExportAppState } from "./slideContent";
 import { getSlideLinks } from "./slideLinks";
 import { getOrderedSlides, isSlideHidden } from "./slideTransitions";
 
@@ -53,13 +54,8 @@ export const exportSlidesToPdf = async (
       MAX_RENDER_SIDE / Math.max(slide.width, slide.height),
     );
     const canvas = await exportToCanvas({
-      elements,
-      appState: {
-        ...appState,
-        exportBackground: true,
-        // a document is read on white, whatever theme the editor is in
-        exportWithDarkMode: false,
-      },
+      elements: getSlideExportElements(elements, slide.id),
+      appState: slideExportAppState(appState),
       files: api.getFiles() as BinaryFiles,
       exportingFrame: slide,
       getDimensions: (width: number, height: number) => ({
