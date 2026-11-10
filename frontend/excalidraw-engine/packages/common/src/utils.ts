@@ -424,16 +424,24 @@ export const allowFullScreen = () =>
 export const exitFullScreen = () => document.exitFullscreen();
 
 /**
- * notecanvas: the view can be tilted. `viewAngle` is in degrees, clockwise on
+ * notecanvas: the view can be tilted. `viewAngle` is in degrees, counter-clockwise on
  * screen, and the tilt is about the centre of the canvas, which is why the
  * canvas size is needed alongside it. A state without the three behaves as
  * untilted, so callers that never heard of tilting keep working.
  */
 type ViewTilt = { viewAngle?: number; width?: number; height?: number };
 
+/**
+ * How far the view turns on screen, in radians in the canvas's own convention
+ * (y points down, so a positive angle turns clockwise). `viewAngle` counts
+ * counter-clockwise, the way angles are usually read, hence the sign.
+ */
+export const getViewRotation = (viewAngle: number | undefined) =>
+  (-(viewAngle ?? 0) * Math.PI) / 180;
+
 const getTilt = ({ viewAngle, width, height }: ViewTilt) =>
   viewAngle && width && height
-    ? { angle: (viewAngle * Math.PI) / 180, cx: width / 2, cy: height / 2 }
+    ? { angle: getViewRotation(viewAngle), cx: width / 2, cy: height / 2 }
     : null;
 
 /**
@@ -473,7 +481,7 @@ export const rotateViewportDelta = (
   if (!state.viewAngle) {
     return { deltaX, deltaY };
   }
-  const angle = (-state.viewAngle * Math.PI) / 180;
+  const angle = -getViewRotation(state.viewAngle);
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
   return {

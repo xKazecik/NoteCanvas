@@ -20,6 +20,7 @@ import {
 
 import {
   rotateViewportDelta,
+  getViewRotation,
   COLOR_PALETTE,
   CODES,
   shouldResizeFromCenter,
@@ -1605,7 +1606,9 @@ class App extends React.Component<AppProps, AppState> {
                 transform: isVisible
                   ? `translate(${x - this.state.offsetLeft}px, ${
                       y - this.state.offsetTop
-                    }px) scale(${scale}) rotate(${this.state.viewAngle}deg)`
+                    }px) scale(${scale}) rotate(${getViewRotation(
+                      this.state.viewAngle,
+                    )}rad)`
                   : "none",
                 display: isVisible ? "block" : "none",
                 opacity: getRenderOpacity(

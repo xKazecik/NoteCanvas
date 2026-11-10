@@ -1,4 +1,8 @@
-import { KEYS, getFontFamilyString } from "@excalidraw/common";
+import {
+  KEYS,
+  getFontFamilyString,
+  getViewRotation,
+} from "@excalidraw/common";
 
 import {
   TABLE_DEFAULTS,
@@ -179,9 +183,9 @@ export const tableCellWysiwyg = ({
       fontStyle: style.italic ? "italic" : "normal",
       lineHeight: "1.25",
       textAlign: style.textAlign,
-      transform: `rotate(${element.angle}rad) rotate(${
-        getViewAngle?.() ?? 0
-      }deg)`,
+      transform: `rotate(${element.angle}rad) rotate(${getViewRotation(
+        getViewAngle?.(),
+      )}rad)`,
       transformOrigin: "top left",
       zIndex: "var(--zIndex-wysiwyg)",
       whiteSpace: "pre-wrap",
