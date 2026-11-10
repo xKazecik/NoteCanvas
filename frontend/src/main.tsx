@@ -5,8 +5,10 @@ import '@excalidraw/excalidraw/index.css'
 import './index.css'
 import App from './App.tsx'
 import { configureDisplayFont } from './utils/displayFont'
+import { installSliderWheel } from './utils/sliderWheel'
 
 configureDisplayFont()
+installSliderWheel()
 
 // Caches the app shell so offline mode can load the app without a connection.
 // Production only: in dev it would serve stale Vite modules.

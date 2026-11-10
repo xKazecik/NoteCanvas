@@ -1,3 +1,5 @@
+import { useRef } from "react";
+
 import { t } from "../i18n";
 
 import { useExcalidrawSetAppState } from "./App";
@@ -15,10 +17,14 @@ const SNAP_DISTANCE = 3;
  */
 export const TiltControl = ({ viewAngle }: { viewAngle: number }) => {
   const setAppState = useExcalidrawSetAppState();
+  // Snapping helps a drag land on a quarter turn, but would undo a single
+  // step from the keyboard or the scroll wheel, so it only applies to drags.
+  const isDragging = useRef(false);
   const setAngle = (value: number) => {
     const snapped =
-      SNAP_ANGLES.find((angle) => Math.abs(angle - value) <= SNAP_DISTANCE) ??
-      value;
+      (isDragging.current
+        ? SNAP_ANGLES.find((angle) => Math.abs(angle - value) <= SNAP_DISTANCE)
+        : undefined) ?? value;
     // 360 is where 0 is, and keeping it at 0 keeps "untilted" a single state
     setAppState({ viewAngle: snapped % 360 });
   };
@@ -33,6 +39,15 @@ export const TiltControl = ({ viewAngle }: { viewAngle: number }) => {
         step={1}
         value={viewAngle}
         onChange={(event) => setAngle(+event.target.value)}
+        onPointerDown={() => {
+          isDragging.current = true;
+        }}
+        onPointerUp={() => {
+          isDragging.current = false;
+        }}
+        onPointerCancel={() => {
+          isDragging.current = false;
+        }}
         aria-label={t("labels.tiltCanvas")}
         data-testid="tilt-slider"
       />
