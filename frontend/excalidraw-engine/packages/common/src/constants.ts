@@ -401,10 +401,18 @@ export const ROUGHNESS = {
   cartoonist: 2,
 } as const;
 
+// notecanvas: half of upstream's 1 / 2 / 4, which read as heavy at 100% zoom.
+// Widths between and beyond the presets come from the slider under them.
 export const STROKE_WIDTH = {
-  thin: 1,
-  bold: 2,
-  extraBold: 4,
+  thin: 0.5,
+  bold: 1,
+  extraBold: 2,
+} as const;
+
+export const STROKE_WIDTH_RANGE = {
+  min: 0.25,
+  max: 8,
+  step: 0.25,
 } as const;
 
 export const DEFAULT_ELEMENT_PROPS: {
@@ -420,7 +428,7 @@ export const DEFAULT_ELEMENT_PROPS: {
   strokeColor: COLOR_PALETTE.black,
   backgroundColor: COLOR_PALETTE.transparent,
   fillStyle: "solid",
-  strokeWidth: 2,
+  strokeWidth: STROKE_WIDTH.bold,
   strokeStyle: "solid",
   roughness: ROUGHNESS.artist,
   opacity: 100,
