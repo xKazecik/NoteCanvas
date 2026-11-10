@@ -85,7 +85,7 @@ export const detectDelimiter = (text: string): string => {
 
 /** Parse CSV / TSV / semicolon- or pipe-separated text into rows. */
 export const parseDelimitedText = (text: string): TableRows => {
-  const source = text.replace(/^﻿/, "").replace(/\r\n?/g, "\n");
+  const source = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
   if (!source.trim()) {
     return [];
   }
