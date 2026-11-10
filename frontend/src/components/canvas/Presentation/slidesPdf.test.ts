@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { newElement, newEmbeddableElement } from "@excalidraw/element";
 
 import { buildPdf } from "./pdfWriter";
+import { getSlideExportElements, slideExportAppState } from "./slideContent";
 import { getSlideLinks } from "./slideLinks";
 
 const text = (bytes: Uint8Array) =>
@@ -92,5 +93,32 @@ describe("getSlideLinks", () => {
     expect(
       getSlideLinks(frame, [rect(200, 150, "/editor/abc?element=1")], 1),
     ).toEqual([]);
+  });
+});
+
+describe("what a slide shows", () => {
+  const inFrame = (id: string, frameId: string | null) =>
+    ({ ...newElement({ type: "rectangle", x: 0, y: 0, width: 10, height: 10 }), id, frameId });
+
+  it("releases elements of other frames, such as a frame nested in the slide", () => {
+    const elements = [
+      inFrame("own", "slide"),
+      inFrame("nested-child", "inner-frame"),
+      inFrame("loose", null),
+    ];
+    expect(
+      getSlideExportElements(elements, "slide").map((element) => element.frameId),
+    ).toEqual(["slide", null, null]);
+  });
+
+  it("follows the canvas theme and keeps its background", () => {
+    expect(
+      slideExportAppState({ theme: "dark", viewBackgroundColor: "#000000" }),
+    ).toMatchObject({
+      exportBackground: true,
+      exportWithDarkMode: true,
+      viewBackgroundColor: "#000000",
+    });
+    expect(slideExportAppState({ theme: "light" }).exportWithDarkMode).toBe(false);
   });
 });

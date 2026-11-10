@@ -1,4 +1,4 @@
-import { THEME, getFontString } from "@excalidraw/common";
+import { getFontString } from "@excalidraw/common";
 
 import {
   TABLE_DEFAULTS,
@@ -20,19 +20,20 @@ import type {
 
 /**
  * Table chrome colours. Tables are read like a document rather than a sketch,
- * so the header and banding tints are deliberately low-contrast and theme-aware
- * instead of following the element's own background colour.
+ * so the header and banding tints are deliberately low-contrast instead of
+ * following the element's own background colour.
+ *
+ * There is one set for both themes: in the dark theme the canvas (and a dark
+ * export) is drawn in these colours and then inverted as a whole, which turns
+ * them into the matching dark tints. Picking dark colours here as well would
+ * invert them a second time, into bright bands.
  */
-const TINTS = {
-  [THEME.LIGHT]: { header: "#f1f3f5", banding: "#f8f9fa" },
-  [THEME.DARK]: { header: "#2a2d33", banding: "#232529" },
-} as const;
+const TINTS = { header: "#f1f3f5", banding: "#f8f9fa" } as const;
 
 /** Unitless line height used for cell text. Matches the engine's text default. */
 export const CELL_LINE_HEIGHT = 1.25 as ExcalidrawTextElement["lineHeight"];
 
-export const getTableTints = (theme: Theme) =>
-  TINTS[theme === THEME.DARK ? THEME.DARK : THEME.LIGHT];
+export const getTableTints = (_theme: Theme) => TINTS;
 
 /**
  * The colours `resolveCellStyle` needs for a table: its style preset's, with

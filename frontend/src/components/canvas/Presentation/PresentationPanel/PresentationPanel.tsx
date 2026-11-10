@@ -22,6 +22,7 @@ import {
   setSlideData,
   setSlideOrder,
 } from "../slideTransitions";
+import { getSlideExportElements, slideExportAppState } from "../slideContent";
 import { downloadSlidesPdf } from "../slidesPdf";
 import { SlidesLayoutDialog, applyLayoutToFrames } from "../SlidesLayoutDialog";
 
@@ -157,12 +158,9 @@ const SlideThumb: React.FC<SlideThumbProps> = ({
         const files = excalidrawAPI.getFiles();
 
         const exportedCanvas = await exportToCanvas({
-          elements,
-          appState: {
-            ...appState,
-            exportBackground: true,
-            viewBackgroundColor: appState.viewBackgroundColor,
-          },
+          // the same picture the PDF gets, so the thumbnail is a true preview
+          elements: getSlideExportElements(elements, frame.id),
+          appState: slideExportAppState(appState),
           files: files as BinaryFiles,
           exportingFrame: frame,
           maxWidthOrHeight: 300,
