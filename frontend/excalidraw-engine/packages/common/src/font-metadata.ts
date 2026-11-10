@@ -111,6 +111,70 @@ export const FONT_METADATA: Record<number, FontMetadata> = {
     },
     private: true,
   },
+  // notecanvas: system document fonts; hhea metrics of the Windows versions
+  [FONT_FAMILY["Arial"]]: {
+    metrics: {
+      unitsPerEm: 2048,
+      ascender: 1854,
+      descender: -434,
+      lineHeight: 1.15,
+    },
+    local: true,
+  },
+  [FONT_FAMILY["Times New Roman"]]: {
+    metrics: {
+      unitsPerEm: 2048,
+      ascender: 1825,
+      descender: -443,
+      lineHeight: 1.15,
+    },
+    local: true,
+  },
+  [FONT_FAMILY["Georgia"]]: {
+    metrics: {
+      unitsPerEm: 2048,
+      ascender: 1878,
+      descender: -449,
+      lineHeight: 1.15,
+    },
+    local: true,
+  },
+  [FONT_FAMILY["Verdana"]]: {
+    metrics: {
+      unitsPerEm: 2048,
+      ascender: 2059,
+      descender: -430,
+      lineHeight: 1.2,
+    },
+    local: true,
+  },
+  [FONT_FAMILY["Tahoma"]]: {
+    metrics: {
+      unitsPerEm: 2048,
+      ascender: 2049,
+      descender: -423,
+      lineHeight: 1.2,
+    },
+    local: true,
+  },
+  [FONT_FAMILY["Trebuchet MS"]]: {
+    metrics: {
+      unitsPerEm: 2048,
+      ascender: 1923,
+      descender: -455,
+      lineHeight: 1.15,
+    },
+    local: true,
+  },
+  [FONT_FAMILY["Courier New"]]: {
+    metrics: {
+      unitsPerEm: 2048,
+      ascender: 1705,
+      descender: -615,
+      lineHeight: 1.15,
+    },
+    local: true,
+  },
   [FONT_FAMILY_FALLBACKS.Xiaolai]: {
     metrics: {
       unitsPerEm: 1000,

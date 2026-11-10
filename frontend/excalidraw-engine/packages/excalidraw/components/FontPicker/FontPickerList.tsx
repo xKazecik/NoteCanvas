@@ -78,6 +78,7 @@ const getFontFamilyIcon = (fontFamily: FontFamilyValues): JSX.Element => {
       return FontFamilyHeadingIcon;
     case FONT_FAMILY["Comic Shanns"]:
     case FONT_FAMILY.Cascadia:
+    case FONT_FAMILY["Courier New"]:
       return FontFamilyCodeIcon;
     default:
       return FontFamilyNormalIcon;
