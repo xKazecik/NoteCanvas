@@ -1,4 +1,4 @@
-import { THEME, THEME_FILTER } from "@excalidraw/common";
+import { THEME, THEME_FILTER, getViewRotation } from "@excalidraw/common";
 
 import type { StaticCanvasRenderConfig } from "../scene/types";
 import type { AppState, StaticCanvasAppState } from "../types";
@@ -80,7 +80,7 @@ export const bootstrapCanvas = ({
   // drawn from here on turns about the centre of the canvas.
   if (viewAngle && !isExporting) {
     context.translate(normalizedWidth / 2, normalizedHeight / 2);
-    context.rotate((viewAngle * Math.PI) / 180);
+    context.rotate(getViewRotation(viewAngle));
     context.translate(-normalizedWidth / 2, -normalizedHeight / 2);
   }
 

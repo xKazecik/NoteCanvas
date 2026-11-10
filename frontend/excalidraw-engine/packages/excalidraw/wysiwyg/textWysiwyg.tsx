@@ -1,4 +1,5 @@
 import {
+  getViewRotation,
   CODES,
   KEYS,
   CLASSES,
@@ -69,7 +70,7 @@ const getTransform = (
   maxHeight: number,
 ) => {
   const { zoom } = appState;
-  const degree = (180 * angle) / Math.PI + appState.viewAngle;
+  const degree = (180 * (angle + getViewRotation(appState.viewAngle))) / Math.PI;
   let translateX = (width * (zoom.value - 1)) / 2;
   let translateY = (height * (zoom.value - 1)) / 2;
   if (width > maxWidth && zoom.value !== 1) {
