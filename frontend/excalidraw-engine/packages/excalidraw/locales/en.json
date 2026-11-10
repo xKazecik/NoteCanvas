@@ -767,7 +767,11 @@
     "unskipSlide": "Include when presenting",
     "skipped": "Skipped",
     "presentFromHere": "From this slide",
-    "deleteSlide": "Delete slide"
+    "deleteSlide": "Delete slide",
+    "exportPdf": "Export as PDF",
+    "exportingPdf": "Exporting…",
+    "exportPdfHint": "One page per slide. Links and embedded pages become clickable links.",
+    "exportPdfFailed": "Couldn't export the slides as a PDF."
   },
   "slidesLayout": {
     "title": "Slides layout",

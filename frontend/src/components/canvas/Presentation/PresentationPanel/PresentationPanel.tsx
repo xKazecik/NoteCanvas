@@ -22,6 +22,7 @@ import {
   setSlideData,
   setSlideOrder,
 } from "../slideTransitions";
+import { downloadSlidesPdf } from "../slidesPdf";
 import { SlidesLayoutDialog, applyLayoutToFrames } from "../SlidesLayoutDialog";
 
 import styles from "./PresentationPanel.module.scss";
@@ -458,6 +459,7 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
 
   const [isLayoutDialogOpen, setIsLayoutDialogOpen] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -692,6 +694,25 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
     [excalidrawAPI, orderedFrames],
   );
 
+  const handleExportPdf = useCallback(async () => {
+    if (!excalidrawAPI) {
+      return;
+    }
+    setIsExportingPdf(true);
+    try {
+      await downloadSlidesPdf(excalidrawAPI);
+    } catch (error) {
+      console.error("Failed to export slides as PDF:", error);
+      excalidrawAPI.setToast({
+        message: t("presentation.exportPdfFailed"),
+        duration: 4000,
+        closable: true,
+      });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  }, [excalidrawAPI]);
+
   // Cleanup auto-scroll on unmount
   useEffect(() => stopAutoScroll, []);
 
@@ -838,6 +859,16 @@ export const PresentationPanel: React.FC<PresentationPanelProps> = ({
                 <path d="M8 5v14l11-7z" />
               </svg>
               <span>{t("presentation.startPresentation")}</span>
+            </button>
+            <button
+              className={styles.startFromButton}
+              onClick={handleExportPdf}
+              disabled={shownCount === 0 || isExportingPdf}
+              title={t("presentation.exportPdfHint")}
+            >
+              {isExportingPdf
+                ? t("presentation.exportingPdf")
+                : t("presentation.exportPdf")}
             </button>
             {selectedFrame && selectedNumber !== null && selectedNumber > 1 && (
               <button
