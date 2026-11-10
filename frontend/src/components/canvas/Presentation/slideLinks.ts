@@ -19,16 +19,41 @@ const isWebLink = (link: string | null): link is string =>
  * live in a PDF), as the part of its bounding box that falls inside the slide.
  */
 export const getSlideLinks = (
-  frame: Pick<ExcalidrawFrameLikeElement, "x" | "y" | "width" | "height">,
+  frame: Pick<ExcalidrawFrameLikeElement, "x" | "y" | "width" | "height"> &
+    Partial<Pick<ExcalidrawFrameLikeElement, "angle">>,
   elements: readonly ExcalidrawElement[],
   pageScale: number,
 ): PdfLink[] => {
+  // a rotated slide is printed level, so links are measured along its axes
+  const angle = frame.angle ?? 0;
+  const cx = frame.x + frame.width / 2;
+  const cy = frame.y + frame.height / 2;
+  const toFrame = ([x, y]: [number, number]): [number, number] => {
+    const cos = Math.cos(-angle);
+    const sin = Math.sin(-angle);
+    return [
+      cx + (x - cx) * cos - (y - cy) * sin,
+      cy + (x - cx) * sin + (y - cy) * cos,
+    ];
+  };
   const links: PdfLink[] = [];
   for (const element of elements) {
     if (element.isDeleted || !isWebLink(element.link)) {
       continue;
     }
-    const [x1, y1, x2, y2] = getCommonBounds([element]);
+    const [bx1, by1, bx2, by2] = getCommonBounds([element]);
+    const corners = (
+      [
+        [bx1, by1],
+        [bx2, by1],
+        [bx2, by2],
+        [bx1, by2],
+      ] as [number, number][]
+    ).map(toFrame);
+    const x1 = Math.min(...corners.map(([x]) => x));
+    const y1 = Math.min(...corners.map(([, y]) => y));
+    const x2 = Math.max(...corners.map(([x]) => x));
+    const y2 = Math.max(...corners.map(([, y]) => y));
     const left = Math.max(x1, frame.x);
     const top = Math.max(y1, frame.y);
     const right = Math.min(x2, frame.x + frame.width);

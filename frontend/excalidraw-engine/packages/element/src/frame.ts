@@ -18,6 +18,7 @@ import {
   getElementLineSegments,
   getCommonBounds,
   getElementAbsoluteCoords,
+  getElementBounds,
 } from "./bounds";
 import { mutateElement } from "./mutateElement";
 import { getBoundTextElement, getContainerElement } from "./textElement";
@@ -64,6 +65,63 @@ export const bindElementsToFramesAfterDuplication = (
   }
 };
 
+/**
+ * notecanvas: frames can be rotated, so "inside a frame" is measured in the
+ * frame's own axes. These give a point, or an element's box, in those axes;
+ * for a frame that is not rotated they change nothing.
+ */
+const toFrameSpace = (
+  frame: ExcalidrawFrameLikeElement,
+  x: number,
+  y: number,
+): [number, number] => {
+  if (!frame.angle) {
+    return [x, y];
+  }
+  const cx = frame.x + frame.width / 2;
+  const cy = frame.y + frame.height / 2;
+  const cos = Math.cos(-frame.angle);
+  const sin = Math.sin(-frame.angle);
+  return [
+    cx + (x - cx) * cos - (y - cy) * sin,
+    cy + (x - cx) * sin + (y - cy) * cos,
+  ];
+};
+
+const getBoundsInFrameSpace = (
+  element: ExcalidrawElement,
+  frame: ExcalidrawFrameLikeElement,
+  elementsMap: ElementsMap,
+) => {
+  const [x1, y1, x2, y2] = getElementBounds(element, elementsMap);
+  const corners = [
+    toFrameSpace(frame, x1, y1),
+    toFrameSpace(frame, x2, y1),
+    toFrameSpace(frame, x2, y2),
+    toFrameSpace(frame, x1, y2),
+  ];
+  return [
+    Math.min(...corners.map(([x]) => x)),
+    Math.min(...corners.map(([, y]) => y)),
+    Math.max(...corners.map(([x]) => x)),
+    Math.max(...corners.map(([, y]) => y)),
+  ] as const;
+};
+
+const isInRotatedFrame = (
+  element: ExcalidrawElement,
+  frame: ExcalidrawFrameLikeElement,
+  elementsMap: ElementsMap,
+) => {
+  const [x1, y1, x2, y2] = getBoundsInFrameSpace(element, frame, elementsMap);
+  return (
+    x1 >= frame.x &&
+    y1 >= frame.y &&
+    x2 <= frame.x + frame.width &&
+    y2 <= frame.y + frame.height
+  );
+};
+
 export function isElementIntersectingFrame(
   element: ExcalidrawElement,
   frame: ExcalidrawFrameLikeElement,
@@ -88,7 +146,14 @@ export const getElementsCompletelyInFrame = (
   elementsMap: ElementsMap,
 ) =>
   omitGroupsContainingFrameLikes(
-    getElementsWithinSelection(elements, frame, elementsMap, false),
+    frame.angle
+      ? elements.filter(
+          (element) =>
+            !element.isDeleted &&
+            element.id !== frame.id &&
+            isInRotatedFrame(element, frame, elementsMap),
+        )
+      : getElementsWithinSelection(elements, frame, elementsMap, false),
   ).filter(
     (element) =>
       (!isFrameLikeElement(element) && !element.frameId) ||
@@ -120,6 +185,11 @@ export const elementsAreInFrameBounds = (
   frame: ExcalidrawFrameLikeElement,
   elementsMap: ElementsMap,
 ) => {
+  if (frame.angle) {
+    return elements.every((element) =>
+      isInRotatedFrame(element, frame, elementsMap),
+    );
+  }
   const [frameX1, frameY1, frameX2, frameY2] = getElementAbsoluteCoords(
     frame,
     elementsMap,
@@ -157,10 +227,11 @@ export const isCursorInFrame = (
   elementsMap: ElementsMap,
 ) => {
   const [fx1, fy1, fx2, fy2] = getElementAbsoluteCoords(frame, elementsMap);
+  const [x, y] = toFrameSpace(frame, cursorCoords.x, cursorCoords.y);
 
   return isPointWithinBounds(
     pointFrom(fx1, fy1),
-    pointFrom(cursorCoords.x, cursorCoords.y),
+    pointFrom(x, y),
     pointFrom(fx2, fy2),
   );
 };
@@ -228,6 +299,22 @@ export const groupByFrameLikes = (elements: readonly ExcalidrawElement[]) => {
   }
 
   return frameElementsMap;
+};
+
+/**
+ * notecanvas: frames can be rotated. For a context already translated to the
+ * frame's top-left corner, turn it about the frame's centre so that what is
+ * drawn at (0, 0, width, height) lands on the rotated frame.
+ */
+export const rotateContextToFrame = (
+  context: CanvasRenderingContext2D,
+  frame: Pick<ExcalidrawFrameLikeElement, "width" | "height" | "angle">,
+) => {
+  if (frame.angle) {
+    context.translate(frame.width / 2, frame.height / 2);
+    context.rotate(frame.angle);
+    context.translate(-frame.width / 2, -frame.height / 2);
+  }
 };
 
 export const getFrameChildren = (

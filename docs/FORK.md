@@ -159,3 +159,14 @@ and are invisible.
   those two must include `viewAngle`, `width` and `height`, or it will be off
   whenever the view is tilted. Screen-space deltas (drag and wheel panning) go
   through `rotateViewportDelta`.
+
+- **Rotated frames.** Upstream frames are always level; here they rotate,
+  mainly so slides can. Rotating a frame turns its children with it
+  (`rotateFrameWithChildren`), the way moving one moves them, and does not
+  re-derive what is in it afterwards. "Inside a frame" is measured in the
+  frame's own axes (`isInRotatedFrame` and friends in `element/src/frame.ts`);
+  clipping, outlines, highlights and the name label all go through
+  `rotateContextToFrame` or the frame's angle. A frame drawn in a tilted view
+  is rotated by the tilt so it is level on screen, and a slide's presentation
+  tilt is its frame's angle (`getSlideAngle`). Exports of a single frame still
+  render its scene-aligned box; `renderSlide` turns that back to level.

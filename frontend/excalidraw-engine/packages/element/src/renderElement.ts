@@ -67,6 +67,7 @@ import {
 } from "./typeChecks";
 import { getContainingFrame } from "./frame";
 import { renderTableElement } from "./renderTable";
+import { rotateContextToFrame } from "./frame";
 import { getCornerRadius } from "./utils";
 
 import { ShapeCache } from "./shape";
@@ -832,6 +833,7 @@ export const renderElement = (
           element.x + appState.scrollX,
           element.y + appState.scrollY,
         );
+        rotateContextToFrame(context, element);
         context.fillStyle = "rgba(0, 0, 200, 0.04)";
 
         context.lineWidth = FRAME_STYLE.strokeWidth / appState.zoom.value;

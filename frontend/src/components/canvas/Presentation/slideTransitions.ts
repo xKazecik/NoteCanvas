@@ -17,6 +17,7 @@ import {
   applyCamera,
   cameraForBox,
   cancelCameraAnimation,
+  readCamera,
   unionBox,
 } from "./slideCamera";
 
@@ -61,8 +62,6 @@ export type SlideData = {
   slideHidden: boolean;
   /** Position in the presentation; lower comes first. */
   slideOrder: number;
-  /** Degrees the view is tilted by while this slide is shown. */
-  slideAngle: number;
 };
 
 /** Slides without a transition glide, as they did before there was a choice. */
@@ -84,9 +83,38 @@ export const getSlideDuration = (frame: ExcalidrawFrameLikeElement): number =>
   SLIDE_SPEEDS.find((speed) => speed.id === getSlideSpeed(frame))!.ms;
 
 /** The tilt a slide is shown at; slides are level unless they say otherwise. */
-export const getSlideAngle = (frame: ExcalidrawFrameLikeElement): number => {
-  const value = frame.customData?.slideAngle;
-  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+export const getSlideAngle = (
+  frame: Pick<ExcalidrawFrameLikeElement, "angle">,
+): number => {
+  // a frame's angle turns it clockwise on screen, and the view's tilt counts
+  // counter-clockwise, so the tilt that levels a frame is its angle in degrees
+  const degrees = ((frame.angle ?? 0) * 180) / Math.PI;
+  return Math.round(((degrees % 360) + 360) % 360 * 1000) / 1000;
+};
+
+/**
+ * Where the presentation camera goes for a slide: centred on its frame, as
+ * large as fits, with the view tilted so that a rotated frame is level.
+ */
+export const cameraForSlide = (
+  frame: Pick<ExcalidrawFrameLikeElement, "x" | "y" | "width" | "height" | "angle">,
+  viewport: { width: number; height: number },
+) => ({ ...cameraForBox(frame, viewport), angle: getSlideAngle(frame) });
+
+/** The scene-aligned box a frame covers, rotation included. */
+export const getFrameBox = (
+  frame: Pick<ExcalidrawFrameLikeElement, "x" | "y" | "width" | "height" | "angle">,
+) => {
+  const cos = Math.abs(Math.cos(frame.angle ?? 0));
+  const sin = Math.abs(Math.sin(frame.angle ?? 0));
+  const width = frame.width * cos + frame.height * sin;
+  const height = frame.width * sin + frame.height * cos;
+  return {
+    x: frame.x + frame.width / 2 - width / 2,
+    y: frame.y + frame.height / 2 - height / 2,
+    width,
+    height,
+  };
 };
 
 export const isSlideHidden = (frame: ExcalidrawFrameLikeElement): boolean =>
@@ -239,7 +267,7 @@ export const playSlideTransition = (
 
   const { width, height, theme, viewBackgroundColor } = api.getAppState();
   const viewport = { width, height };
-  const target = cameraForBox(to, viewport, getSlideAngle(to));
+  const target = cameraForSlide(to, viewport);
   const { transition, duration, direction = 1 } = options;
   const cut = () => applyCamera(api, target);
 
@@ -260,7 +288,11 @@ export const playSlideTransition = (
         target,
         // further to travel than a plain glide, so it gets a little longer
         duration * 1.5,
-        cameraForBox(unionBox([from, to]), viewport, getSlideAngle(to)).zoom *
+        cameraForBox(
+          unionBox([getFrameBox(from), getFrameBox(to)]),
+          viewport,
+          getSlideAngle(to),
+        ).zoom *
           0.9,
       );
       return;
@@ -333,8 +365,9 @@ export const playSlideTransition = (
  * still shows when presenting.
  */
 export const addSlideFromView = (api: ExcalidrawImperativeAPI) => {
-  const { scrollX, scrollY, zoom, width, height, viewAngle } =
-    api.getAppState();
+  const { zoom, width, height, viewAngle } = api.getAppState();
+  // the middle of the view is the same scene point whatever the tilt
+  const { centerX, centerY } = readCamera(api);
   const viewWidth = width / zoom.value;
   const viewHeight = height / zoom.value;
 
@@ -348,16 +381,15 @@ export const addSlideFromView = (api: ExcalidrawImperativeAPI) => {
   const elements = api.getSceneElements();
   const slides = getOrderedSlides(elements);
   const frame = newFrameElement({
-    x: -scrollX + (viewWidth - slideWidth) / 2,
-    y: -scrollY + (viewHeight - slideHeight) / 2,
+    x: centerX - slideWidth / 2,
+    y: centerY - slideHeight / 2,
     width: slideWidth,
     height: slideHeight,
+    // in a tilted view the slide is level on screen, so it is rotated by the
+    // tilt -- and presenting it tilts the view the same way again
+    angle: ((viewAngle * Math.PI) / 180) as ExcalidrawFrameLikeElement["angle"],
     name: `Slide ${slides.length + 1}`,
-    // a tilted view becomes a slide shown at that tilt
-    customData: {
-      slideOrder: slides.length,
-      ...(viewAngle ? { slideAngle: viewAngle } : {}),
-    },
+    customData: { slideOrder: slides.length },
   });
 
   // slides with a stored position come before those without, so the existing

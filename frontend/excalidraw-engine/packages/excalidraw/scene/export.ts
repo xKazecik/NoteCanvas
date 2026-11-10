@@ -409,7 +409,7 @@ export const exportToSvg = async (
       rect.setAttribute(
         "transform",
         `translate(${frame.x + offsetX} ${frame.y + offsetY}) rotate(${
-          frame.angle
+          (frame.angle * 180) / Math.PI
         } ${cx} ${cy})`,
       );
       rect.setAttribute("width", `${frame.width}`);

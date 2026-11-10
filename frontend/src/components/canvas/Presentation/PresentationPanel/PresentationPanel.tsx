@@ -3,13 +3,9 @@ import { useCallback, useEffect, useState, useRef } from "react";
 
 import { CaptureUpdateAction, PlusIcon } from "@excalidraw/excalidraw";
 import { t } from "@excalidraw/excalidraw";
-import { exportToCanvas } from "@excalidraw/excalidraw";
 
 import type { ExcalidrawFrameLikeElement } from "@excalidraw/element/types";
-import type {
-  ExcalidrawImperativeAPI,
-  BinaryFiles,
-} from "@excalidraw/excalidraw/types";
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import { usePresentationMode } from "../usePresentationMode";
 import {
@@ -22,7 +18,7 @@ import {
   setSlideData,
   setSlideOrder,
 } from "../slideTransitions";
-import { getSlideExportElements, slideExportAppState } from "../slideContent";
+import { renderSlide } from "../slideRender";
 import { downloadSlidesPdf } from "../slidesPdf";
 import { SlidesLayoutDialog, applyLayoutToFrames } from "../SlidesLayoutDialog";
 
@@ -153,18 +149,12 @@ const SlideThumb: React.FC<SlideThumbProps> = ({
 
     const generatePreview = async () => {
       try {
-        const elements = excalidrawAPI.getSceneElements();
-        const appState = excalidrawAPI.getAppState();
-        const files = excalidrawAPI.getFiles();
-
-        const exportedCanvas = await exportToCanvas({
-          // the same picture the PDF gets, so the thumbnail is a true preview
-          elements: getSlideExportElements(elements, frame.id),
-          appState: slideExportAppState(appState),
-          files: files as BinaryFiles,
-          exportingFrame: frame,
-          maxWidthOrHeight: 300,
-        });
+        // the same picture the PDF gets, so the thumbnail is a true preview
+        const exportedCanvas = await renderSlide(
+          excalidrawAPI,
+          frame,
+          300 / Math.max(frame.width, frame.height),
+        );
 
         const ctx = canvasRef.current?.getContext("2d");
         if (ctx && canvasRef.current) {

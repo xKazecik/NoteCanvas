@@ -15,7 +15,6 @@ import type {
 import { getElementAbsoluteCoords } from "./bounds";
 import {
   isElbowArrow,
-  isFrameLikeElement,
   isImageElement,
   isLinearElement,
 } from "./typeChecks";
@@ -303,11 +302,6 @@ export const getTransformHandles = (
         omitSides = OMIT_SIDES_FOR_LINE_BACKSLASH;
       }
     }
-  } else if (isFrameLikeElement(element)) {
-    omitSides = {
-      ...omitSides,
-      rotation: true,
-    };
   }
   const margin = isLinearElement(element)
     ? DEFAULT_TRANSFORM_HANDLE_SPACING + 8

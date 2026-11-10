@@ -1,3 +1,4 @@
+import { getFrameChildren } from "./frame";
 import {
   pointCenter,
   normalizeRadians,
@@ -103,7 +104,16 @@ export const transformElements = (
   const elementsMap = scene.getNonDeletedElementsMap();
   if (selectedElements.length === 1) {
     const [element] = selectedElements;
-    if (transformHandleType === "rotation") {
+    if (transformHandleType === "rotation" && isFrameLikeElement(element)) {
+      rotateFrameWithChildren(
+        element,
+        originalElements,
+        scene,
+        pointerX,
+        pointerY,
+        shouldRotateWithDiscreteAngle,
+      );
+    } else if (transformHandleType === "rotation") {
       if (!isElbowArrow(element)) {
         rotateSingleElement(
           element,
@@ -154,9 +164,18 @@ export const transformElements = (
     return true;
   } else if (selectedElements.length > 1) {
     if (transformHandleType === "rotation") {
+      // a selected frame takes its contents along, as when it is moved
+      const selectedIds = new Set(selectedElements.map((element) => element.id));
+      const withFrameChildren = [
+        ...selectedElements,
+        ...selectedElements
+          .filter(isFrameLikeElement)
+          .flatMap((frame) => getFrameChildren(elementsMap, frame.id))
+          .filter((child) => !selectedIds.has(child.id)),
+      ] as NonDeletedExcalidrawElement[];
       rotateMultipleElements(
         originalElements,
-        selectedElements,
+        withFrameChildren,
         scene,
         pointerX,
         pointerY,
@@ -203,6 +222,81 @@ export const transformElements = (
   return false;
 };
 
+/** The angle the rotation handle points at, with Shift snapping. */
+const getRotationFromPointer = (
+  cx: number,
+  cy: number,
+  pointerX: number,
+  pointerY: number,
+  shouldRotateWithDiscreteAngle: boolean,
+) => {
+  let angle = ((5 * Math.PI) / 2 +
+    Math.atan2(pointerY - cy, pointerX - cx)) as Radians;
+  if (shouldRotateWithDiscreteAngle) {
+    angle = (angle + SHIFT_LOCKING_ANGLE / 2) as Radians;
+    angle = (angle - (angle % SHIFT_LOCKING_ANGLE)) as Radians;
+  }
+  return normalizeRadians(angle);
+};
+
+/**
+ * notecanvas: a frame turns together with everything in it, the way it moves
+ * with it, so a slide's content stays upright relative to the slide. Works
+ * from the state at pointer-down, so a long drag does not accumulate error.
+ */
+const rotateFrameWithChildren = (
+  frame: NonDeletedExcalidrawElement,
+  originalElements: PointerDownState["originalElements"],
+  scene: Scene,
+  pointerX: number,
+  pointerY: number,
+  shouldRotateWithDiscreteAngle: boolean,
+) => {
+  const elementsMap = scene.getNonDeletedElementsMap();
+  const original = originalElements.get(frame.id) ?? frame;
+  const cx = original.x + original.width / 2;
+  const cy = original.y + original.height / 2;
+  const angle = getRotationFromPointer(
+    cx,
+    cy,
+    pointerX,
+    pointerY,
+    shouldRotateWithDiscreteAngle,
+  );
+  const delta = angle - original.angle;
+
+  const children = getFrameChildren(elementsMap, frame.id).filter(
+    (child) => !child.isDeleted,
+  ) as NonDeletedExcalidrawElement[];
+  scene.mutateElement(frame, { angle });
+
+  for (const child of children) {
+    const orig = originalElements.get(child.id) ?? child;
+    const [x1, y1, x2, y2] = getElementAbsoluteCoords(orig, elementsMap);
+    const childCX = (x1 + x2) / 2;
+    const childCY = (y1 + y2) / 2;
+    const [rotatedCX, rotatedCY] = pointRotateRads(
+      pointFrom(childCX, childCY),
+      pointFrom(cx, cy),
+      delta as Radians,
+    );
+    scene.mutateElement(child, {
+      x: orig.x + (rotatedCX - childCX),
+      y: orig.y + (rotatedCY - childCY),
+      // elbow arrows are routed, not rotated
+      ...(isElbowArrow(child)
+        ? {}
+        : { angle: normalizeRadians((orig.angle + delta) as Radians) }),
+    });
+  }
+  for (const child of children) {
+    updateBoundElements(child, scene, {
+      simultaneouslyUpdated: [frame, ...children],
+    });
+  }
+  scene.triggerUpdate();
+};
+
 const rotateSingleElement = (
   element: NonDeletedExcalidrawElement,
   scene: Scene,
@@ -216,18 +310,13 @@ const rotateSingleElement = (
   );
   const cx = (x1 + x2) / 2;
   const cy = (y1 + y2) / 2;
-  let angle: Radians;
-  if (isFrameLikeElement(element)) {
-    angle = 0 as Radians;
-  } else {
-    angle = ((5 * Math.PI) / 2 +
-      Math.atan2(pointerY - cy, pointerX - cx)) as Radians;
-    if (shouldRotateWithDiscreteAngle) {
-      angle = (angle + SHIFT_LOCKING_ANGLE / 2) as Radians;
-      angle = (angle - (angle % SHIFT_LOCKING_ANGLE)) as Radians;
-    }
-    angle = normalizeRadians(angle as Radians);
-  }
+  const angle = getRotationFromPointer(
+    cx,
+    cy,
+    pointerX,
+    pointerY,
+    shouldRotateWithDiscreteAngle,
+  );
   const boundTextElementId = getBoundTextElementId(element);
 
   let update: ElementUpdate<NonDeletedExcalidrawElement> = {
@@ -428,7 +517,7 @@ const rotateMultipleElements = (
   >(elements.map((element) => [element.id, element]));
 
   for (const element of elements) {
-    if (!isFrameLikeElement(element)) {
+    {
       const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
       const cx = (x1 + x2) / 2;
       const cy = (y1 + y2) / 2;
