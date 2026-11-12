@@ -62,6 +62,30 @@ describe("table persistence", () => {
     );
   });
 
+  it("keeps a custom style and border colour across a round trip", () => {
+    const customStyle = {
+      headerFill: "#e03131",
+      headerText: "#ffffff",
+      bandFill: "#fff5f5",
+    };
+    const restored = roundTrip({
+      ...newTableElement({ x: 0, y: 0, rows: 2, cols: 2 }),
+      stylePreset: "custom",
+      customStyle,
+      borderColor: "#2f9e44",
+    });
+    expect(restored!.stylePreset).toBe("custom");
+    expect(restored!.customStyle).toEqual(customStyle);
+    expect(restored!.borderColor).toBe("#2f9e44");
+
+    // a damaged custom style is dropped rather than half kept
+    const damaged = roundTrip({
+      ...newTableElement({ x: 0, y: 0, rows: 2, cols: 2 }),
+      customStyle: { headerFill: "#e03131" },
+    });
+    expect(damaged!.customStyle).toBeUndefined();
+  });
+
   it("preserves merges across a round trip", () => {
     const table = newTableElement({ x: 0, y: 0, rows: 2, cols: 2 });
     const merged = {

@@ -88,12 +88,46 @@ export const TABLE_STYLE_PRESETS: readonly TableStylePreset[] = [
 
 export const DEFAULT_TABLE_STYLE_PRESET = TABLE_STYLE_PRESETS[0];
 
-/** The preset a table uses; an unknown or absent id is the default look. */
+/** The `stylePreset` of a table drawn in its own `customStyle` colours. */
+export const CUSTOM_TABLE_STYLE_ID = "custom";
+
+/**
+ * The preset a table uses; an unknown or absent id is the default look. The
+ * custom preset is laid out like the colour presets, in the table's own
+ * colours.
+ */
 export const getTableStylePreset = (
-  element: Pick<ExcalidrawTableElement, "stylePreset">,
-): TableStylePreset =>
-  TABLE_STYLE_PRESETS.find((preset) => preset.id === element.stylePreset) ??
-  DEFAULT_TABLE_STYLE_PRESET;
+  element: Pick<ExcalidrawTableElement, "stylePreset" | "customStyle">,
+): TableStylePreset => {
+  if (element.stylePreset === CUSTOM_TABLE_STYLE_ID && element.customStyle) {
+    return {
+      id: CUSTOM_TABLE_STYLE_ID,
+      ...element.customStyle,
+      grid: "all",
+      lineColor: null,
+      outline: true,
+      headerRule: false,
+      banded: true,
+    };
+  }
+  return (
+    TABLE_STYLE_PRESETS.find((preset) => preset.id === element.stylePreset) ??
+    DEFAULT_TABLE_STYLE_PRESET
+  );
+};
+
+/**
+ * The colour a table line is stroked in. A border colour the user picked
+ * colours every line; otherwise the grid follows the preset and the header
+ * rule follows the element's stroke colour.
+ */
+export const getTableLineColor = (
+  element: Pick<ExcalidrawTableElement, "borderColor" | "strokeColor">,
+  preset: TableStylePreset,
+  heavy: boolean,
+): string =>
+  element.borderColor ??
+  (heavy ? element.strokeColor : preset.lineColor ?? element.strokeColor);
 
 export type TableLine = {
   x1: number;

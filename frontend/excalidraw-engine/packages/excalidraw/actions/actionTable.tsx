@@ -1,9 +1,11 @@
 import {
+  CUSTOM_TABLE_STYLE_ID,
   CaptureUpdateAction,
   TABLE_STYLE_PRESETS,
   clearCells,
   deleteColumn,
   deleteRow,
+  getTableCustomStyle,
   growRowsToFitText,
   insertColumn,
   insertRow,
@@ -20,6 +22,7 @@ import type {
   ExcalidrawElement,
   ExcalidrawTableElement,
   TableCellStyle,
+  TableCustomStyle,
 } from "@excalidraw/element/types";
 
 import { TableActions } from "../components/TableActions";
@@ -41,6 +44,8 @@ export type TableOperation =
   | { op: "toggleHeaderRow" }
   | { op: "toggleBandedRows" }
   | { op: "setStylePreset"; preset: string }
+  | { op: "setCustomStyle"; style: Partial<TableCustomStyle> }
+  | { op: "setBorderColor"; color: string }
   | { op: "styleCells"; style: TableCellStyle }
   | { op: "clearCells" }
   | { op: "sort"; direction: "asc" | "desc" };
@@ -163,6 +168,17 @@ const applyOperation = (
     case "toggleBandedRows":
       return withUpdate({ bandedRows: !table.bandedRows }, { keepRange: true });
     case "setStylePreset": {
+      // custom starts from the colours the table has now, and leaves banding
+      // as it is
+      if (operation.preset === CUSTOM_TABLE_STYLE_ID) {
+        return withUpdate(
+          {
+            stylePreset: CUSTOM_TABLE_STYLE_ID,
+            customStyle: getTableCustomStyle(table),
+          },
+          { keepRange: true },
+        );
+      }
       const preset = TABLE_STYLE_PRESETS.find(
         (candidate) => candidate.id === operation.preset,
       );
@@ -174,6 +190,16 @@ const applyOperation = (
           )
         : null;
     }
+    case "setCustomStyle":
+      return withUpdate(
+        {
+          stylePreset: CUSTOM_TABLE_STYLE_ID,
+          customStyle: { ...getTableCustomStyle(table), ...operation.style },
+        },
+        { keepRange: true },
+      );
+    case "setBorderColor":
+      return withUpdate({ borderColor: operation.color }, { keepRange: true });
     case "styleCells":
       return selection
         ? withUpdate(

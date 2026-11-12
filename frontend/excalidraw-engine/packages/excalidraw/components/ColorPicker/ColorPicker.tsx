@@ -73,10 +73,14 @@ interface ColorPickerProps {
   palette?: ColorPaletteCustom | null;
   topPicks?: ColorTuple;
   updateData: (formData?: any) => void;
+  /** The `openPopup` this picker opens as, when it is not the only picker of
+      its type on the panel; defaults to the type. */
+  popupId?: NonNullable<AppState["openPopup"]>;
 }
 
 const ColorPickerPopupContent = ({
   type,
+  popupId = type,
   color,
   onChange,
   label,
@@ -95,6 +99,7 @@ const ColorPickerPopupContent = ({
   | "palette"
   | "updateData"
   | "appState"
+  | "popupId"
 > & {
   getOpenPopup: () => AppState["openPopup"];
 }) => {
@@ -150,7 +155,7 @@ const ColorPickerPopupContent = ({
       }}
       onClose={() => {
         // only clear if we're still the active popup (avoid racing with switch)
-        if (getOpenPopup() === type) {
+        if (getOpenPopup() === popupId) {
           updateData({ openPopup: null });
         }
         setActiveColorPickerSection(null);
@@ -312,6 +317,7 @@ export const ColorPicker = ({
   topPicks,
   updateData,
   appState,
+  popupId = type,
 }: ColorPickerProps) => {
   const openRef = useRef(appState.openPopup);
   useEffect(() => {
@@ -339,10 +345,10 @@ export const ColorPicker = ({
         )}
         {!isCompactMode && <ButtonSeparator />}
         <Popover.Root
-          open={appState.openPopup === type}
+          open={appState.openPopup === popupId}
           onOpenChange={(open) => {
             if (open) {
-              updateData({ openPopup: type });
+              updateData({ openPopup: popupId });
             }
           }}
         >
@@ -355,21 +361,22 @@ export const ColorPicker = ({
             editingTextElement={!!appState.editingTextElement}
             onToggle={() => {
               // atomic switch: if another popup is open, close it first, then open this one next tick
-              if (appState.openPopup === type) {
+              if (appState.openPopup === popupId) {
                 // toggle off on same trigger
                 updateData({ openPopup: null });
               } else if (appState.openPopup) {
-                updateData({ openPopup: type });
+                updateData({ openPopup: popupId });
               } else {
                 // open this one
-                updateData({ openPopup: type });
+                updateData({ openPopup: popupId });
               }
             }}
           />
           {/* popup content */}
-          {appState.openPopup === type && (
+          {appState.openPopup === popupId && (
             <ColorPickerPopupContent
               type={type}
+              popupId={popupId}
               color={color}
               onChange={onChange}
               label={label}

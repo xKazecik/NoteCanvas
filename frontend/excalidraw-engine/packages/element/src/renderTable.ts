@@ -7,7 +7,11 @@ import {
   resolveCellStyle,
   rowOffsets,
 } from "./table";
-import { getTableLines, getTableStylePreset } from "./tableStyles";
+import {
+  getTableLineColor,
+  getTableLines,
+  getTableStylePreset,
+} from "./tableStyles";
 import { getLineHeightInPx } from "./textMeasurements";
 import { wrapText } from "./textWrapping";
 
@@ -15,6 +19,7 @@ import type { CellBox } from "./table";
 import type {
   ExcalidrawTableElement,
   ExcalidrawTextElement,
+  TableCustomStyle,
   Theme,
 } from "./types";
 
@@ -49,6 +54,25 @@ export const getTableCellColors = (
     headerColor: preset.headerFill ?? tints.header,
     bandingColor: preset.bandFill ?? tints.banding,
     headerTextColor: preset.headerText,
+  };
+};
+
+/**
+ * The colours the custom preset starts from: the table's own once picked,
+ * otherwise the ones it is drawn in now, so switching to custom changes
+ * nothing until a colour is picked.
+ */
+export const getTableCustomStyle = (
+  element: ExcalidrawTableElement,
+): TableCustomStyle => {
+  if (element.customStyle) {
+    return element.customStyle;
+  }
+  const colors = getTableCellColors(element, "light");
+  return {
+    headerFill: colors.headerColor,
+    headerText: colors.headerTextColor ?? element.strokeColor,
+    bandFill: colors.bandingColor,
   };
 };
 
@@ -154,9 +178,7 @@ export const renderTableElement = (
   // the grid in one path so shared borders do not double-strike, then the
   // heavier header rule over it in the element's own colour
   const stroke = (heavy: boolean) => {
-    context.strokeStyle = heavy
-      ? element.strokeColor
-      : preset.lineColor ?? element.strokeColor;
+    context.strokeStyle = getTableLineColor(element, preset, heavy);
     context.lineWidth = element.strokeWidth * (heavy ? 2 : 1);
     context.beginPath();
     for (const line of lines) {

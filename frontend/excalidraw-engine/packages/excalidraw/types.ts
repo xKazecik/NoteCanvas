@@ -444,6 +444,11 @@ export interface AppState {
     | "compactArrowProperties"
     | "eraserSize"
     | "tableTool"
+    | "tableCellText"
+    | "tableBorder"
+    | "tableHeaderFill"
+    | "tableHeaderText"
+    | "tableBandFill"
     | null;
   openSidebar: { name: SidebarName; tab?: SidebarTabName } | null;
   openDialog:

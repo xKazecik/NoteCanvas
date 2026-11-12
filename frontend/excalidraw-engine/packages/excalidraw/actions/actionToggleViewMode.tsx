@@ -28,6 +28,10 @@ export const actionToggleViewMode = register({
   predicate: (elements, appState, appProps) => {
     return typeof appProps.viewModeEnabled === "undefined";
   },
-  keyTest: (event) =>
-    !event[KEYS.CTRL_OR_CMD] && event.altKey && event.code === CODES.R,
+  // presenting keeps view mode on, so the canvas cannot be edited mid-slide
+  keyTest: (event, appState) =>
+    !appState.presentationMode?.active &&
+    !event[KEYS.CTRL_OR_CMD] &&
+    event.altKey &&
+    event.code === CODES.R,
 });

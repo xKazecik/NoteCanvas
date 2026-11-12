@@ -1,10 +1,21 @@
-import { getCell, resolveAnchorCell } from "@excalidraw/element";
+import {
+  CUSTOM_TABLE_STYLE_ID,
+  getCell,
+  getTableCellColors,
+  getTableCustomStyle,
+  getTableLineColor,
+  getTableStylePreset,
+  resolveAnchorCell,
+  resolveCellStyle,
+} from "@excalidraw/element";
 
 import type { TableCellStyle } from "@excalidraw/element/types";
 
 import {
   DEFAULT_ELEMENT_BACKGROUND_COLOR_PALETTE,
   DEFAULT_ELEMENT_BACKGROUND_PICKS,
+  DEFAULT_ELEMENT_STROKE_COLOR_PALETTE,
+  DEFAULT_ELEMENT_STROKE_PICKS,
 } from "@excalidraw/common";
 
 import type { ExcalidrawElement } from "@excalidraw/element/types";
@@ -73,9 +84,57 @@ export const TableActions = ({
     !!anchorCell &&
     ((anchorCell.colSpan ?? 1) > 1 || (anchorCell.rowSpan ?? 1) > 1);
   const style: TableCellStyle = anchorCell?.style ?? {};
+  const textColor = anchor
+    ? resolveCellStyle(
+        table,
+        anchor.row,
+        anchor.col,
+        getTableCellColors(table, appState.theme),
+      ).textColor
+    : table.strokeColor;
+  const preset = getTableStylePreset(table);
+  const customStyle = getTableCustomStyle(table);
 
   const setStyle = (patch: TableCellStyle) =>
     updateData({ op: "styleCells", style: patch });
+
+  /** A colour picker of the table panel; each opens as its own popup. */
+  const colorField = ({
+    label,
+    popupId,
+    stroke,
+    color,
+    onChange,
+  }: {
+    label: string;
+    popupId: NonNullable<AppState["openPopup"]>;
+    /** Text and lines pick from the stroke palette, fills from the fills'. */
+    stroke: boolean;
+    color: string;
+    onChange: (color: string) => void;
+  }) => (
+    <fieldset>
+      <legend>{label}</legend>
+      <ColorPicker
+        type={stroke ? "elementStroke" : "elementBackground"}
+        popupId={popupId}
+        topPicks={
+          stroke ? DEFAULT_ELEMENT_STROKE_PICKS : DEFAULT_ELEMENT_BACKGROUND_PICKS
+        }
+        palette={
+          stroke
+            ? DEFAULT_ELEMENT_STROKE_COLOR_PALETTE
+            : DEFAULT_ELEMENT_BACKGROUND_COLOR_PALETTE
+        }
+        label={label}
+        color={color}
+        onChange={onChange}
+        elements={elements}
+        appState={appState}
+        updateData={updateData}
+      />
+    </fieldset>
+  );
 
   return (
     <>
@@ -133,6 +192,10 @@ export const TableActions = ({
         <legend>{t("labels.tableStyle")}</legend>
         <TableStylePicker
           value={table.stylePreset}
+          custom={getTableStylePreset({
+            stylePreset: CUSTOM_TABLE_STYLE_ID,
+            customStyle,
+          })}
           onChange={(preset) => updateData({ op: "setStylePreset", preset })}
         />
         <div className="buttonList">
@@ -163,6 +226,43 @@ export const TableActions = ({
           />
         </div>
       </fieldset>
+
+      {table.stylePreset === CUSTOM_TABLE_STYLE_ID && (
+        <>
+          {colorField({
+            label: t("labels.tableHeaderFill"),
+            popupId: "tableHeaderFill",
+            stroke: false,
+            color: customStyle.headerFill,
+            onChange: (headerFill) =>
+              updateData({ op: "setCustomStyle", style: { headerFill } }),
+          })}
+          {colorField({
+            label: t("labels.tableHeaderText"),
+            popupId: "tableHeaderText",
+            stroke: true,
+            color: customStyle.headerText,
+            onChange: (headerText) =>
+              updateData({ op: "setCustomStyle", style: { headerText } }),
+          })}
+          {colorField({
+            label: t("labels.tableBandFill"),
+            popupId: "tableBandFill",
+            stroke: false,
+            color: customStyle.bandFill,
+            onChange: (bandFill) =>
+              updateData({ op: "setCustomStyle", style: { bandFill } }),
+          })}
+        </>
+      )}
+
+      {colorField({
+        label: t("labels.tableBorderColor"),
+        popupId: "tableBorder",
+        stroke: true,
+        color: getTableLineColor(table, preset, false),
+        onChange: (color) => updateData({ op: "setBorderColor", color }),
+      })}
 
       {hasSelection && (
         <>
@@ -207,6 +307,14 @@ export const TableActions = ({
               updateData={updateData}
             />
           </fieldset>
+
+          {colorField({
+            label: t("labels.cellTextColor"),
+            popupId: "tableCellText",
+            stroke: true,
+            color: textColor,
+            onChange: (color) => setStyle({ textColor: color }),
+          })}
 
           <fieldset>
             <legend>{t("labels.cellText")}</legend>

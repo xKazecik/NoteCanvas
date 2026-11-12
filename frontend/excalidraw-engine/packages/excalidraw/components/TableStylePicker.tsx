@@ -1,10 +1,16 @@
 import clsx from "clsx";
 
-import { TABLE_STYLE_PRESETS, getTableLines } from "@excalidraw/element";
+import {
+  CUSTOM_TABLE_STYLE_ID,
+  TABLE_STYLE_PRESETS,
+  getTableLines,
+} from "@excalidraw/element";
 
 import type { TableStylePreset } from "@excalidraw/element";
 
 import { t } from "../i18n";
+
+import { palette } from "./icons";
 
 import "./TableStylePicker.scss";
 
@@ -80,18 +86,28 @@ const TableStyleSwatch = ({ preset }: { preset: TableStylePreset }) => {
   );
 };
 
-/** The table style presets as a row of thumbnails to choose from. */
+/**
+ * The table style presets as a row of thumbnails to choose from, ending with
+ * the custom style, drawn in the colours it would use.
+ */
 export const TableStylePicker = ({
   value,
+  custom,
   onChange,
 }: {
   /** Id of the preset in use; anything unknown reads as the default. */
   value: string | undefined;
+  /** The custom preset, in the colours choosing it would give the table;
+      absent leaves custom out, as when a table is not made yet. */
+  custom?: TableStylePreset;
   onChange: (presetId: string) => void;
 }) => {
   const current =
-    TABLE_STYLE_PRESETS.find((preset) => preset.id === value)?.id ??
-    TABLE_STYLE_PRESETS[0].id;
+    value === CUSTOM_TABLE_STYLE_ID
+      ? CUSTOM_TABLE_STYLE_ID
+      : TABLE_STYLE_PRESETS.find((preset) => preset.id === value)?.id ??
+        TABLE_STYLE_PRESETS[0].id;
+  const customLabel = t("labels.tableStyle_custom");
 
   return (
     <div
@@ -119,6 +135,28 @@ export const TableStylePicker = ({
           </button>
         );
       })}
+      {custom && (
+        <button
+          type="button"
+          role="radio"
+          aria-checked={current === CUSTOM_TABLE_STYLE_ID}
+          aria-label={customLabel}
+          title={customLabel}
+          data-testid="table-style-custom"
+          className={clsx(
+            "table-style-picker__item",
+            "table-style-picker__item--custom",
+            {
+              "table-style-picker__item--active":
+                current === CUSTOM_TABLE_STYLE_ID,
+            },
+          )}
+          onClick={() => onChange(CUSTOM_TABLE_STYLE_ID)}
+        >
+          <TableStyleSwatch preset={custom} />
+          <span className="table-style-picker__badge">{palette}</span>
+        </button>
+      )}
     </div>
   );
 };
