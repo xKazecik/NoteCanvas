@@ -10,6 +10,7 @@ import {
   columnOffsets,
   getCellBoxes,
   getTableCellColors,
+  getTableLineColor,
   getTableLines,
   getTableStylePreset,
   resolveCellStyle,
@@ -68,10 +69,7 @@ export const renderTableToSvg = (
     }
     const path = svg("path");
     path.setAttribute("d", segments.join(" "));
-    path.setAttribute(
-      "stroke",
-      heavy ? element.strokeColor : preset.lineColor ?? element.strokeColor,
-    );
+    path.setAttribute("stroke", getTableLineColor(element, preset, heavy));
     path.setAttribute(
       "stroke-width",
       `${element.strokeWidth * (heavy ? 2 : 1)}`,

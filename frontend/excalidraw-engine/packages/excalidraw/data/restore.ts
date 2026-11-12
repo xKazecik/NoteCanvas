@@ -480,6 +480,16 @@ export const restoreElement = (
       // grid is rebuilt rather than trusted
       const { colWidths, rowHeights, cells, width, height } =
         normalizeTable(element);
+      const customStyle =
+        typeof element.customStyle?.headerFill === "string" &&
+        typeof element.customStyle.headerText === "string" &&
+        typeof element.customStyle.bandFill === "string"
+          ? {
+              headerFill: element.customStyle.headerFill,
+              headerText: element.customStyle.headerText,
+              bandFill: element.customStyle.bandFill,
+            }
+          : undefined;
       const restored = restoreElementWithProperties(element, {
         colWidths,
         rowHeights,
@@ -489,9 +499,13 @@ export const restoreElement = (
         ...(typeof element.stylePreset === "string"
           ? { stylePreset: element.stylePreset }
           : {}),
+        ...(typeof element.borderColor === "string"
+          ? { borderColor: element.borderColor }
+          : {}),
       });
-      // the outer box is always derived from the tracks, never from stored w/h
-      return { ...restored, width, height };
+      // the outer box is always derived from the tracks, never from stored w/h;
+      // a damaged custom style is dropped rather than half kept
+      return { ...restored, width, height, customStyle };
     }
 
     // Don't use default case so as to catch a missing an element type case.

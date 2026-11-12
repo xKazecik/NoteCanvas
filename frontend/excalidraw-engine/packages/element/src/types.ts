@@ -185,6 +185,13 @@ export type TableCell = {
   spannedBy?: { row: number; col: number };
 };
 
+/** The colours of a table's "custom" style preset, as the user picked them. */
+export type TableCustomStyle = {
+  headerFill: string;
+  headerText: string;
+  bandFill: string;
+};
+
 export type ExcalidrawTableElement = _ExcalidrawElementBase &
   Readonly<{
     type: "table";
@@ -200,8 +207,14 @@ export type ExcalidrawTableElement = _ExcalidrawElementBase &
     headerRow: boolean;
     /** Tint every other body row. */
     bandedRows: boolean;
-    /** Id of a preset in TABLE_STYLE_PRESETS; absent means the default look. */
+    /** Id of a preset in TABLE_STYLE_PRESETS, or "custom"; absent means the
+        default look. */
     stylePreset?: string;
+    /** Colours of the "custom" preset; only read while that preset is in use. */
+    customStyle?: TableCustomStyle;
+    /** Colour of every line in the grid, over whatever the preset draws them
+        in; absent leaves the lines to the preset. */
+    borderColor?: string;
   }>;
 
 export type ExcalidrawFrameElement = _ExcalidrawElementBase & {

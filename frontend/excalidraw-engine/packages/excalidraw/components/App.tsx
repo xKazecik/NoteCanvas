@@ -6092,6 +6092,11 @@ class App extends React.Component<AppProps, AppState> {
     if (this.state.activeTool.type !== this.state.preferredSelectionTool.type) {
       return;
     }
+    // nothing a double click starts (editing a table cell, a text, a line,
+    // cropping an image) is allowed in view mode, nor while presenting
+    if (this.state.viewModeEnabled) {
+      return;
+    }
 
     const selectedElements = this.scene.getSelectedElements(this.state);
 
@@ -7367,6 +7372,31 @@ class App extends React.Component<AppProps, AppState> {
     // pointerDown event, ends with a pointerUp event (or another pointerDown)
     const pointerDownState = this.initialPointerDownState(event);
 
+    // presenting: the pointer only draws the laser. Nothing on the canvas can
+    // be selected, moved, resized or drawn; links and embedded pages still
+    // open, from handleCanvasPointerUp
+    if (this.state.presentationMode?.active) {
+      this.laserTrails.startPath(
+        pointerDownState.lastCoords.x,
+        pointerDownState.lastCoords.y,
+      );
+      const onLaserMove = (moveEvent: PointerEvent) => {
+        const { x, y } = viewportCoordsToSceneCoords(moveEvent, this.state);
+        this.laserTrails.addPointToPath(x, y);
+      };
+      const onLaserUp = () => {
+        this.laserTrails.endPath();
+        window.removeEventListener(EVENT.POINTER_MOVE, onLaserMove);
+        window.removeEventListener(EVENT.POINTER_UP, onLaserUp);
+        unsubscribeMissingUp();
+      };
+      window.addEventListener(EVENT.POINTER_MOVE, onLaserMove);
+      window.addEventListener(EVENT.POINTER_UP, onLaserUp);
+      const unsubscribeMissingUp =
+        this.missingPointerEventCleanupEmitter.once(onLaserUp);
+      return;
+    }
+
     this.setState({
       selectedElementsAreBeingDragged: false,
     });
@@ -7541,11 +7571,7 @@ class App extends React.Component<AppProps, AppState> {
         pointerDownState,
         this.state.activeTool.type,
       );
-    } else if (
-      this.state.activeTool.type === "laser" ||
-      this.state.presentationMode?.active
-    ) {
-      // In presentation mode, always draw laser trail on pointer down (implicit laser)
+    } else if (this.state.activeTool.type === "laser") {
       this.laserTrails.startPath(
         pointerDownState.lastCoords.x,
         pointerDownState.lastCoords.y,
@@ -7592,10 +7618,8 @@ class App extends React.Component<AppProps, AppState> {
 
     if (
       !this.state.viewModeEnabled ||
-      this.state.activeTool.type === "laser" ||
-      this.state.presentationMode?.active
+      this.state.activeTool.type === "laser"
     ) {
-      // In presentation mode, we need pointer events for implicit laser
       window.addEventListener(EVENT.POINTER_MOVE, onPointerMove);
       window.addEventListener(EVENT.POINTER_UP, onPointerUp);
       window.addEventListener(EVENT.KEYDOWN, onKeyDown);
@@ -9721,11 +9745,7 @@ class App extends React.Component<AppProps, AppState> {
         return;
       }
 
-      if (
-        this.state.activeTool.type === "laser" ||
-        this.state.presentationMode?.active
-      ) {
-        // In presentation mode, always draw laser trail on pointer move (implicit laser)
+      if (this.state.activeTool.type === "laser") {
         this.laserTrails.addPointToPath(pointerCoords.x, pointerCoords.y);
       }
 
@@ -11515,8 +11535,7 @@ class App extends React.Component<AppProps, AppState> {
         bindOrUnbindBindingElements(linearElements, this.scene, this.state);
       }
 
-      if (activeTool.type === "laser" || this.state.presentationMode?.active) {
-        // In presentation mode, always end laser trail on pointer up (implicit laser)
+      if (activeTool.type === "laser") {
         this.laserTrails.endPath();
         return;
       }
@@ -12636,10 +12655,17 @@ class App extends React.Component<AppProps, AppState> {
       activeEmbeddable: null,
     });
     const pointerCoords = pointerDownState.lastCoords;
+    // holding Alt turns the element freely, to any angle: the pointer is
+    // neither held to the grid nor pulled to snap points
+    const isFreeRotation = transformHandleType === "rotation" && event.altKey;
+    const gridSize =
+      event[KEYS.CTRL_OR_CMD] || isFreeRotation
+        ? null
+        : this.getEffectiveGridSize();
     let [resizeX, resizeY] = getGridPoint(
       pointerCoords.x - pointerDownState.resize.offset.x,
       pointerCoords.y - pointerDownState.resize.offset.y,
-      event[KEYS.CTRL_OR_CMD] ? null : this.getEffectiveGridSize(),
+      gridSize,
     );
 
     const frameElementsOffsetsMap = new Map<
@@ -12666,11 +12692,11 @@ class App extends React.Component<AppProps, AppState> {
 
     // check needed for avoiding flickering when a key gets pressed
     // during dragging
-    if (!this.state.selectedElementsAreBeingDragged) {
+    if (!this.state.selectedElementsAreBeingDragged && !isFreeRotation) {
       const [gridX, gridY] = getGridPoint(
         pointerCoords.x,
         pointerCoords.y,
-        event[KEYS.CTRL_OR_CMD] ? null : this.getEffectiveGridSize(),
+        gridSize,
       );
 
       const dragOffset = {
