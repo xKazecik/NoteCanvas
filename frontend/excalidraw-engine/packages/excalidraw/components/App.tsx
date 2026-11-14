@@ -193,6 +193,7 @@ import {
   embeddableURLValidator,
   getBrowserURL,
   getBrowserZoom,
+  isBrowserBarHidden,
   getBrowserFrameURL,
   maybeParseEmbedSrc,
   getEmbedLink,
@@ -345,6 +346,7 @@ import {
   actionToggleLinearEditor,
   actionToggleObjectsSnapMode,
   actionToggleCropEditor,
+  actionToggleBrowserBar,
   actionTableInsertRowAbove,
   actionTableInsertRowBelow,
   actionTableInsertColumnLeft,
@@ -638,6 +640,16 @@ const gesture: Gesture = {
   initialDistance: null,
   initialScale: null,
 };
+
+
+/**
+ * A stylus asking to erase: the eraser end of a pen (button 5), or a pen's
+ * side button held while it touches the screen, which is how Chrome reports
+ * the S Pen button on Samsung devices (button 2).
+ */
+const isStylusEraser = (event: React.PointerEvent) =>
+  event.button === POINTER_BUTTON.ERASER ||
+  (event.pointerType === "pen" && event.button === POINTER_BUTTON.SECONDARY);
 
 class App extends React.Component<AppProps, AppState> {
   canvas: AppClassProperties["canvas"];
@@ -1589,6 +1601,7 @@ class App extends React.Component<AppProps, AppState> {
                 url={browserURL}
                 frameURL={getBrowserFrameURL(browserURL)}
                 zoom={getBrowserZoom(el)}
+                hideBar={isBrowserBarHidden(el)}
                 canEdit={!this.state.viewModeEnabled && !el.locked}
                 onZoomChange={(zoom) => this.setBrowserZoom(el, zoom)}
               />
@@ -7306,7 +7319,9 @@ class App extends React.Component<AppProps, AppState> {
     this.savePointer(event.clientX, event.clientY, "down");
 
     if (
-      event.button === POINTER_BUTTON.ERASER &&
+      isStylusEraser(event) &&
+      // nothing is erased in view mode, which presenting turns on
+      !this.state.viewModeEnabled &&
       this.state.activeTool.type !== TOOL_TYPE.eraser
     ) {
       this.setState(
@@ -7358,7 +7373,7 @@ class App extends React.Component<AppProps, AppState> {
     if (
       event.button !== POINTER_BUTTON.MAIN &&
       event.button !== POINTER_BUTTON.TOUCH &&
-      event.button !== POINTER_BUTTON.ERASER
+      !isStylusEraser(event)
     ) {
       return;
     }
@@ -12282,13 +12297,16 @@ class App extends React.Component<AppProps, AppState> {
   ) => {
     event.preventDefault();
 
+    const pointerType =
+      "pointerType" in event.nativeEvent
+        ? event.nativeEvent.pointerType
+        : undefined;
+    // a pen's side button erases (see isStylusEraser), so it opens no menu
+    if (pointerType === "pen" && event.button === POINTER_BUTTON.SECONDARY) {
+      return;
+    }
     if (
-      (("pointerType" in event.nativeEvent &&
-        event.nativeEvent.pointerType === "touch") ||
-        ("pointerType" in event.nativeEvent &&
-          event.nativeEvent.pointerType === "pen" &&
-          // always allow if user uses a pen secondary button
-          event.button !== POINTER_BUTTON.SECONDARY)) &&
+      (pointerType === "touch" || pointerType === "pen") &&
       this.state.activeTool.type !== this.state.preferredSelectionTool.type
     ) {
       return;
@@ -12843,6 +12861,7 @@ class App extends React.Component<AppProps, AppState> {
       actionWrapSelectionInFrame,
       CONTEXT_MENU_SEPARATOR,
       actionToggleCropEditor,
+      actionToggleBrowserBar,
       CONTEXT_MENU_SEPARATOR,
       ...options,
       CONTEXT_MENU_SEPARATOR,

@@ -48,6 +48,7 @@ export {
 export {
   actionSetEmbeddableAsActiveTool,
   actionInsertBrowser,
+  actionToggleBrowserBar,
 } from "./actionEmbeddable";
 
 export { actionFinalize } from "./actionFinalize";

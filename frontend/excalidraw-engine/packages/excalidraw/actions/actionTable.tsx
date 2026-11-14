@@ -26,6 +26,7 @@ import type {
 } from "@excalidraw/element/types";
 
 import { TableActions } from "../components/TableActions";
+import { Fonts } from "../fonts";
 import { t } from "../i18n";
 
 import { register } from "./register";
@@ -326,11 +327,25 @@ export const actionTableOperation = register({
         captureUpdate: CaptureUpdateAction.EVENTUALLY,
       };
     }
-    return performTableOperation(
+    const operation = value as TableOperation;
+    const result = performTableOperation(
       elements,
       { ...appState, selectedTableCells: app.state.selectedTableCells },
-      value as TableOperation,
+      operation,
     );
+    // a font the page has not used yet loads now, and the table is redrawn
+    // in it once it arrives
+    if (
+      operation.op === "styleCells" &&
+      operation.style.fontFamily &&
+      result &&
+      result.elements
+    ) {
+      Fonts.loadElementsFonts(result.elements.filter(isTableElement)).then(
+        (fontFaces) => app.fonts.onLoaded(fontFaces),
+      );
+    }
+    return result;
   },
   PanelComponent: ({ elements, appState, updateData, app }) => {
     const target = getTableTarget(elements, app.state);

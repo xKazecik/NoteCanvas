@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import {
   CUSTOM_TABLE_STYLE_ID,
   getCell,
@@ -12,6 +14,7 @@ import {
 import type { TableCellStyle } from "@excalidraw/element/types";
 
 import {
+  DEFAULT_FONT_FAMILY,
   DEFAULT_ELEMENT_BACKGROUND_COLOR_PALETTE,
   DEFAULT_ELEMENT_BACKGROUND_PICKS,
   DEFAULT_ELEMENT_STROKE_COLOR_PALETTE,
@@ -23,6 +26,7 @@ import type { ExcalidrawElement } from "@excalidraw/element/types";
 import { t } from "../i18n";
 
 import { ColorPicker } from "./ColorPicker/ColorPicker";
+import { FontPicker } from "./FontPicker/FontPicker";
 import { TableStylePicker } from "./TableStylePicker";
 import { ToolButton } from "./ToolButton";
 import { RadioSelection } from "./RadioSelection";
@@ -97,6 +101,8 @@ export const TableActions = ({
 
   const setStyle = (patch: TableCellStyle) =>
     updateData({ op: "styleCells", style: patch });
+
+  const [isFontPickerOpen, setFontPickerOpen] = useState(false);
 
   /** A colour picker of the table panel; each opens as its own popup. */
   const colorField = ({
@@ -315,6 +321,22 @@ export const TableActions = ({
             color: textColor,
             onChange: (color) => setStyle({ textColor: color }),
           })}
+
+          <fieldset>
+            <legend>{t("labels.fontFamily")}</legend>
+            <FontPicker
+              isOpened={isFontPickerOpen}
+              selectedFontFamily={style.fontFamily ?? DEFAULT_FONT_FAMILY}
+              hoveredFontFamily={null}
+              onSelect={(fontFamily) => {
+                setFontPickerOpen(false);
+                setStyle({ fontFamily });
+              }}
+              onHover={() => {}}
+              onLeave={() => {}}
+              onPopupChange={setFontPickerOpen}
+            />
+          </fieldset>
 
           <fieldset>
             <legend>{t("labels.cellText")}</legend>

@@ -11,7 +11,7 @@ export type DroppedImageData = {
   height: number;
 };
 
-const createDroppedFileId = (): string =>
+export const createDroppedFileId = (): string =>
   typeof crypto.randomUUID === "function"
     ? crypto.randomUUID()
     : `dropped-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;

@@ -142,6 +142,8 @@
       "hint": "Type or paste your link here",
       "goToElement": "Go to target element"
     },
+    "hideBrowserBar": "Hide address bar",
+    "showBrowserBar": "Show address bar",
     "lineEditor": {
       "edit": "Edit line",
       "editArrow": "Edit arrow"

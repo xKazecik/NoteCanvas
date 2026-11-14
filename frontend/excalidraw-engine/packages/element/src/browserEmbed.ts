@@ -11,7 +11,7 @@ export const BROWSER_ZOOM = {
 } as const;
 
 /** What a browser element keeps in `customData.browser`. */
-export type BrowserData = { zoom: number };
+export type BrowserData = { zoom: number; hideBar?: boolean };
 
 export const BROWSER_DEFAULT_SIZE = { width: 800, height: 520 } as const;
 
@@ -29,6 +29,10 @@ export const getBrowserZoom = (element: ExcalidrawEmbeddableElement): number => 
     ? clampBrowserZoom(zoom)
     : BROWSER_ZOOM.default;
 };
+
+/** Whether the address bar over a browser element's page is hidden. */
+export const isBrowserBarHidden = (element: ExcalidrawEmbeddableElement) =>
+  element.customData?.browser?.hideBar === true;
 
 /**
  * The address a browser element loads, or null when the link is not a web

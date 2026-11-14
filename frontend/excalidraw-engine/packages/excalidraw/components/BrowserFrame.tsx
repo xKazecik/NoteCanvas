@@ -23,6 +23,7 @@ export const BrowserFrame = ({
   url,
   frameURL,
   zoom,
+  hideBar,
   canEdit,
   onZoomChange,
 }: {
@@ -31,6 +32,8 @@ export const BrowserFrame = ({
   /** What the frame loads: `url`, or its embed page when the site has one. */
   frameURL: string;
   zoom: number;
+  /** Set from the element's context menu, leaving only the page. */
+  hideBar: boolean;
   /** Zoom is stored on the element, so only editors get to change it. */
   canEdit: boolean;
   onZoomChange: (zoom: number) => void;
@@ -46,57 +49,59 @@ export const BrowserFrame = ({
 
   return (
     <div className="excalidraw__browser">
-      <div className="excalidraw__browser__bar">
-        <button
-          type="button"
-          title={t("buttons.browserReset")}
-          aria-label={t("buttons.browserReset")}
-          onClick={() => setSession((value) => value + 1)}
-        >
-          {BrowserHomeIcon}
-        </button>
-        <span className="excalidraw__browser__address" title={url}>
-          {address}
-        </span>
-        {canEdit && (
-          <>
-            <button
-              type="button"
-              title={t("buttons.browserZoomOut")}
-              aria-label={t("buttons.browserZoomOut")}
-              disabled={zoom <= BROWSER_ZOOM.min}
-              onClick={() =>
-                onZoomChange(clampBrowserZoom(zoom - BROWSER_ZOOM.step))
-              }
-            >
-              {ZoomOutIcon}
-            </button>
-            <span className="excalidraw__browser__zoom">
-              {Math.round(zoom * 100)}%
-            </span>
-            <button
-              type="button"
-              title={t("buttons.browserZoomIn")}
-              aria-label={t("buttons.browserZoomIn")}
-              disabled={zoom >= BROWSER_ZOOM.max}
-              onClick={() =>
-                onZoomChange(clampBrowserZoom(zoom + BROWSER_ZOOM.step))
-              }
-            >
-              {ZoomInIcon}
-            </button>
-          </>
-        )}
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={t("buttons.browserOpen")}
-          aria-label={t("buttons.browserOpen")}
-        >
-          {ExternalLinkIcon}
-        </a>
-      </div>
+      {!hideBar && (
+        <div className="excalidraw__browser__bar">
+          <button
+            type="button"
+            title={t("buttons.browserReset")}
+            aria-label={t("buttons.browserReset")}
+            onClick={() => setSession((value) => value + 1)}
+          >
+            {BrowserHomeIcon}
+          </button>
+          <span className="excalidraw__browser__address" title={url}>
+            {address}
+          </span>
+          {canEdit && (
+            <>
+              <button
+                type="button"
+                title={t("buttons.browserZoomOut")}
+                aria-label={t("buttons.browserZoomOut")}
+                disabled={zoom <= BROWSER_ZOOM.min}
+                onClick={() =>
+                  onZoomChange(clampBrowserZoom(zoom - BROWSER_ZOOM.step))
+                }
+              >
+                {ZoomOutIcon}
+              </button>
+              <span className="excalidraw__browser__zoom">
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                type="button"
+                title={t("buttons.browserZoomIn")}
+                aria-label={t("buttons.browserZoomIn")}
+                disabled={zoom >= BROWSER_ZOOM.max}
+                onClick={() =>
+                  onZoomChange(clampBrowserZoom(zoom + BROWSER_ZOOM.step))
+                }
+              >
+                {ZoomInIcon}
+              </button>
+            </>
+          )}
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={t("buttons.browserOpen")}
+            aria-label={t("buttons.browserOpen")}
+          >
+            {ExternalLinkIcon}
+          </a>
+        </div>
+      )}
       <div className="excalidraw__browser__page">
         <iframe
           key={session}

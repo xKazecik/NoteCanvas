@@ -14,6 +14,19 @@ export const useEditorChrome = ({
 }: UseEditorChromeOptions) => {
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
 
+  // The editor is a full-screen app with its own zoom. Zooming the page on a
+  // tablet (a pinch on the header, or iOS zooming in on a focused text box)
+  // pushes the header and toolbar off the top, so it is locked while editing.
+  useEffect(() => {
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+    if (!meta) return;
+    const previous = meta.content;
+    meta.content = `${previous}, maximum-scale=1, user-scalable=no`;
+    return () => {
+      meta.content = previous;
+    };
+  }, []);
+
   useEffect(() => {
     document.title = `${drawingName} - notecanvas`;
     return () => {

@@ -15,7 +15,7 @@ body.excalidraw-presentation-mode .excalidraw .disable-zen-mode {
 
 /* the canvas takes the header's place at once, so slides fit the full screen */
 body.excalidraw-presentation-mode .notecanvas-editor-canvas {
-  height: 100vh !important;
+  height: 100dvh !important;
   margin-top: 0 !important;
   transition: none !important;
 }
