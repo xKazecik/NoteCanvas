@@ -141,6 +141,7 @@ export type ActionName =
   | "setFrameAsActiveTool"
   | "setEmbeddableAsActiveTool"
   | "insertBrowser"
+  | "toggleBrowserBar"
   | "createContainerFromText"
   | "wrapTextInContainer"
   | "commandPalette"

@@ -7,12 +7,18 @@ import {
 import {
   BROWSER_DEFAULT_SIZE,
   CaptureUpdateAction,
+  getBrowserURL,
+  isBrowserBarHidden,
+  isEmbeddableElement,
   isUsingAdaptiveRadius,
   newBrowserData,
+  newElementWith,
   newEmbeddableElement,
 } from "@excalidraw/element";
 
 import { setCursorForShape } from "../cursor";
+
+import type { AppClassProperties, AppState } from "../types";
 
 import { register } from "./register";
 
@@ -96,6 +102,53 @@ export const actionInsertBrowser = register({
         selectedElementIds: { [element.id]: true },
         showHyperlinkPopup: "editor",
       },
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    };
+  },
+});
+
+const getSingleBrowser = (
+  appState: Readonly<AppState>,
+  app: AppClassProperties,
+) => {
+  const selected = app.scene.getSelectedElements(appState);
+  return selected.length === 1 &&
+    isEmbeddableElement(selected[0]) &&
+    getBrowserURL(selected[0].link)
+    ? selected[0]
+    : null;
+};
+
+/** Hide or bring back the address bar over a browser element's page. */
+export const actionToggleBrowserBar = register({
+  name: "toggleBrowserBar",
+  trackEvent: { category: "element" },
+  label: (_elements, appState, app) => {
+    const browser = getSingleBrowser(appState, app);
+    return browser && isBrowserBarHidden(browser)
+      ? "labels.showBrowserBar"
+      : "labels.hideBrowserBar";
+  },
+  predicate: (_elements, appState, _, app) =>
+    !appState.viewModeEnabled && !!getSingleBrowser(appState, app),
+  perform: (elements, appState, _, app) => {
+    const browser = getSingleBrowser(appState, app);
+    if (!browser) {
+      return false;
+    }
+    const hideBar = !isBrowserBarHidden(browser);
+    return {
+      elements: elements.map((element) =>
+        element.id === browser.id
+          ? newElementWith(element, {
+              customData: {
+                ...element.customData,
+                browser: { ...element.customData?.browser, hideBar },
+              },
+            })
+          : element,
+      ),
+      appState,
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },

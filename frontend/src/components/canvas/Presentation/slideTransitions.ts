@@ -238,6 +238,9 @@ const addSnapshot = (): HTMLCanvasElement | null => {
   copy.width = source.width;
   copy.height = source.height;
   copy.getContext("2d")?.drawImage(source, 0, 0);
+  // the dark theme is a CSS filter on the canvas, not in its pixels, and the
+  // copy sits outside Excalidraw where that filter does not reach
+  copy.style.filter = getComputedStyle(source).filter;
   return addOverlay(copy);
 };
 

@@ -44,6 +44,12 @@ body.excalidraw-cursor-resize * {
 
   position: relative;
   overflow: hidden;
+  // `hidden` still lets the browser scroll the box, for instance to bring a
+  // focused button of an overflowing toolbar or panel into view. That slides
+  // the whole UI out of reach and moves the canvas away from where pointer
+  // coordinates expect it, so strokes draw away from the pen. `clip` cannot
+  // be scrolled at all.
+  overflow: clip;
   color: var(--text-primary-color);
   display: flex;
   top: 0;
@@ -370,6 +376,33 @@ body.excalidraw-cursor-resize * {
     @media (min-width: 1536px) {
       grid-template-columns: 1fr 1fr 1fr;
       grid-gap: 3rem;
+    }
+
+    // on tablets and small laptops the shape toolbar and the top-right
+    // buttons do not fit side by side, so the top-right ones go under the
+    // toolbar instead of running off screen. The left column (menu and the
+    // properties panel) spans both rows, so its height never pushes them down.
+    @media (max-width: 1099px) {
+      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-rows: auto 1fr;
+      grid-template-areas:
+        "left shapes"
+        "left right";
+      grid-gap: 0.5rem 1rem;
+
+      & > .App-menu_top__left {
+        grid-area: left;
+      }
+
+      & > .shapes-section {
+        grid-area: shapes;
+        justify-self: center;
+      }
+
+      & > .layer-ui__wrapper__top-right {
+        grid-area: right;
+        align-self: start;
+      }
     }
   }
 

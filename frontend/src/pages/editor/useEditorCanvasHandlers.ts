@@ -11,6 +11,7 @@ import {
   loadDroppedImageData,
   MULTI_IMAGE_DROP_GAP,
 } from "./droppedImages";
+import { isDroppedPdfFile, loadDroppedPdfData } from "./droppedPdf";
 import {
   hasRenderableElements,
   haveSameElements,
@@ -97,8 +98,7 @@ export const useEditorCanvasHandlers = ({
       if (isUnmountingRef.current) return;
       if (isSyncingRef.current) return;
       latestAppStateRef.current = appState;
-      const currentFiles =
-        files || excalidrawAPIRef.current?.getFiles() || {};
+      const currentFiles = files || excalidrawAPIRef.current?.getFiles() || {};
       if (Object.keys(currentFiles).length > 0) {
         latestFilesRef.current = currentFiles;
       }
@@ -156,9 +156,11 @@ export const useEditorCanvasHandlers = ({
       if (!canEdit || !excalidrawAPIRef.current) return;
       const allDroppedFiles = Array.from(event.dataTransfer?.files || []);
       const droppedImages = getDroppedImageFiles(event.dataTransfer);
+      const droppedPdfs = allDroppedFiles.filter(isDroppedPdfFile);
+      // a single image is left to Excalidraw; PDFs it cannot read at all
       if (
-        droppedImages.length <= 1 ||
-        droppedImages.length !== allDroppedFiles.length
+        droppedImages.length + droppedPdfs.length !== allDroppedFiles.length ||
+        (droppedPdfs.length === 0 && droppedImages.length <= 1)
       ) {
         return;
       }
@@ -172,7 +174,11 @@ export const useEditorCanvasHandlers = ({
           appState,
         );
         const loadedImages = await Promise.all(
-          droppedImages.map(loadDroppedImageData),
+          allDroppedFiles.map((file) =>
+            isDroppedPdfFile(file)
+              ? loadDroppedPdfData(file)
+              : loadDroppedImageData(file),
+          ),
         );
         if (loadedImages.length === 0) return;
         excalidrawAPIRef.current.addFiles(
@@ -228,11 +234,7 @@ export const useEditorCanvasHandlers = ({
       if (!excalidrawAPIRef.current) return;
       const nextFiles = excalidrawAPIRef.current.getFiles?.() || {};
       const didEmit = emitFilesDeltaIfNeeded(nextFiles);
-      if (
-        didEmit &&
-        latestAppStateRef.current &&
-        debouncedSaveRef.current
-      ) {
+      if (didEmit && latestAppStateRef.current && debouncedSaveRef.current) {
         hasSceneChangesSinceLoadRef.current = true;
         lastLocalChangeAtRef.current = Date.now();
         debouncedSaveRef.current(

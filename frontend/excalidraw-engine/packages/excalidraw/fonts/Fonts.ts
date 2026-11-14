@@ -1,4 +1,5 @@
 import {
+  DEFAULT_FONT_FAMILY,
   FONT_FAMILY,
   FONT_FAMILY_FALLBACKS,
   CJK_HAND_DRAWN_FALLBACK_FONT,
@@ -20,7 +21,7 @@ import {
 
 import { ShapeCache } from "@excalidraw/element";
 
-import { isTextElement } from "@excalidraw/element";
+import { isTableElement, isTextElement } from "@excalidraw/element";
 
 import type {
   ExcalidrawElement,
@@ -43,6 +44,22 @@ import { NunitoFontFaces } from "./Nunito";
 import { SystemFontFaces } from "./System";
 import { VirgilFontFaces } from "./Virgil";
 import { XiaolaiFontFaces } from "./Xiaolai";
+
+/** Each piece of text an element draws, with the font it is drawn in. */
+const getTextRuns = (
+  element: ExcalidrawElement,
+): { fontFamily: ExcalidrawTextElement["fontFamily"]; text: string }[] => {
+  if (isTextElement(element)) {
+    return [{ fontFamily: element.fontFamily, text: element.originalText }];
+  }
+  if (isTableElement(element)) {
+    return element.cells.flat().map((cell) => ({
+      fontFamily: cell.style?.fontFamily ?? DEFAULT_FONT_FAMILY,
+      text: cell.text,
+    }));
+  }
+  return [];
+};
 
 export class Fonts {
   // it's ok to track fonts across multiple instances only once, so let's use
@@ -127,6 +144,11 @@ export class Fonts {
     const elementsMap = this.scene.getNonDeletedElementsMap();
 
     for (const element of this.scene.getNonDeletedElements()) {
+      // a table draws its cells' text itself; a fresh shape redraws it
+      if (isTableElement(element)) {
+        didUpdate = true;
+        ShapeCache.delete(element);
+      }
       if (isTextElement(element)) {
         didUpdate = true;
         ShapeCache.delete(element);
@@ -413,12 +435,11 @@ export class Fonts {
     elements: ReadonlyArray<ExcalidrawElement>,
   ): Array<ExcalidrawTextElement["fontFamily"]> {
     return Array.from(
-      elements.reduce((families, element) => {
-        if (isTextElement(element)) {
-          families.add(element.fontFamily);
-        }
-        return families;
-      }, new Set<number>()),
+      new Set(
+        elements.flatMap((element) =>
+          getTextRuns(element).map((run) => run.fontFamily),
+        ),
+      ),
     );
   }
 
@@ -430,18 +451,14 @@ export class Fonts {
   ): Record<number, Set<string>> {
     const charsPerFamily: Record<number, Set<string>> = {};
 
-    for (const element of elements) {
-      if (!isTextElement(element)) {
-        continue;
-      }
-
+    for (const { fontFamily, text } of elements.flatMap(getTextRuns)) {
       // gather unique codepoints only when inlining fonts
-      for (const char of element.originalText) {
-        if (!charsPerFamily[element.fontFamily]) {
-          charsPerFamily[element.fontFamily] = new Set();
+      for (const char of text) {
+        if (!charsPerFamily[fontFamily]) {
+          charsPerFamily[fontFamily] = new Set();
         }
 
-        charsPerFamily[element.fontFamily].add(char);
+        charsPerFamily[fontFamily].add(char);
       }
     }
 

@@ -4,6 +4,11 @@ events {
 
 http {
     include /etc/nginx/mime.types;
+    # the stock list maps only .js; the PDF reader's worker is an .mjs module,
+    # which browsers refuse to run unless it is served as JavaScript
+    types {
+        application/javascript mjs;
+    }
     default_type application/octet-stream;
 
     # Preserve upstream TLS context (if present) when proxying to backend.

@@ -1,3 +1,6 @@
+import { useState } from "react";
+
+import { DEFAULT_FONT_FAMILY } from "@excalidraw/common";
 import { getCell, resolveAnchorCell } from "@excalidraw/element";
 
 import type { TableCellStyle } from "@excalidraw/element/types";
@@ -12,6 +15,7 @@ import type { ExcalidrawElement } from "@excalidraw/element/types";
 import { t } from "../i18n";
 
 import { ColorPicker } from "./ColorPicker/ColorPicker";
+import { FontPicker } from "./FontPicker/FontPicker";
 import { TableStylePicker } from "./TableStylePicker";
 import { ToolButton } from "./ToolButton";
 import { RadioSelection } from "./RadioSelection";
@@ -76,6 +80,8 @@ export const TableActions = ({
 
   const setStyle = (patch: TableCellStyle) =>
     updateData({ op: "styleCells", style: patch });
+
+  const [isFontPickerOpen, setFontPickerOpen] = useState(false);
 
   return (
     <>
@@ -205,6 +211,22 @@ export const TableActions = ({
               elements={elements}
               appState={appState}
               updateData={updateData}
+            />
+          </fieldset>
+
+          <fieldset>
+            <legend>{t("labels.fontFamily")}</legend>
+            <FontPicker
+              isOpened={isFontPickerOpen}
+              selectedFontFamily={style.fontFamily ?? DEFAULT_FONT_FAMILY}
+              hoveredFontFamily={null}
+              onSelect={(fontFamily) => {
+                setFontPickerOpen(false);
+                setStyle({ fontFamily });
+              }}
+              onHover={() => {}}
+              onLeave={() => {}}
+              onPopupChange={setFontPickerOpen}
             />
           </fieldset>
 
