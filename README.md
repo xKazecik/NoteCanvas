@@ -1,4 +1,4 @@
-<img src="readme-assets/logoExcaliDash.png" alt="notecanvas Logo" width="80" height="88">
+<img src="readme-assets/logo.png" alt="NoteCanvas logo" width="80" height="80">
 
 # notecanvas
 
