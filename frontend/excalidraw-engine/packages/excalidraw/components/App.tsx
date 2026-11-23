@@ -651,6 +651,10 @@ const isStylusEraser = (event: React.PointerEvent) =>
   event.button === POINTER_BUTTON.ERASER ||
   (event.pointerType === "pen" && event.button === POINTER_BUTTON.SECONDARY);
 
+/** Whether a pen's side button or eraser end is held (`buttons` 2 or 32). */
+const isStylusEraserHeld = (event: PointerEvent) =>
+  event.pointerType === "pen" && (event.buttons & (2 | 32)) !== 0;
+
 class App extends React.Component<AppProps, AppState> {
   canvas: AppClassProperties["canvas"];
   interactiveCanvas: AppClassProperties["interactiveCanvas"] = null;
@@ -752,6 +756,52 @@ class App extends React.Component<AppProps, AppState> {
     [event: PointerEvent | null]
   >();
   onRemoveEventListenersEmitter = new Emitter<[]>();
+
+  /** The eraser is on because a pen's side button (or eraser end) is held. */
+  private stylusEraserOn = false;
+
+  /**
+   * A pen's side button (or eraser end) turns the eraser on for as long as
+   * it's held, also while the pen only hovers, and releasing it goes back to
+   * the previous tool. A press or release while the pen touches the screen
+   * applies when that stroke ends, so a stroke never changes tool halfway.
+   */
+  private onStylusButtons = (event: PointerEvent) => {
+    if (event.pointerType !== "pen" || event.buttons & 1) {
+      return;
+    }
+    const held = isStylusEraserHeld(event);
+    if (
+      held &&
+      !this.stylusEraserOn &&
+      !this.state.viewModeEnabled &&
+      !isEraserActive(this.state)
+    ) {
+      this.stylusEraserOn = true;
+      this.setState({
+        activeTool: updateActiveTool(this.state, {
+          type: TOOL_TYPE.eraser,
+          lastActiveToolBeforeEraser: this.state.activeTool,
+        }),
+      });
+    } else if (!held && this.stylusEraserOn) {
+      this.restoreToolAfterStylusEraser();
+    }
+  };
+
+  private restoreToolAfterStylusEraser() {
+    this.stylusEraserOn = false;
+    if (isEraserActive(this.state)) {
+      this.setState({
+        activeTool: updateActiveTool(this.state, {
+          ...(this.state.activeTool.lastActiveTool || {
+            type: TOOL_TYPE.selection,
+          }),
+          lastActiveToolBeforeEraser: null,
+        }),
+      });
+    }
+  }
 
   constructor(props: AppProps) {
     super(props);
@@ -3178,6 +3228,12 @@ class App extends React.Component<AppProps, AppState> {
         this.updateCurrentCursorPosition,
         { passive: false },
       ),
+      addEventListener(document, EVENT.POINTER_MOVE, this.onStylusButtons, {
+        passive: true,
+      }),
+      addEventListener(document, EVENT.POINTER_UP, this.onStylusButtons, {
+        passive: true,
+      }),
       // rerender text elements on font load to fix #637 && #1553
       addEventListener(
         document.fonts,
@@ -7331,6 +7387,7 @@ class App extends React.Component<AppProps, AppState> {
       !this.state.viewModeEnabled &&
       this.state.activeTool.type !== TOOL_TYPE.eraser
     ) {
+      this.stylusEraserOn = true;
       this.setState(
         {
           activeTool: updateActiveTool(this.state, {
@@ -7340,19 +7397,15 @@ class App extends React.Component<AppProps, AppState> {
         },
         () => {
           this.handleCanvasPointerDown(event);
-          const onPointerUp = () => {
+          const onPointerUp = (upEvent?: PointerEvent | null) => {
             unsubPointerUp();
             unsubCleanup?.();
-            if (isEraserActive(this.state)) {
-              this.setState({
-                activeTool: updateActiveTool(this.state, {
-                  ...(this.state.activeTool.lastActiveTool || {
-                    type: TOOL_TYPE.selection,
-                  }),
-                  lastActiveToolBeforeEraser: null,
-                }),
-              });
+            // still held after the pen lifts: the eraser stays on until it's
+            // released (onStylusButtons)
+            if (upEvent && isStylusEraserHeld(upEvent)) {
+              return;
             }
+            this.restoreToolAfterStylusEraser();
           };
 
           const unsubPointerUp = addEventListener(
