@@ -761,16 +761,37 @@ class App extends React.Component<AppProps, AppState> {
   private stylusEraserOn = false;
 
   /**
+   * The side button as the NoteCanvas Android app reports it (the
+   * `notecanvas:stylusbutton` event); null where nothing reports it. The
+   * Android WebView doesn't pass the S Pen button on to pages, so there the
+   * app's report replaces what pointer events say.
+   */
+  private stylusHeldByApp: boolean | null = null;
+
+  /**
    * A pen's side button (or eraser end) turns the eraser on for as long as
    * it's held, also while the pen only hovers, and releasing it goes back to
    * the previous tool. A press or release while the pen touches the screen
    * applies when that stroke ends, so a stroke never changes tool halfway.
    */
   private onStylusButtons = (event: PointerEvent) => {
-    if (event.pointerType !== "pen" || event.buttons & 1) {
+    if (
+      this.stylusHeldByApp !== null ||
+      event.pointerType !== "pen" ||
+      event.buttons & 1
+    ) {
       return;
     }
-    const held = isStylusEraserHeld(event);
+    this.setStylusEraserHeld(isStylusEraserHeld(event));
+  };
+
+  private onAppStylusButton = (event: Event) => {
+    const held = (event as CustomEvent<{ held?: unknown }>).detail?.held === true;
+    this.stylusHeldByApp = held;
+    this.setStylusEraserHeld(held);
+  };
+
+  private setStylusEraserHeld(held: boolean) {
     if (
       held &&
       !this.stylusEraserOn &&
@@ -787,7 +808,7 @@ class App extends React.Component<AppProps, AppState> {
     } else if (!held && this.stylusEraserOn) {
       this.restoreToolAfterStylusEraser();
     }
-  };
+  }
 
   private restoreToolAfterStylusEraser() {
     this.stylusEraserOn = false;
@@ -3234,6 +3255,11 @@ class App extends React.Component<AppProps, AppState> {
       addEventListener(document, EVENT.POINTER_UP, this.onStylusButtons, {
         passive: true,
       }),
+      addEventListener(
+        window,
+        "notecanvas:stylusbutton",
+        this.onAppStylusButton,
+      ),
       // rerender text elements on font load to fix #637 && #1553
       addEventListener(
         document.fonts,
@@ -7401,8 +7427,11 @@ class App extends React.Component<AppProps, AppState> {
             unsubPointerUp();
             unsubCleanup?.();
             // still held after the pen lifts: the eraser stays on until it's
-            // released (onStylusButtons)
-            if (upEvent && isStylusEraserHeld(upEvent)) {
+            // released (setStylusEraserHeld)
+            const stillHeld =
+              this.stylusHeldByApp ??
+              (!!upEvent && isStylusEraserHeld(upEvent));
+            if (stillHeld) {
               return;
             }
             this.restoreToolAfterStylusEraser();
