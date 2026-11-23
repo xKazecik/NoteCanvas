@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { getInitialsFromName } from "../../utils/user";
 import { OfflineModeToggle } from "./OfflineModeToggle";
+import { isLocalDesktopWorkspace } from "../../utils/desktop";
 
 type UserLike =
   | {
@@ -92,7 +93,8 @@ export const SidebarFooter: React.FC<SidebarFooterProps> = ({
         </button>
       )}
 
-      <OfflineModeToggle className={footerButtonClass(false)} />
+      {/* A local desktop workspace runs on this computer: it is never offline. */}
+      {!isLocalDesktopWorkspace() && <OfflineModeToggle className={footerButtonClass(false)} />}
 
       <button
         onClick={() => navigate("/settings")}

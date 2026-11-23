@@ -14,7 +14,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Server-backed via the shared preferences context (no-clobber-on-first-mount
   // and refetch-on-user-change live there); this wrapper only owns the DOM side
   // effects for the resolved theme.
-  const [theme, setTheme] = usePreference('theme', 'light');
+  const [theme, setTheme] = usePreference('theme', 'dark');
 
   useEffect(() => {
     const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;

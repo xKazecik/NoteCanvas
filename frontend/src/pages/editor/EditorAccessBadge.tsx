@@ -19,7 +19,10 @@ export const EditorAccessBadge: React.FC<{
             : undefined
         }
       >
-        {ownerOffline ? "Read-only · Owner turned on offline mode" : "Read-only"}
+        Read-only
+        {ownerOffline ? (
+          <span className="hidden sm:inline"> · Owner turned on offline mode</span>
+        ) : null}
       </span>
     );
   }
@@ -31,7 +34,10 @@ export const EditorAccessBadge: React.FC<{
       role="status"
     >
       <CloudOff size={14} />
-      {isOnline ? "Offline mode · syncing" : "Offline mode · saved locally"}
+      {/* Phones: just the icon; the title explains. */}
+      <span className="hidden sm:inline">
+        {isOnline ? "Offline mode · syncing" : "Offline mode · saved locally"}
+      </span>
     </span>
   );
 };

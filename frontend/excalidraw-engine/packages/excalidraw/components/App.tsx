@@ -3062,8 +3062,15 @@ class App extends React.Component<AppProps, AppState> {
 
     if (supportsResizeObserver && this.excalidrawContainerRef.current) {
       this.resizeObserver = new ResizeObserver(() => {
+        const previousInterface = this.editorInterface;
         this.refreshEditorInterface();
         this.updateDOMRect();
+        // The constructor can't measure the container yet, so the first
+        // observation is what picks the phone/tablet UI: re-render for it
+        // (otherwise a phone keeps the desktop toolbar until a resize).
+        if (this.editorInterface !== previousInterface) {
+          this.setState({});
+        }
       });
       this.resizeObserver?.observe(this.excalidrawContainerRef.current);
     }
