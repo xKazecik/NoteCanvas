@@ -11,6 +11,7 @@ import { DrawingCardContextMenu } from "./drawing-card/DrawingCardContextMenu";
 import { useDrawingPreview } from "./drawing-card/useDrawingPreview";
 import * as api from "../api";
 import { useOffline } from "../context/OfflineContext";
+import { isLocalDesktopWorkspace } from "../utils/desktop";
 
 interface DrawingCardProps {
   drawing: DrawingSummary;
@@ -324,7 +325,7 @@ export const DrawingCard: React.FC<DrawingCardProps> = ({
             setContextMenu(null);
           }}
           offlineToggle={
-            isOwnerSide
+            isOwnerSide && !isLocalDesktopWorkspace()
               ? {
                   storedOffline,
                   disabled: offline.busy || !offline.isOnline,

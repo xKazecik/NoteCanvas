@@ -172,11 +172,11 @@ export const EditorView: React.FC<EditorViewProps> = ({
   <div className="h-dvh flex flex-col bg-white dark:bg-neutral-950 overflow-hidden">
     <header
       className={clsx(
-        "notecanvas-editor-header h-16 bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-800 flex items-center px-4 justify-between z-10 fixed top-0 left-0 right-0 transition-transform duration-300",
+        "notecanvas-editor-header h-16 bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-800 flex items-center gap-2 px-2 sm:px-4 justify-between z-10 fixed top-0 left-0 right-0 transition-transform duration-300",
         isHeaderVisible ? "translate-y-0" : "-translate-y-full",
       )}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-1 sm:gap-4 min-w-0">
         <button
           onClick={onBackClick}
           disabled={isSavingOnLeave}
@@ -199,20 +199,22 @@ export const EditorView: React.FC<EditorViewProps> = ({
               value={newName}
               onChange={(e) => onNewNameChange(e.target.value)}
               onBlur={onRenameBlur}
-              className="font-medium text-gray-900 dark:text-white bg-transparent px-2 py-1 border-2 border-indigo-500 rounded-md outline-none min-w-[200px]"
+              className="font-medium text-gray-900 dark:text-white bg-transparent px-2 py-1 border-2 border-indigo-500 rounded-md outline-none min-w-0 sm:min-w-[200px] max-w-[45vw] sm:max-w-none"
               style={{ width: `${Math.max(200, newName.length * 9 + 20)}px` }}
             />
           </form>
         ) : (
           <h1
-            className="font-medium text-gray-900 dark:text-white px-2 py-1 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded cursor-text"
+            className="min-w-0 truncate font-medium text-gray-900 dark:text-white px-2 py-1 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded cursor-text"
+            title={drawingName}
             onDoubleClick={onRenameStart}
           >
             {drawingName}
           </h1>
         )}
       </div>
-      <div className="flex items-center gap-3">
+      {/* Phones: tighter, and without the dividers and your own avatar. */}
+      <div className="flex flex-shrink-0 items-center gap-0.5 sm:gap-3">
         {canEdit && autosaveFailing ? (
           <span
             className="flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200 border border-red-200 dark:border-red-800"
@@ -220,7 +222,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
             role="status"
           >
             <CloudOff size={14} />
-            Unsaved changes
+            <span className="hidden sm:inline">Unsaved changes</span>
           </span>
         ) : null}
         <EditorAccessBadge id={id} canEdit={canEdit} ownerOffline={ownerOffline} />
@@ -249,7 +251,7 @@ export const EditorView: React.FC<EditorViewProps> = ({
         >
           {autoHideEnabled ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
         </button>
-        <div className="h-6 w-px bg-gray-300 dark:bg-gray-700" />
+        <div className="hidden sm:block h-6 w-px bg-gray-300 dark:bg-gray-700" />
         <button
           onClick={onExportClick}
           className="p-2 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded-lg text-gray-600 dark:text-gray-300 transition-colors"
@@ -257,10 +259,12 @@ export const EditorView: React.FC<EditorViewProps> = ({
         >
           <Download size={20} />
         </button>
-        <div className="h-6 w-px bg-gray-300 dark:bg-gray-700" />
+        <div className="hidden sm:block h-6 w-px bg-gray-300 dark:bg-gray-700" />
         <div className="flex items-center">
-          <UserAvatar user={me} label={`${me.name} (You)`} />
-          <div className="h-6 w-px bg-gray-300 dark:bg-gray-700 mx-2" />
+          <div className="hidden sm:flex items-center">
+            <UserAvatar user={me} label={`${me.name} (You)`} />
+            <div className="h-6 w-px bg-gray-300 dark:bg-gray-700 mx-2" />
+          </div>
           <div className="flex items-center gap-2">
             {peers.map((peer) => (
               <UserAvatar

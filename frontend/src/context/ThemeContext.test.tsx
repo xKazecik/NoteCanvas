@@ -53,8 +53,8 @@ describe("ThemeContext", () => {
   it("re-fetches preferences when the authenticated user id changes", async () => {
     // Anonymous pre-login: no per-user theme yet.
     getPrefsMock.mockResolvedValueOnce({});
-    // After login, this user prefers dark.
-    getPrefsMock.mockResolvedValueOnce({ theme: "dark" });
+    // After login, this user prefers light (dark is the default).
+    getPrefsMock.mockResolvedValueOnce({ theme: "light" });
 
     const { result, rerender } = renderHook(() => useTheme(), {
       wrapper,
@@ -63,7 +63,7 @@ describe("ThemeContext", () => {
     await waitFor(() => {
       expect(getPrefsMock).toHaveBeenCalledTimes(1);
     });
-    expect(result.current.theme).toBe("light");
+    expect(result.current.theme).toBe("dark");
 
     // Simulate the user logging in — user id becomes available.
     state.user = { id: "user-1" };
@@ -73,7 +73,7 @@ describe("ThemeContext", () => {
       expect(getPrefsMock).toHaveBeenCalledTimes(2);
     });
     await waitFor(() => {
-      expect(result.current.theme).toBe("dark");
+      expect(result.current.theme).toBe("light");
     });
   });
 

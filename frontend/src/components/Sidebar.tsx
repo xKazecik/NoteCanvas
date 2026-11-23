@@ -16,6 +16,7 @@ import { useAuth } from "../context/AuthContext";
 import { displayFontFamily } from "../utils/displayFont";
 import { SidebarItem } from "./sidebar/SidebarItem";
 import { SidebarFooter } from "./sidebar/SidebarFooter";
+import { isLocalDesktopWorkspace } from "../utils/desktop";
 import {
   SidebarContextMenu,
   type SidebarContextMenuState,
@@ -302,13 +303,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span className="min-w-0 flex-1 text-left">Main page</span>
               </button>
             </div>
-            <SidebarItem
-              id={"shared"}
-              icon={<Shield size={18} />}
-              label="Shared with me"
-              isActive={selectedCollectionId === "shared"}
-              onClick={() => onSelectCollection("shared")}
-            />
+            {/* A local desktop workspace has a single user: nothing is ever shared with it. */}
+            {!isLocalDesktopWorkspace() && (
+              <SidebarItem
+                id={"shared"}
+                icon={<Shield size={18} />}
+                label="Shared with me"
+                isActive={selectedCollectionId === "shared"}
+                onClick={() => onSelectCollection("shared")}
+              />
+            )}
             <SidebarItem
               id={null}
               icon={<Archive size={18} />}

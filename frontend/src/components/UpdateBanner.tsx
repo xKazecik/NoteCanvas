@@ -144,7 +144,8 @@ export const UpdateBanner: React.FC = () => {
   return (
     <div className="sticky top-0 z-[44] -mt-2 mb-6 rounded-xl border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/80 dark:bg-emerald-950/30 backdrop-blur-md px-3 py-2 shadow-sm transition-all duration-200">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
+        {/* Full width on phones, so the buttons wrap below instead of covering it. */}
+        <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto sm:flex-1">
           <div className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300 flex-shrink-0">
             <span className="text-[10px] font-black uppercase tracking-wider">Update available</span>
           </div>
