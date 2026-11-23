@@ -791,7 +791,37 @@ class App extends React.Component<AppProps, AppState> {
     this.setStylusEraserHeld(held);
   };
 
+  /** A change of the side button waits for the stroke in progress to end. */
+  private stylusEraserDeferred = false;
+  private stylusEraserWanted = false;
+
   private setStylusEraserHeld(held: boolean) {
+    this.stylusEraserWanted = held;
+    // Mid-stroke, changing tool would undo the stroke: an eraser stroke only
+    // erases on pointerup, and only if the eraser is still on then. The
+    // Android app's report of a release can arrive before that pointerup.
+    // So apply the latest state once the stroke's own pointerup is handled
+    // (this listener is added after it, so it runs after it).
+    if (this.state.cursorButton === "down") {
+      if (!this.stylusEraserDeferred) {
+        this.stylusEraserDeferred = true;
+        const apply = () => {
+          unsubPointerUp();
+          unsubCleanup();
+          this.stylusEraserDeferred = false;
+          this.applyStylusEraserHeld(this.stylusEraserWanted);
+        };
+        const unsubPointerUp = addEventListener(window, EVENT.POINTER_UP, apply, {
+          once: true,
+        });
+        const unsubCleanup = this.missingPointerEventCleanupEmitter.once(apply);
+      }
+      return;
+    }
+    this.applyStylusEraserHeld(held);
+  }
+
+  private applyStylusEraserHeld(held: boolean) {
     if (
       held &&
       !this.stylusEraserOn &&
