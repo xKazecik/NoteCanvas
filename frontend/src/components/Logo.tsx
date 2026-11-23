@@ -1,7 +1,10 @@
 import React from 'react';
 
+// Set by the NoteCanvas desktop app in every page it opens.
+type DesktopBridge = { openWorkspaces?: () => void };
+
 export const Logo: React.FC<{ className?: string }> = ({ className }) => {
-  return (
+  const mark = (
     <svg
       viewBox="0 0 512 512"
       fill="none"
@@ -139,5 +142,20 @@ export const Logo: React.FC<{ className?: string }> = ({ className }) => {
         ></path>
       </g>
     </svg>
+  );
+
+  // In the desktop app the logo opens its workspace menu.
+  const desktop = (window as { notecanvasDesktop?: DesktopBridge }).notecanvasDesktop;
+  if (typeof desktop?.openWorkspaces !== 'function') return mark;
+  return (
+    <button
+      type="button"
+      onClick={() => desktop.openWorkspaces?.()}
+      title="Workspaces"
+      aria-label="Workspaces"
+      className="inline-flex shrink-0 rounded-lg transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+    >
+      {mark}
+    </button>
   );
 };

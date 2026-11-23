@@ -40,13 +40,28 @@ const putInCache = (key, response) => {
   return response;
 };
 
-// Network first, so upgrades and config changes show up at once.
+// How long the network may take before a cached shell is served instead. The
+// fetch keeps going and still refreshes the cache for next time.
+const NETWORK_TIMEOUT_MS = 4000;
+const isGatewayError = (response) =>
+  response.status === 502 || response.status === 503 || response.status === 504;
+
+// Network first, so upgrades and config changes show up at once. When the
+// server is down (no answer, or the proxy in front of it says so) the cached
+// shell is served, after at most NETWORK_TIMEOUT_MS.
 const networkFirst = (request, cacheKey) =>
-  fetch(request)
-    .then((response) => putInCache(cacheKey, response))
-    .catch(() =>
-      caches.match(cacheKey).then((cached) => cached || Response.error()),
+  caches.match(cacheKey).then((cached) => {
+    const network = fetch(request).then((response) => {
+      if (isGatewayError(response) && cached) throw new Error("gateway error");
+      return putInCache(cacheKey, response);
+    });
+    if (!cached) return network.catch(() => Response.error());
+    network.catch(() => undefined); // may fail after the timeout already won
+    const timeout = new Promise((resolve) =>
+      setTimeout(() => resolve(cached), NETWORK_TIMEOUT_MS),
     );
+    return Promise.race([network, timeout]).catch(() => cached);
+  });
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
